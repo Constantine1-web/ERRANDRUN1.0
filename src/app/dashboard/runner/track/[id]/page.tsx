@@ -116,63 +116,145 @@ export default function RunnerTrackPage() {
     await submitTracking('Runner has completed delivery');
   };
 
+  const [detectingGps, setDetectingGps] = useState(false);
+
+  const quickStatusPresets = [
+    '🏃 Runner is heading to pickup point',
+    '📍 Arrived at pickup location',
+    '📦 Item/Order picked up, en route to you',
+    '🏢 Arrived at delivery building/hostel',
+    '✅ Handed over to recipient',
+  ];
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setDetectingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLat(position.coords.latitude.toFixed(6));
+        setLng(position.coords.longitude.toFixed(6));
+        toast.success('GPS location captured!');
+        setDetectingGps(false);
+      },
+      (error) => {
+        console.error('GPS error:', error);
+        toast.error('Could not access GPS location. Check browser permissions.');
+        setDetectingGps(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
         <div className="glass-card rounded-3xl border border-white/10 p-6">
-          <h1 className="text-3xl font-bold text-white mb-4">Runner Tracking</h1>
-          <p className="text-white/60 mb-6">Send live status and location updates for errand <strong>{errandId}</strong>.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Runner Live Tracking</h1>
+          <p className="text-white/60 mb-6 text-sm">
+            Transmit live GPS position and step-by-step progress updates for errand #{errandId?.substring(0, 8)}.
+          </p>
 
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-4">
-              <label className="block">
-                <span className="text-sm text-white/60">Status update</span>
-                <input
-                  value={statusUpdate}
-                  onChange={(e) => setStatusUpdate(e.target.value)}
-                  className="mt-2 input w-full"
-                  placeholder="Runner is heading to pickup"
-                />
-              </label>
-
-              <div className="grid grid-cols-2 gap-4">
-                <label className="block">
-                  <span className="text-sm text-white/60">Latitude</span>
-                  <input
-                    value={lat}
-                    onChange={(e) => setLat(e.target.value)}
-                    className="mt-2 input w-full"
-                    placeholder="6.5244"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm text-white/60">Longitude</span>
-                  <input
-                    value={lng}
-                    onChange={(e) => setLng(e.target.value)}
-                    className="mt-2 input w-full"
-                    placeholder="3.3792"
-                  />
-                </label>
+              {/* Quick Preset Badges */}
+              <div>
+                <span className="text-xs text-white/60 block mb-2 font-medium">Quick Status Presets:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {quickStatusPresets.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setStatusUpdate(preset)}
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-medium border transition-all ${
+                        statusUpdate === preset
+                          ? 'bg-primary-500 text-white border-primary-500'
+                          : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <label className="block">
-                <span className="text-sm text-white/60">Notes</span>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="mt-2 textarea w-full"
-                  rows={4}
-                  placeholder="Optional runner notes"
+                <span className="text-xs text-white/60 font-medium">Custom Status Message</span>
+                <input
+                  value={statusUpdate}
+                  onChange={(e) => setStatusUpdate(e.target.value)}
+                  className="mt-1.5 input w-full text-xs"
+                  placeholder="e.g. Standing in cafeteria queue, 3 mins away"
                 />
               </label>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <button type="button" onClick={handleSubmit} disabled={submitting} className="btn-primary w-full sm:w-auto">
-                  {submitting ? 'Sending update…' : 'Send Tracking Update'}
+              {/* GPS Auto-Detect Bar */}
+              <div className="p-3 bg-white/5 border border-white/10 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white">Current GPS Coordinates</span>
+                  <button
+                    type="button"
+                    onClick={handleDetectLocation}
+                    disabled={detectingGps}
+                    className="px-3 py-1 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/40 text-primary-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <span>📍</span>
+                    <span>{detectingGps ? 'Locating...' : 'Auto-Detect GPS'}</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] text-white/40 block">Latitude</span>
+                    <input
+                      value={lat}
+                      onChange={(e) => setLat(e.target.value)}
+                      className="mt-0.5 input w-full text-xs font-mono"
+                      placeholder="6.5244"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-white/40 block">Longitude</span>
+                    <input
+                      value={lng}
+                      onChange={(e) => setLng(e.target.value)}
+                      className="mt-0.5 input w-full text-xs font-mono"
+                      placeholder="3.3792"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <label className="block">
+                <span className="text-xs text-white/60 font-medium">Runner Notes (Optional)</span>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="mt-1.5 textarea w-full text-xs"
+                  rows={3}
+                  placeholder="e.g. Packed in insulated bag, at Faculty gate"
+                />
+              </label>
+
+              <div className="flex flex-col gap-2 sm:flex-row pt-2">
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="btn-primary w-full sm:flex-1 py-3 text-xs"
+                >
+                  {submitting ? 'Broadcasting...' : 'Broadcast Tracking Update'}
                 </button>
-                <button type="button" onClick={handleComplete} disabled={submitting} className="btn-secondary w-full sm:w-auto">
-                  {submitting ? 'Processing…' : 'Mark as Completed'}
+                <button
+                  type="button"
+                  onClick={handleComplete}
+                  disabled={submitting}
+                  className="btn-secondary w-full sm:w-auto py-3 text-xs"
+                >
+                  {submitting ? 'Updating…' : 'Arrived / Completed'}
                 </button>
               </div>
             </div>

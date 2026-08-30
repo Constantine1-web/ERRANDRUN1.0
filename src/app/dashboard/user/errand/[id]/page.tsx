@@ -78,7 +78,17 @@ export default function ErrandDetailPage() {
     '🎯 Followed All Instructions',
   ];
 
-  // Fetch runner profile and existing rating when errand loads
+  const [existingDispute, setExistingDispute] = useState<any>(null);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('Item not delivered / Missing');
+  const [disputeDescription, setDisputeDescription] = useState('');
+  const [submittingDispute, setSubmittingDispute] = useState(false);
+
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancellingErrand, setCancellingErrand] = useState(false);
+
+  // Fetch runner profile, existing rating, and existing dispute when errand loads
   useEffect(() => {
     if (!errand) return;
 
@@ -101,6 +111,16 @@ export default function ErrandDetailPage() {
         })
         .catch(console.error);
     }
+
+    // Fetch dispute if any
+    fetch(`/api/disputes?errandId=${errand.id}`)
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          setExistingDispute(res.data);
+        }
+      })
+      .catch(console.error);
   }, [errand]);
 
   useEffect(() => {
@@ -121,6 +141,86 @@ export default function ErrandDetailPage() {
 
     verifyPayment();
   }, [paymentReference]);
+
+  const handleCancelErrand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!errand) return;
+
+    try {
+      setCancellingErrand(true);
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) {
+        toast.error('Please sign in');
+        return;
+      }
+
+      const res = await fetch('/api/errands/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          errandId: errand.id,
+          userId,
+          reason: cancelReason,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to cancel errand');
+      }
+
+      toast.success(data.message || 'Errand cancelled');
+      setErrand((current) => (current ? { ...current, status: 'cancelled' } : current));
+      setShowCancelModal(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to cancel errand');
+    } finally {
+      setCancellingErrand(false);
+    }
+  };
+
+  const handleSubmitDispute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!errand) return;
+
+    try {
+      setSubmittingDispute(true);
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) {
+        toast.error('Please sign in');
+        return;
+      }
+
+      const res = await fetch('/api/disputes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          errandId: errand.id,
+          initiatorId: userId,
+          reason: disputeReason,
+          description: disputeDescription,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to file dispute');
+      }
+
+      toast.success('Dispute filed successfully. Admin will review within 24 hours.');
+      setExistingDispute(data.data);
+      setErrand((current) => (current ? { ...current, status: 'disputed' } : current));
+      setShowDisputeModal(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to file dispute');
+    } finally {
+      setSubmittingDispute(false);
+    }
+  };
 
   const handleComplete = async () => {
     if (!id) return;
@@ -299,9 +399,47 @@ export default function ErrandDetailPage() {
                   </ul>
                 )}
               </div>
-              <div className="glass-card p-4 rounded-3xl">
-                <h4 className="text-sm text-white/60 mb-3">Delivery & Runner Review</h4>
-                {errand.status === 'assigned' || errand.status === 'in_progress' ? (
+              <div className="glass-card p-4 rounded-3xl space-y-4">
+                <h4 className="text-sm text-white/60 mb-1">Actions & Delivery</h4>
+
+                {/* Dispute Active Banner */}
+                {existingDispute && (
+                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                        Dispute {existingDispute.status}
+                      </span>
+                      <span className="text-[10px] text-white/40">
+                        {new Date(existingDispute.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/80 font-medium">{existingDispute.reason}</p>
+                    <p className="text-[11px] text-white/60">{existingDispute.description}</p>
+                    {existingDispute.admin_notes && (
+                      <p className="text-[11px] text-primary-300 mt-1 pt-1 border-t border-white/5">
+                        Admin Note: {existingDispute.admin_notes}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {errand.status === 'unassigned' || errand.status === 'payment_pending' ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-2xl">
+                      <p className="text-xs text-primary-300 font-semibold mb-0.5">Looking for Runner</p>
+                      <p className="text-[11px] text-white/60">
+                        Your errand is published to campus runners.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCancelModal(true)}
+                      className="w-full py-2.5 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold transition-all"
+                    >
+                      Cancel Errand & Refund
+                    </button>
+                  </div>
+                ) : errand.status === 'assigned' || errand.status === 'in_progress' ? (
                   <div className="space-y-3">
                     <p className="text-sm text-white/60">
                       Confirm delivery once your runner has completed the drop-off.
@@ -317,6 +455,16 @@ export default function ErrandDetailPage() {
                     {completionMessage ? (
                       <p className="text-sm text-white/70">{completionMessage}</p>
                     ) : null}
+
+                    {!existingDispute && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDisputeModal(true)}
+                        className="w-full py-2 text-xs text-rose-300/80 hover:text-rose-300 hover:underline transition-all block text-center"
+                      >
+                        Need help? Report an issue / Dispute
+                      </button>
+                    )}
                   </div>
                 ) : errand.status === 'completed' ? (
                   <div className="space-y-4">
@@ -364,10 +512,24 @@ export default function ErrandDetailPage() {
                         ⭐ Rate & Review Runner
                       </button>
                     )}
+
+                    {!existingDispute && (
+                      <button
+                        type="button"
+                        onClick={() => setShowDisputeModal(true)}
+                        className="w-full py-2 text-xs text-white/40 hover:text-white/80 hover:underline transition-all block text-center"
+                      >
+                        Report a Problem with this Errand
+                      </button>
+                    )}
+                  </div>
+                ) : errand.status === 'cancelled' ? (
+                  <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-300">
+                    This errand was cancelled. Funds have been refunded to your wallet.
                   </div>
                 ) : (
                   <p className="text-sm text-white/60">
-                    Delivery confirmation is available once a runner is assigned and in progress.
+                    Status: {errand.status}
                   </p>
                 )}
               </div>
@@ -394,7 +556,6 @@ export default function ErrandDetailPage() {
             </p>
 
             <form onSubmit={handleSubmitRating} className="space-y-5">
-              {/* Star Selector */}
               <div className="flex items-center justify-center gap-2 py-3 bg-white/5 rounded-2xl">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -410,7 +571,6 @@ export default function ErrandDetailPage() {
                 ))}
               </div>
 
-              {/* Quick Compliment Tags */}
               <div>
                 <label className="text-xs text-white/60 block mb-2 font-medium">
                   Select compliments:
@@ -436,7 +596,6 @@ export default function ErrandDetailPage() {
                 </div>
               </div>
 
-              {/* Review Comment */}
               <div>
                 <label className="text-xs text-white/60 block mb-1.5 font-medium">
                   Review Comment (optional):
@@ -450,7 +609,6 @@ export default function ErrandDetailPage() {
                 />
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={submittingRating}
@@ -458,6 +616,120 @@ export default function ErrandDetailPage() {
               >
                 {submittingRating ? 'Submitting...' : 'Submit Rating & Feedback'}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DISPUTE MODAL */}
+      {showDisputeModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="glass-card rounded-3xl p-6 max-w-md w-full border border-rose-500/30 relative">
+            <button
+              type="button"
+              onClick={() => setShowDisputeModal(false)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-2xl font-bold text-white mb-1">Report an Issue / Dispute</h3>
+            <p className="text-xs text-white/60 mb-6">
+              Our campus administration team will investigate and arbitrate within 24 hours.
+            </p>
+
+            <form onSubmit={handleSubmitDispute} className="space-y-4">
+              <div>
+                <label className="text-xs text-white/60 block mb-1.5 font-medium">
+                  Reason for Dispute:
+                </label>
+                <select
+                  value={disputeReason}
+                  onChange={(e) => setDisputeReason(e.target.value)}
+                  className="input w-full text-xs bg-dark-base"
+                >
+                  <option value="Item not delivered / Missing">Item not delivered / Missing</option>
+                  <option value="Damaged or incorrect item">Damaged or incorrect item</option>
+                  <option value="Unreasonable delay or abandoned task">Unreasonable delay or abandoned task</option>
+                  <option value="Pricing / Payment discrepancy">Pricing / Payment discrepancy</option>
+                  <option value="Unprofessional behavior">Unprofessional behavior</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-white/60 block mb-1.5 font-medium">
+                  Detailed Explanation:
+                </label>
+                <textarea
+                  required
+                  value={disputeDescription}
+                  onChange={(e) => setDisputeDescription(e.target.value)}
+                  placeholder="Explain exactly what happened, what was missing, or what the issue is..."
+                  className="input textarea w-full text-xs"
+                  rows={4}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submittingDispute || !disputeDescription}
+                className="w-full btn-primary py-3 text-sm flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 border-rose-500 disabled:opacity-50"
+              >
+                {submittingDispute ? 'Submitting Dispute...' : 'Submit Dispute Claim'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CANCEL ERRAND MODAL */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="glass-card rounded-3xl p-6 max-w-md w-full border border-white/20 relative">
+            <button
+              type="button"
+              onClick={() => setShowCancelModal(false)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-xl font-bold text-white mb-2">Cancel This Errand?</h3>
+            <p className="text-xs text-white/60 mb-4">
+              Since no runner has accepted this task yet, cancelling will immediately credit the full fee ({formatCurrency(errand?.total_fee || 0)}) back to your wallet.
+            </p>
+
+            <form onSubmit={handleCancelErrand} className="space-y-4">
+              <div>
+                <label className="text-xs text-white/60 block mb-1 font-medium">
+                  Reason for cancelling (optional):
+                </label>
+                <input
+                  type="text"
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="e.g. Changed my mind, found another solution"
+                  className="input w-full text-xs"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelModal(false)}
+                  className="flex-1 btn-secondary py-2.5 text-xs"
+                >
+                  Keep Errand
+                </button>
+                <button
+                  type="submit"
+                  disabled={cancellingErrand}
+                  className="flex-1 btn-primary py-2.5 text-xs bg-rose-600 hover:bg-rose-500 border-rose-500 disabled:opacity-50"
+                >
+                  {cancellingErrand ? 'Cancelling...' : 'Confirm & Refund'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
