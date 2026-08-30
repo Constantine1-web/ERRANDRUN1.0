@@ -135,7 +135,7 @@ function WalletContent() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold text-white mb-8">Wallet</h1>
+      <h1 className="heading-page text-white mb-8">Wallet</h1>
 
       {verifying && (
         <div className="glass-card rounded-2xl p-4 mb-6 border border-primary-500/30 flex items-center gap-3 text-primary-400">
@@ -146,49 +146,51 @@ function WalletContent() {
 
       {/* Wallet Balance Card */}
       <motion.div
-        className="glass-card rounded-3xl p-8 mb-8"
+        className="glass-card rounded-3xl p-6 sm:p-8 mb-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-start sm:items-center justify-between mb-8">
           <div>
             <p className="text-white/60 text-sm mb-2">Available Balance</p>
-            <h2 className="text-5xl font-bold text-white">
+            <h2 className="text-4xl sm:text-5xl font-bold text-white font-mono">
               ₦{wallet?.balance?.toLocaleString() || '0.00'}
             </h2>
           </div>
-          <WalletIcon className="w-16 h-16 text-primary-400/30" />
+          <WalletIcon className="w-12 h-12 sm:w-16 sm:h-16 text-primary-400/30 hidden sm:block" />
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/10">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/10">
+          <div className="bg-white/5 p-4 rounded-xl">
             <p className="text-white/60 text-xs mb-1">Total Earned</p>
-            <p className="text-2xl font-bold text-green-400">
+            <p className="text-2xl font-bold text-green-400 font-mono">
               ₦{wallet?.total_earned?.toLocaleString() || '0'}
             </p>
           </div>
-          <div>
+          <div className="bg-white/5 p-4 rounded-xl">
             <p className="text-white/60 text-xs mb-1">Total Spent</p>
-            <p className="text-2xl font-bold text-red-400">
+            <p className="text-2xl font-bold text-red-400 font-mono">
               ₦{wallet?.total_spent?.toLocaleString() || '0'}
             </p>
           </div>
         </div>
 
         {/* Actions */}
-        <button 
-          onClick={() => setIsAddFundsOpen(true)}
-          className="btn-primary w-full flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Add Funds
-        </button>
+        <div className="flex justify-end">
+          <button 
+            onClick={() => setIsAddFundsOpen(true)}
+            className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add Funds
+          </button>
+        </div>
       </motion.div>
 
       {/* Transaction History */}
       <motion.div
-        className="glass-card rounded-3xl p-8"
+        className="glass-card rounded-3xl p-6 sm:p-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -204,30 +206,32 @@ function WalletContent() {
             {transactions.map((tx) => (
               <div
                 key={tx.id}
-                className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all"
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all gap-4"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-start sm:items-center gap-4">
                   {tx.transaction_type === 'credit' ? (
-                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                       <ArrowDownLeft className="w-5 h-5 text-green-400" />
                     </div>
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
                       <ArrowUpRight className="w-5 h-5 text-red-400" />
                     </div>
                   )}
                   <div>
-                    <p className="text-white font-medium">{tx.description || 'Transaction'}</p>
-                    <p className="text-xs text-white/40">
+                    <p className="text-white font-medium break-words">{tx.description || 'Transaction'}</p>
+                    <p className="text-xs text-white/40 mt-1">
                       {new Date(tx.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-                <span
-                  className={`font-bold ${tx.transaction_type === 'credit' ? 'text-green-400' : 'text-red-400'}`}
-                >
-                  {tx.transaction_type === 'credit' ? '+' : '-'}₦{Math.abs(tx.amount).toLocaleString()}
-                </span>
+                <div className="flex sm:block justify-end w-full sm:w-auto border-t border-white/5 pt-3 sm:border-0 sm:pt-0 mt-1 sm:mt-0">
+                  <span
+                    className={`text-xl sm:text-base font-bold font-mono ${tx.transaction_type === 'credit' ? 'text-green-400' : 'text-red-400'}`}
+                  >
+                    {tx.transaction_type === 'credit' ? '+' : '-'}₦{Math.abs(tx.amount).toLocaleString()}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -236,22 +240,22 @@ function WalletContent() {
 
       {/* Add Funds Modal */}
       {isAddFundsOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6 backdrop-blur-sm">
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card rounded-3xl p-6 max-w-md w-full relative"
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 w-full max-w-md relative max-h-[90vh] overflow-y-auto"
           >
             <button 
               onClick={() => setIsAddFundsOpen(false)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white"
+              className="absolute top-6 right-6 text-white/40 hover:text-white"
             >
               ✕
             </button>
             <h3 className="text-2xl font-bold text-white mb-2">Add Funds</h3>
             <p className="text-white/60 text-sm mb-6">Top up your wallet balance.</p>
             
-            <form onSubmit={handleDeposit} className="space-y-4">
+            <form onSubmit={handleDeposit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-white/80 mb-2">
                   Amount (₦)
@@ -263,7 +267,7 @@ function WalletContent() {
                   value={depositAmount}
                   onChange={(e) => setDepositAmount(e.target.value)}
                   placeholder="Enter amount (e.g. 5000)"
-                  className="input-field w-full text-lg"
+                  className="input-field w-full text-lg font-mono"
                   required
                 />
               </div>

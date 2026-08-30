@@ -201,23 +201,25 @@ export default function RunnerTasksPage() {
         {loading ? (
           <div className="text-white/60">Loading…</div>
         ) : assigned.length === 0 ? (
-          <div className="text-white/60">No current assignments.</div>
+          <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-6 text-white/60">
+            <p>No current assignments.</p>
+          </div>
         ) : (
           <div className="space-y-3">
             {assigned.map((t) => (
               <div key={t.id} className="rounded-lg border border-white/10 p-4 bg-slate-950/70">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <h3 className="text-lg text-white font-semibold">{t.title}</h3>
                     <p className="text-sm text-white/60">{t.pickup_location} → {t.delivery_location}</p>
                     <p className="text-sm text-white/60 mt-1">Status: {t.status.replace('_', ' ')}</p>
                     <p className="text-sm text-white/60">ETA: {t.eta_minutes ? `${t.eta_minutes} min` : 'N/A'}</p>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Link href={`/dashboard/runner/track/${t.id}`} className="btn-primary inline-flex items-center gap-2 text-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                    <Link href={`/dashboard/runner/track/${t.id}`} className="btn-primary w-full sm:w-auto inline-flex justify-center items-center gap-2 text-sm">
                       <MapPin className="w-4 h-4" /> View route
                     </Link>
-                    <button onClick={() => decline(t.id)} disabled={actionLoading === t.id} className="btn-ghost text-sm text-white/70">
+                    <button onClick={() => decline(t.id)} disabled={actionLoading === t.id} className="btn-danger w-full sm:w-auto text-sm">
                       {actionLoading === t.id ? 'Processing…' : 'Decline'}
                     </button>
                   </div>
@@ -233,19 +235,24 @@ export default function RunnerTasksPage() {
         {loading ? (
           <div className="text-white/60">Loading…</div>
         ) : available.length === 0 ? (
-          <div className="text-white/60">No available errands.</div>
+          <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-6 text-white/60">
+            <p>No available errands.</p>
+          </div>
         ) : (
           <div className="space-y-3">
             {available.map((t) => (
               <div key={t.id} className="rounded-lg border border-white/10 p-4 bg-slate-950/70">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex flex-col">
                     <h3 className="text-lg text-white font-semibold">{t.title}</h3>
                     <p className="text-sm text-white/60">{t.pickup_location} → {t.delivery_location}</p>
-                    <p className="text-sm text-white/60">Potential payout: {formatCurrency(Number(t.total_fee) * 0.8)}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => accept(t.id)} disabled={actionLoading === t.id} className="btn-primary">
+                  <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto">
+                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto text-sm">
+                      <span className="text-white/60">Payout</span>
+                      <strong className="font-mono text-emerald-400 font-bold text-lg">{formatCurrency(Number(t.total_fee) * 0.8)}</strong>
+                    </div>
+                    <button onClick={() => accept(t.id)} disabled={actionLoading === t.id} className="btn-primary w-full sm:w-auto">
                       {actionLoading === t.id ? 'Accepting…' : 'Accept'}
                     </button>
                   </div>

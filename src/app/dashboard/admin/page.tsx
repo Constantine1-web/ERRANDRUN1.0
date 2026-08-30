@@ -402,7 +402,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPI Metric Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="glass-card rounded-3xl p-5 border border-white/10">
           <div className="flex items-center justify-between text-white/60 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider">Pending Vetting</span>
@@ -512,7 +512,7 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            <div className="relative w-full sm:w-80">
+            <div className="relative w-full sm:max-w-md">
               <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -541,7 +541,7 @@ export default function AdminDashboard() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {filteredApps.map((app) => {
                 const profile = app.profiles;
                 const isProcessing = processingId === app.id;
@@ -695,7 +695,7 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            <div className="relative w-full sm:w-80">
+            <div className="relative w-full sm:max-w-md">
               <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -810,7 +810,7 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            <div className="relative w-full sm:w-80">
+            <div className="relative w-full sm:max-w-md">
               <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -830,7 +830,7 @@ export default function AdminDashboard() {
           ) : (
             <div className="glass-card rounded-3xl border border-white/10 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs min-w-[800px]">
                   <thead className="bg-white/5 text-white/40 uppercase tracking-wider font-semibold border-b border-white/10">
                     <tr>
                       <th className="p-4">Student / User</th>
@@ -1054,7 +1054,7 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card rounded-3xl p-6 max-w-xl w-full border border-white/20 relative"
+              className="glass-card rounded-3xl p-6 max-w-xl w-full border border-white/20 relative max-h-[90vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
                 <div>
@@ -1152,7 +1152,7 @@ export default function AdminDashboard() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] flex flex-col relative border border-white/20"
+              className="glass-card rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] flex flex-col relative border border-white/20 overflow-y-auto"
             >
               <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
                 <div className="flex items-center gap-2">

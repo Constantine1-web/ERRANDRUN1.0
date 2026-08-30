@@ -129,7 +129,7 @@ export default function LoginPage() {
       </Link>
 
       <motion.div
-        className="glass-card rounded-3xl p-8 max-w-md w-full"
+        className="glass-card rounded-3xl p-6 sm:p-8 max-w-md w-full mx-auto"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -137,27 +137,27 @@ export default function LoginPage() {
         <p className="text-white/60 mb-8">Sign in to access your ErrandRun account</p>
 
         {/* Login Form */}
-        <form onSubmit={handlePasswordLogin} className="space-y-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Email</label>
+        <form onSubmit={handlePasswordLogin} className="space-y-5 mb-6">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-white/80">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your.email@university.edu"
-              className="input-field"
+              className="input w-full"
               disabled={loading}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Password</label>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-white/80">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="input-field"
+              className="input w-full"
               disabled={loading}
             />
           </div>

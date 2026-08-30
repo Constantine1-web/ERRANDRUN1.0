@@ -14,24 +14,24 @@ const config = {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: '#0066FF',
-          50: '#F0F4FF',
-          100: '#E0E9FF',
-          200: '#C2D3FF',
-          300: '#A3BDFF',
-          400: '#4D94FF',
-          500: '#0066FF',
-          600: '#0052CC',
-          700: '#003D99',
-          800: '#002966',
-          900: '#001433',
+          DEFAULT: '#38BDF8',
+          50: '#F0F9FF',
+          100: '#E0F2FE',
+          200: '#BAE6FD',
+          300: '#7DD3FC',
+          400: '#38BDF8',
+          500: '#38BDF8',
+          600: '#0284C7',
+          700: '#0369A1',
+          800: '#075985',
+          900: '#0C4A6E',
         },
         accent: {
-          purple: '#9D4EDD',
+          purple: '#A855F7',
           neon: '#00FF41',
         },
         dark: {
-          base: '#0B0F19',
+          base: '#0B0F17',
           secondary: '#121824',
         },
       },
@@ -41,6 +41,7 @@ const config = {
       animation: {
         'fade-in': 'fadeIn 0.3s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',
+        'slide-in-left': 'slideInLeft 0.25s ease-out',
         'shimmer': 'shimmer 2s infinite',
       },
       keyframes: {
@@ -51,6 +52,10 @@ const config = {
         slideUp: {
           '0%': { transform: 'translateY(10px)', opacity: '0' },
           '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        slideInLeft: {
+          '0%': { transform: 'translateX(-100%)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
         },
         shimmer: {
           '0%': { opacity: '0.6' },

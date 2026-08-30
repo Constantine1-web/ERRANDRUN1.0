@@ -125,11 +125,11 @@ export default function NewErrandPage() {
     <div className="max-w-4xl mx-auto p-6">
       <h2 className="text-2xl font-bold mb-4">Create New Errand</h2>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <label className="block">
-            <span className="text-sm text-white/60">Category</span>
-            <select value={category} onChange={(e) => setCategory(e.target.value as ErrandCategory)} className="mt-1 form-select w-full">
+      <form onSubmit={handleSubmit} className="flex flex-col lg:grid lg:grid-cols-[1fr_380px] gap-8 items-start">
+        <div className="space-y-5 order-1 w-full">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-white/80">Category</span>
+            <select value={category} onChange={(e) => setCategory(e.target.value as ErrandCategory)} className="select w-full">
               <option value="academic">Academic</option>
               <option value="food_delivery">Food delivery</option>
               <option value="campus_errand">Campus errand</option>
@@ -138,39 +138,39 @@ export default function NewErrandPage() {
             </select>
           </label>
 
-          <label className="block">
-            <span className="text-sm text-white/60">Title</span>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 input w-full" placeholder="Short title for your errand" />
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-white/80">Title</span>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className="input w-full" placeholder="Short title for your errand" />
           </label>
 
-          <label className="block">
-            <span className="text-sm text-white/60">Description</span>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 textarea w-full" rows={4} placeholder="Details for the runner" />
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-white/80">Description</span>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="textarea w-full" rows={4} placeholder="Details for the runner" />
           </label>
 
-          <label className="block">
-            <span className="text-sm text-white/60">Pickup Location</span>
-            <input value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)} className="mt-1 input w-full" placeholder="e.g., Main Library" />
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-white/80">Pickup Location</span>
+            <input value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)} className="input w-full" placeholder="e.g., Main Library" />
           </label>
 
-          <div className="grid grid-cols-2 gap-2">
-            <input value={pickupLat ?? ''} onChange={(e) => setPickupLat(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Pickup lat" className="input" />
-            <input value={pickupLng ?? ''} onChange={(e) => setPickupLng(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Pickup lng" className="input" />
+          <div className="grid grid-cols-2 gap-3">
+            <input value={pickupLat ?? ''} onChange={(e) => setPickupLat(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Pickup lat" className="input w-full min-w-0" />
+            <input value={pickupLng ?? ''} onChange={(e) => setPickupLng(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Pickup lng" className="input w-full min-w-0" />
           </div>
 
-          <label className="block">
-            <span className="text-sm text-white/60">Delivery Location</span>
-            <input value={deliveryLocation} onChange={(e) => setDeliveryLocation(e.target.value)} className="mt-1 input w-full" placeholder="e.g., Hostel A" />
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-white/80">Delivery Location</span>
+            <input value={deliveryLocation} onChange={(e) => setDeliveryLocation(e.target.value)} className="input w-full" placeholder="e.g., Hostel A" />
           </label>
 
-          <div className="grid grid-cols-2 gap-2">
-            <input value={deliveryLat ?? ''} onChange={(e) => setDeliveryLat(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Delivery lat" className="input" />
-            <input value={deliveryLng ?? ''} onChange={(e) => setDeliveryLng(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Delivery lng" className="input" />
+          <div className="grid grid-cols-2 gap-3">
+            <input value={deliveryLat ?? ''} onChange={(e) => setDeliveryLat(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Delivery lat" className="input w-full min-w-0" />
+            <input value={deliveryLng ?? ''} onChange={(e) => setDeliveryLng(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Delivery lng" className="input w-full min-w-0" />
           </div>
 
-          <label className="block">
-            <span className="text-sm text-white/60">Priority</span>
-            <select value={priority} onChange={(e) => setPriority(e.target.value as ErrandPriority)} className="mt-1 form-select w-full">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-white/80">Priority</span>
+            <select value={priority} onChange={(e) => setPriority(e.target.value as ErrandPriority)} className="select w-full">
               <option value="low">Low</option>
               <option value="normal">Normal</option>
               <option value="high">High</option>
@@ -178,41 +178,47 @@ export default function NewErrandPage() {
             </select>
           </label>
 
-          <div className="flex items-center gap-3">
-            <input id="queue" type="checkbox" checked={hasQueue} onChange={(e) => setHasQueue(e.target.checked)} />
-            <label htmlFor="queue" className="text-sm text-white/60">Pickup may have queue / complex process</label>
+          <div className="flex items-center gap-3 pt-2">
+            <input id="queue" type="checkbox" checked={hasQueue} onChange={(e) => setHasQueue(e.target.checked)} className="w-5 h-5 rounded border-white/20 bg-dark-base text-primary-500 focus:ring-primary-500/50" />
+            <label htmlFor="queue" className="text-sm font-medium text-white/80">Pickup may have queue / complex process</label>
           </div>
-
-          <button disabled={submitting} type="submit" className="btn-primary w-full mt-4">
-            {submitting ? 'Creating…' : 'Create Errand'}
-          </button>
         </div>
 
-        <aside className="space-y-4">
-          <div className="glass-card p-4 rounded-lg">
-            <h3 className="text-sm text-white/60">Price Estimate</h3>
-            <div className="mt-3">
-              <div className="flex justify-between text-white">
+        <aside className="space-y-4 order-2 lg:order-none w-full">
+          <div className="glass-card p-5 rounded-2xl">
+            <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-4">Price Estimate</h3>
+            <div>
+              <div className="flex justify-between text-white items-end mb-4">
                 <span className="opacity-80">Total</span>
-                <strong>{formatCurrency(pricing.totalFee)}</strong>
+                <strong className="text-2xl">{formatCurrency(pricing.totalFee)}</strong>
               </div>
-              <div className="mt-3 space-y-2 text-sm text-white/60">
+              <div className="space-y-2.5 text-sm text-white/60">
                 <div className="flex justify-between"><span>Base fee</span><span>{formatCurrency(pricing.baseFee)}</span></div>
                 <div className="flex justify-between"><span>Distance</span><span>{formatCurrency(pricing.distanceSurcharge)}</span></div>
                 {pricing.queueComplexityFee > 0 && <div className="flex justify-between"><span>Queue</span><span>{formatCurrency(pricing.queueComplexityFee)}</span></div>}
                 {pricing.weatherSurge > 0 && <div className="flex justify-between"><span>Weather</span><span>{formatCurrency(pricing.weatherSurge)}</span></div>}
-                <div className="flex justify-between pt-2 border-t border-white/5"><span>Platform fee (20%)</span><span>{formatCurrency(pricing.platformFee)}</span></div>
+                <div className="flex justify-between pt-3 mt-3 border-t border-white/10 text-white/80"><span>Platform fee (20%)</span><span>{formatCurrency(pricing.platformFee)}</span></div>
               </div>
             </div>
           </div>
 
-          <div className="glass-card p-4 rounded-lg">
-            <h4 className="text-sm text-white/60">Distance</h4>
-            <p className="mt-2 text-white">{distanceKm.toFixed(2)} km</p>
-            <h4 className="text-sm text-white/60 mt-4">Runner receives</h4>
-            <p className="mt-2 text-green-300 font-medium">{formatCurrency(pricing.runnerAmount)}</p>
+          <div className="glass-card p-5 rounded-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider">Distance</h4>
+              <p className="text-white font-medium">{distanceKm.toFixed(2)} km</p>
+            </div>
+            <div className="flex justify-between items-center pt-4 border-t border-white/10">
+              <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider">Runner gets</h4>
+              <p className="text-green-400 font-bold text-lg">{formatCurrency(pricing.runnerAmount)}</p>
+            </div>
           </div>
         </aside>
+
+        <div className="order-3 lg:col-start-1 lg:row-start-2 w-full mt-2 lg:mt-0">
+          <button disabled={submitting} type="submit" className="btn-primary w-full py-3.5 text-base font-semibold">
+            {submitting ? 'Creating…' : 'Create Errand'}
+          </button>
+        </div>
       </form>
     </div>
   );

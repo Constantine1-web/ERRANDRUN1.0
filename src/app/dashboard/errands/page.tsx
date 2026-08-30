@@ -48,12 +48,12 @@ export default function ErrandsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between mb-8">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
-          <h1 className="text-4xl font-bold text-white">Errands</h1>
+          <h1 className="heading-page text-white">Errands</h1>
           <p className="text-white/60 mt-2">Track the status of your requests and open details for live runner updates.</p>
         </div>
-        <Link href="/dashboard/errands/new" className="btn-primary flex items-center gap-2 w-full md:w-auto justify-center md:justify-start">
+        <Link href="/dashboard/errands/new" className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center">
           <Plus className="w-5 h-5" />
           Post Errand
         </Link>
@@ -61,10 +61,12 @@ export default function ErrandsPage() {
 
       {loading ? (
         <motion.div
-          className="glass-card rounded-3xl p-12 text-center"
+          className="glass-card rounded-3xl p-12 flex flex-col items-center justify-center text-center gap-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
+          <div className="skeleton-avatar w-12 h-12 rounded-full mx-auto" />
+          <div className="skeleton-text w-32 h-4 mx-auto" />
           <p className="text-white/60">Loading your errands…</p>
         </motion.div>
       ) : errands.length === 0 ? (
@@ -78,7 +80,7 @@ export default function ErrandsPage() {
           <p className="text-white/60 mb-8 max-w-sm mx-auto">
             Create your first errand and get matched with a verified runner.
           </p>
-          <Link href="/dashboard/errands/new" className="btn-primary inline-flex items-center gap-2">
+          <Link href="/dashboard/errands/new" className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2">
             <Plus className="w-5 h-5" />
             Post Your First Errand
           </Link>
@@ -88,25 +90,27 @@ export default function ErrandsPage() {
           {errands.map((errand) => (
             <motion.article
               key={errand.id}
-              className="glass-card rounded-3xl p-6 border border-white/10"
+              className="glass-card rounded-3xl p-6 border border-white/10 flex flex-col"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold text-white">{errand.title}</h2>
-                  <p className="text-white/50 mt-2">{new Date(errand.created_at).toLocaleString()}</p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-white truncate">{errand.title}</h2>
+                  <p className="text-white/50 mt-1 text-sm">{new Date(errand.created_at).toLocaleString()}</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">{errand.priority}</span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">{errand.status}</span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">₦{Number(errand.total_fee).toLocaleString()}</span>
+                <div className="flex flex-row overflow-x-auto scrollbar-none items-center gap-2 pb-2 sm:pb-0">
+                  <span className="badge-neutral whitespace-nowrap">{errand.priority}</span>
+                  <span className={`whitespace-nowrap ${errand.status === 'completed' ? 'badge-success' : errand.status === 'pending' ? 'badge-warning' : errand.status === 'cancelled' ? 'badge-danger' : 'badge-info'}`}>
+                    {errand.status}
+                  </span>
+                  <span className="badge-neutral whitespace-nowrap font-mono">₦{Number(errand.total_fee).toLocaleString()}</span>
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="text-sm text-white/60">View live tracking, payment status, and runner updates.</div>
-                <Link href={`/dashboard/user/errand/${errand.id}`} className="inline-flex items-center gap-2 text-primary-300 hover:text-white">
+              <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-white/60 line-clamp-2 sm:line-clamp-1">View live tracking, payment status, and runner updates.</div>
+                <Link href={`/dashboard/user/errand/${errand.id}`} className="inline-flex items-center justify-center sm:justify-start gap-2 text-primary-300 hover:text-primary-400 w-full sm:w-auto p-2 sm:p-0 border sm:border-none border-white/10 rounded-lg sm:rounded-none">
                   View details <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

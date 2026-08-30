@@ -151,25 +151,25 @@ export default function RunnerTrackPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-[2fr_1fr]">
         <div className="glass-card rounded-3xl border border-white/10 p-6">
           <h1 className="text-3xl font-bold text-white mb-2">Runner Live Tracking</h1>
           <p className="text-white/60 mb-6 text-sm">
             Transmit live GPS position and step-by-step progress updates for errand #{errandId?.substring(0, 8)}.
           </p>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
             <div className="space-y-4">
               {/* Quick Preset Badges */}
               <div>
                 <span className="text-xs text-white/60 block mb-2 font-medium">Quick Status Presets:</span>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex overflow-x-auto scrollbar-none gap-2 pb-2">
                   {quickStatusPresets.map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setStatusUpdate(preset)}
-                      className={`px-2.5 py-1 rounded-xl text-[11px] font-medium border transition-all ${
+                      className={`whitespace-nowrap px-2.5 py-1 rounded-xl text-[11px] font-medium border transition-all ${
                         statusUpdate === preset
                           ? 'bg-primary-500 text-white border-primary-500'
                           : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white'
@@ -206,7 +206,7 @@ export default function RunnerTrackPage() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div>
                     <span className="text-[10px] text-white/40 block">Latitude</span>
                     <input
@@ -252,7 +252,7 @@ export default function RunnerTrackPage() {
                   type="button"
                   onClick={handleComplete}
                   disabled={submitting}
-                  className="btn-secondary w-full sm:w-auto py-3 text-xs"
+                  className="btn-secondary w-full sm:flex-1 py-3 text-xs"
                 >
                   {submitting ? 'Updating…' : 'Arrived / Completed'}
                 </button>
@@ -285,9 +285,9 @@ export default function RunnerTrackPage() {
           </div>
         </div>
 
-        <div className="glass-card rounded-3xl border border-white/10 p-6">
+        <div className="glass-card rounded-3xl border border-white/10 p-6 flex flex-col">
           <h2 className="text-xl font-semibold text-white mb-4">Live map preview</h2>
-          <div className="h-[520px] rounded-3xl overflow-hidden border border-white/10">
+          <div className="w-full aspect-[4/3] md:aspect-auto md:h-[520px] rounded-3xl overflow-hidden border border-white/10">
             <MapContainer center={mapCenter} zoom={14} scrollWheelZoom={false} className="h-full w-full">
               <RecenterMap center={mapCenter} />
               <TileLayer

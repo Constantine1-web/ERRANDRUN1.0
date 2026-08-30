@@ -353,10 +353,10 @@ export default function ErrandDetailPage() {
             </div>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-            <div className="glass-card p-4 rounded-3xl">
+          <div className="flex flex-col lg:grid lg:grid-cols-[1fr_380px] gap-6">
+            <div className="order-3 lg:order-none glass-card p-4 rounded-3xl lg:row-span-3 flex flex-col">
               <h4 className="text-sm font-medium mb-4">Live Runner Map</h4>
-              <div className="h-[420px] rounded-3xl overflow-hidden border border-white/10">
+              <div className="w-full aspect-[4/3] lg:aspect-auto lg:h-[400px] rounded-2xl overflow-hidden border border-white/10 flex-1">
                 <MapContainer center={mapCenter} zoom={14} scrollWheelZoom={false} className="h-full w-full">
                   <RecenterMap center={mapCenter} />
                   <TileLayer
@@ -378,162 +378,180 @@ export default function ErrandDetailPage() {
               </div>
             </div>
 
-            <aside className="space-y-4">
-              <div className="glass-card p-4 rounded-3xl">
-                <h4 className="text-sm text-white/60 mb-3">Latest Tracking</h4>
-                {trackingLoading ? (
-                  <p className="text-sm">Connecting…</p>
-                ) : tracking.length === 0 ? (
-                  <p className="text-sm text-white/60">No tracking updates yet.</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {tracking.map((t: any) => (
-                      <li key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="text-sm text-white/80 font-medium">{t.status_update}</div>
-                        {t.current_location && (
-                          <div className="text-xs text-white/60 mt-2">Location: {t.current_location.lat.toFixed(5)}, {t.current_location.lng.toFixed(5)}</div>
-                        )}
-                        <div className="text-xs text-white/40 mt-2">{new Date(t.timestamp).toLocaleString()}</div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="glass-card p-4 rounded-3xl space-y-4">
-                <h4 className="text-sm text-white/60 mb-1">Actions & Delivery</h4>
+            <div className="order-1 lg:order-none glass-card p-4 rounded-3xl space-y-4 lg:col-start-2 lg:row-start-1">
+              <h4 className="text-sm text-white/60 mb-1">Actions & Delivery</h4>
 
-                {/* Dispute Active Banner */}
-                {existingDispute && (
-                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                        Dispute {existingDispute.status}
-                      </span>
-                      <span className="text-[10px] text-white/40">
-                        {new Date(existingDispute.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-white/80 font-medium">{existingDispute.reason}</p>
-                    <p className="text-[11px] text-white/60">{existingDispute.description}</p>
-                    {existingDispute.admin_notes && (
-                      <p className="text-[11px] text-primary-300 mt-1 pt-1 border-t border-white/5">
-                        Admin Note: {existingDispute.admin_notes}
-                      </p>
-                    )}
+              {/* Dispute Active Banner */}
+              {existingDispute && (
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                      Dispute {existingDispute.status}
+                    </span>
+                    <span className="text-[10px] text-white/40">
+                      {new Date(existingDispute.created_at).toLocaleDateString()}
+                    </span>
                   </div>
-                )}
-
-                {errand.status === 'unassigned' || errand.status === 'payment_pending' ? (
-                  <div className="space-y-3">
-                    <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-2xl">
-                      <p className="text-xs text-primary-300 font-semibold mb-0.5">Looking for Runner</p>
-                      <p className="text-[11px] text-white/60">
-                        Your errand is published to campus runners.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowCancelModal(true)}
-                      className="w-full py-2.5 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold transition-all"
-                    >
-                      Cancel Errand & Refund
-                    </button>
-                  </div>
-                ) : errand.status === 'assigned' || errand.status === 'in_progress' ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-white/60">
-                      Confirm delivery once your runner has completed the drop-off.
+                  <p className="text-xs text-white/80 font-medium">{existingDispute.reason}</p>
+                  <p className="text-[11px] text-white/60">{existingDispute.description}</p>
+                  {existingDispute.admin_notes && (
+                    <p className="text-[11px] text-primary-300 mt-1 pt-1 border-t border-white/5">
+                      Admin Note: {existingDispute.admin_notes}
                     </p>
+                  )}
+                </div>
+              )}
+
+              {errand.status === 'unassigned' || errand.status === 'payment_pending' ? (
+                <div className="space-y-3">
+                  <div className="p-3 bg-primary-500/10 border border-primary-500/20 rounded-2xl">
+                    <p className="text-xs text-primary-300 font-semibold mb-0.5">Looking for Runner</p>
+                    <p className="text-[11px] text-white/60">
+                      Your errand is published to campus runners.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowCancelModal(true)}
+                    className="w-full py-2.5 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold transition-all"
+                  >
+                    Cancel Errand & Refund
+                  </button>
+                </div>
+              ) : errand.status === 'assigned' || errand.status === 'in_progress' ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-white/60">
+                    Confirm delivery once your runner has completed the drop-off.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleComplete}
+                    disabled={isCompleting}
+                    className="btn-primary w-full"
+                  >
+                    {isCompleting ? 'Confirming…' : 'Mark as Completed'}
+                  </button>
+                  {completionMessage ? (
+                    <p className="text-sm text-white/70">{completionMessage}</p>
+                  ) : null}
+
+                  {!existingDispute && (
                     <button
                       type="button"
-                      onClick={handleComplete}
-                      disabled={isCompleting}
-                      className="btn-primary w-full"
+                      onClick={() => setShowDisputeModal(true)}
+                      className="w-full py-2 text-xs text-rose-300/80 hover:text-rose-300 hover:underline transition-all block text-center"
                     >
-                      {isCompleting ? 'Confirming…' : 'Mark as Completed'}
+                      Need help? Report an issue / Dispute
                     </button>
-                    {completionMessage ? (
-                      <p className="text-sm text-white/70">{completionMessage}</p>
-                    ) : null}
-
-                    {!existingDispute && (
-                      <button
-                        type="button"
-                        onClick={() => setShowDisputeModal(true)}
-                        className="w-full py-2 text-xs text-rose-300/80 hover:text-rose-300 hover:underline transition-all block text-center"
-                      >
-                        Need help? Report an issue / Dispute
-                      </button>
-                    )}
+                  )}
+                </div>
+              ) : errand.status === 'completed' ? (
+                <div className="space-y-4">
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
+                    <p className="text-xs text-emerald-300 font-semibold mb-1">✓ Errand Completed</p>
+                    <p className="text-xs text-white/60">Payment released to runner wallet.</p>
                   </div>
-                ) : errand.status === 'completed' ? (
-                  <div className="space-y-4">
-                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
-                      <p className="text-xs text-emerald-300 font-semibold mb-1">✓ Errand Completed</p>
-                      <p className="text-xs text-white/60">Payment released to runner wallet.</p>
-                    </div>
 
-                    {existingRating ? (
-                      <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-white/60 font-medium">Your Rating:</span>
-                          <div className="flex text-amber-400 text-sm">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <span key={star}>
-                                {star <= existingRating.rating ? '★' : '☆'}
-                              </span>
-                            ))}
-                          </div>
+                  {existingRating ? (
+                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-white/60 font-medium">Your Rating:</span>
+                        <div className="flex text-amber-400 text-sm">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span key={star}>
+                              {star <= existingRating.rating ? '★' : '☆'}
+                            </span>
+                          ))}
                         </div>
-                        {existingRating.review && (
-                          <p className="text-xs text-white/80 italic mt-1 bg-white/5 p-2 rounded-xl">
-                            "{existingRating.review}"
-                          </p>
-                        )}
-                        {existingRating.categories && Array.isArray(existingRating.categories) && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {existingRating.categories.map((c: string, idx: number) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 bg-primary-500/10 border border-primary-500/20 text-primary-300 text-[10px] rounded-full"
-                              >
-                                {c}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowRatingModal(true)}
-                        className="w-full btn-primary py-2.5 text-xs flex items-center justify-center gap-1.5"
-                      >
-                        ⭐ Rate & Review Runner
-                      </button>
-                    )}
+                      {existingRating.review && (
+                        <p className="text-xs text-white/80 italic mt-1 bg-white/5 p-2 rounded-xl">
+                          "{existingRating.review}"
+                        </p>
+                      )}
+                      {existingRating.categories && Array.isArray(existingRating.categories) && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {existingRating.categories.map((c: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 bg-primary-500/10 border border-primary-500/20 text-primary-300 text-[10px] rounded-full"
+                            >
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowRatingModal(true)}
+                      className="w-full btn-primary py-2.5 text-xs flex items-center justify-center gap-1.5"
+                    >
+                      ⭐ Rate & Review Runner
+                    </button>
+                  )}
 
-                    {!existingDispute && (
-                      <button
-                        type="button"
-                        onClick={() => setShowDisputeModal(true)}
-                        className="w-full py-2 text-xs text-white/40 hover:text-white/80 hover:underline transition-all block text-center"
-                      >
-                        Report a Problem with this Errand
-                      </button>
-                    )}
-                  </div>
-                ) : errand.status === 'cancelled' ? (
-                  <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-300">
-                    This errand was cancelled. Funds have been refunded to your wallet.
-                  </div>
-                ) : (
-                  <p className="text-sm text-white/60">
-                    Status: {errand.status}
-                  </p>
-                )}
+                  {!existingDispute && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDisputeModal(true)}
+                      className="w-full py-2 text-xs text-white/40 hover:text-white/80 hover:underline transition-all block text-center"
+                    >
+                      Report a Problem with this Errand
+                    </button>
+                  )}
+                </div>
+              ) : errand.status === 'cancelled' ? (
+                <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-xs text-rose-300">
+                  This errand was cancelled. Funds have been refunded to your wallet.
+                </div>
+              ) : (
+                <p className="text-sm text-white/60">
+                  Status: {errand.status}
+                </p>
+              )}
+            </div>
+
+            {runnerProfile && (
+              <div className="order-4 lg:order-none glass-card p-4 rounded-3xl lg:col-start-2 lg:row-start-2">
+                <h4 className="text-sm text-white/60 mb-3">Runner Info</h4>
+                <div className="flex items-center gap-3">
+                   {runnerProfile.avatar_url ? (
+                     <img src={runnerProfile.avatar_url} alt="Runner" className="w-10 h-10 rounded-full bg-white/10 object-cover" />
+                   ) : (
+                     <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/60 font-medium">
+                       {runnerProfile.full_name?.charAt(0) || 'R'}
+                     </div>
+                   )}
+                   <div>
+                     <p className="font-medium text-white">{runnerProfile.full_name}</p>
+                     <p className="text-xs text-white/60">Rating: {runnerProfile.rating || 'N/A'} ⭐ ({runnerProfile.total_ratings || 0})</p>
+                   </div>
+                </div>
               </div>
-            </aside>
+            )}
+
+            <div className="order-5 lg:order-none glass-card p-4 rounded-3xl lg:col-start-2 lg:row-start-3">
+              <h4 className="text-sm text-white/60 mb-3">Latest Tracking</h4>
+              {trackingLoading ? (
+                <p className="text-sm">Connecting…</p>
+              ) : tracking.length === 0 ? (
+                <p className="text-sm text-white/60">No tracking updates yet.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {tracking.map((t: any) => (
+                    <li key={t.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="text-sm text-white/80 font-medium">{t.status_update}</div>
+                      {t.current_location && (
+                        <div className="text-xs text-white/60 mt-2">Location: {t.current_location.lat.toFixed(5)}, {t.current_location.lng.toFixed(5)}</div>
+                      )}
+                      <div className="text-xs text-white/40 mt-2">{new Date(t.timestamp).toLocaleString()}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -541,7 +559,7 @@ export default function ErrandDetailPage() {
       {/* RATING MODAL */}
       {showRatingModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-          <div className="glass-card rounded-3xl p-6 max-w-md w-full border border-white/20 relative">
+          <div className="glass-card rounded-3xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto border border-white/20 relative">
             <button
               type="button"
               onClick={() => setShowRatingModal(false)}
@@ -624,7 +642,7 @@ export default function ErrandDetailPage() {
       {/* DISPUTE MODAL */}
       {showDisputeModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-          <div className="glass-card rounded-3xl p-6 max-w-md w-full border border-rose-500/30 relative">
+          <div className="glass-card rounded-3xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto border border-rose-500/30 relative">
             <button
               type="button"
               onClick={() => setShowDisputeModal(false)}
@@ -686,7 +704,7 @@ export default function ErrandDetailPage() {
       {/* CANCEL ERRAND MODAL */}
       {showCancelModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-          <div className="glass-card rounded-3xl p-6 max-w-md w-full border border-white/20 relative">
+          <div className="glass-card rounded-3xl p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto border border-white/20 relative">
             <button
               type="button"
               onClick={() => setShowCancelModal(false)}

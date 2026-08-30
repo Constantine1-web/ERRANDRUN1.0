@@ -175,27 +175,27 @@ export default function RunnerDashboard() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/80">Runner command center</p>
-                <h1 className="mt-3 text-4xl font-semibold text-white">Duty state & performance</h1>
+                <h1 className="mt-3 heading-page font-semibold text-white">Duty state & performance</h1>
                 <p className="mt-3 max-w-2xl text-white/60">Toggle your availability, review active assignments, and monitor your on-platform earnings split in one place.</p>
               </div>
               <button
                 type="button"
                 onClick={toggleDuty}
                 disabled={toggleLoading}
-                className={`inline-flex items-center justify-center rounded-3xl px-6 py-3 text-sm font-semibold transition ${runnerStatus === 'online' ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/20 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]' : 'bg-slate-800/80 text-slate-200 border border-white/10'}`}
+                className={`inline-flex items-center justify-center rounded-3xl px-6 py-3 min-h-[44px] text-sm font-semibold transition ${runnerStatus === 'online' ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/20 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]' : 'bg-slate-800/80 text-slate-200 border border-white/10'}`}
               >
                 <span className={`mr-2 h-2.5 w-2.5 rounded-full ${runnerStatus === 'online' ? 'bg-emerald-400' : 'bg-slate-500'}`} />
                 {toggleLoading ? 'Updating…' : runnerStatus === 'online' ? 'Duty Online' : 'Offline'}
               </button>
             </div>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-3">
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
                 <div className="flex items-center gap-3 text-emerald-300">
                   <DollarSign className="h-5 w-5" />
                   <p className="text-sm uppercase tracking-[0.2em] text-white/60">Net payout balance</p>
                 </div>
-                <p className="mt-4 text-3xl font-semibold text-white">{formatCurrency(financialMetrics.runnerEarnings)}</p>
+                <p className="mt-4 text-3xl font-mono text-emerald-400 font-bold">{formatCurrency(financialMetrics.runnerEarnings)}</p>
                 <p className="mt-2 text-sm text-white/60">Your 80% runner earnings from completed deliveries.</p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
@@ -309,9 +309,9 @@ export default function RunnerDashboard() {
                           <h3 className="mt-2 text-xl font-semibold text-white">{errand.title}</h3>
                           <p className="mt-1 text-sm text-white/60">{errand.pickup_location} → {errand.delivery_location}</p>
                         </div>
-                        <div className="flex flex-col items-start gap-3 sm:items-end">
+                        <div className="flex flex-col items-start gap-3 sm:items-end w-full sm:w-auto mt-2 sm:mt-0">
                           <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs uppercase text-emerald-200">{errand.status.replace('_', ' ')}</span>
-                          <Link href={`/dashboard/runner/track/${errand.id}`} className="btn-primary inline-flex items-center gap-2 text-sm">
+                          <Link href={`/dashboard/runner/track/${errand.id}`} className="btn-primary w-full sm:w-auto inline-flex justify-center items-center gap-2 text-sm">
                             <MapPin className="w-4 h-4" /> View tracking
                           </Link>
                         </div>
@@ -332,33 +332,33 @@ export default function RunnerDashboard() {
               <div className="space-y-6">
                 {availableErrands.length === 0 ? (
                   <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-6 text-white/60">
-                    <p>No system errands are available right now.</p>
+                    <p>No tasks nearby.</p>
                     <p className="mt-2 text-sm">Check back soon for new pickup contracts.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {availableErrands.map((errand) => (
                       <article key={errand.id} className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
-                        <div className="flex flex-col gap-3">
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm uppercase tracking-[0.2em] text-white/60">{errand.category}</p>
-                              <h3 className="mt-2 text-lg font-semibold text-white">{errand.title}</h3>
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex flex-col">
+                            <p className="text-sm uppercase tracking-[0.2em] text-white/60">{errand.category}</p>
+                            <h3 className="mt-1 text-lg font-semibold text-white">{errand.title}</h3>
+                            <p className="mt-1 text-sm text-white/60">{errand.pickup_location} → {errand.delivery_location}</p>
+                          </div>
+                          <div className="flex flex-col gap-3 w-full sm:w-auto sm:items-end">
+                            <div className="flex items-center justify-between sm:justify-end gap-3 text-sm">
+                              <span className="text-white/60">Payout</span>
+                              <strong className="font-mono text-emerald-400 font-bold text-lg">{formatCurrency(Number(errand.total_fee) * 0.8)}</strong>
                             </div>
-                            <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs uppercase tracking-[0.24em] text-emerald-200">80% take-home</span>
+                            <button
+                              type="button"
+                              onClick={() => handleAccept(errand.id)}
+                              disabled={accepting === errand.id}
+                              className="btn-primary w-full sm:w-auto"
+                            >
+                              {accepting === errand.id ? 'Accepting…' : 'Accept Contract'}
+                            </button>
                           </div>
-                          <div className="flex items-center justify-between gap-3 text-sm text-white/60">
-                            <span>Potential payout</span>
-                            <strong className="text-white">{formatCurrency(Number(errand.total_fee) * 0.8)}</strong>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleAccept(errand.id)}
-                            disabled={accepting === errand.id}
-                            className="btn-primary w-full"
-                          >
-                            {accepting === errand.id ? 'Accepting…' : 'Accept Contract'}
-                          </button>
                         </div>
                       </article>
                     ))}

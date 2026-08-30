@@ -11,6 +11,7 @@ import Link from 'next/link';
 export default function UserDashboard() {
   const { user } = useAppStore();
   const [stats, setStats] = useState({ totalErrands: 0, completed: 0, pending: 0 });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -35,6 +36,8 @@ export default function UserDashboard() {
         });
       } catch (error) {
         console.error('Failed to fetch stats:', error);
+      } finally {
+        setIsLoadingStats(false);
       }
     };
 
@@ -49,7 +52,7 @@ export default function UserDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-5xl font-bold text-white mb-3">
+        <h1 className="heading-page text-white mb-3">
           What needs doing today?
         </h1>
         <p className="text-xl text-white/60">
@@ -65,7 +68,7 @@ export default function UserDashboard() {
         transition={{ delay: 0.1 }}
       >
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-          <div>
+          <div className="w-full text-center md:text-left">
             <h2 className="text-3xl font-bold text-white mb-2">
               Post a new errand
             </h2>
@@ -75,7 +78,7 @@ export default function UserDashboard() {
           </div>
           <Link
             href="/dashboard/errands/new"
-            className="btn-primary flex items-center gap-2 whitespace-nowrap"
+            className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 whitespace-nowrap"
           >
             <Plus className="w-5 h-5" />
             Create Errand
@@ -84,28 +87,51 @@ export default function UserDashboard() {
       </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid md:grid-cols-3 gap-6 mb-12">
-        {[
-          { icon: TrendingUp, label: 'Total Errands', value: stats.totalErrands },
-          { icon: CheckCircle, label: 'Completed', value: stats.completed },
-          { icon: Clock, label: 'Pending', value: stats.pending },
-        ].map((stat, idx) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={idx}
-              className="glass-card rounded-2xl p-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + idx * 0.1 }}
-            >
-              <Icon className="w-8 h-8 text-primary-400 mb-4" />
-              <p className="text-white/60 text-sm mb-1">{stat.label}</p>
-              <p className="text-4xl font-bold text-white">{stat.value}</p>
-            </motion.div>
-          );
-        })}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+        {isLoadingStats ? (
+          <>
+            {[1, 2, 3].map((_, idx) => (
+              <div key={idx} className="glass-card rounded-2xl p-6 flex flex-col items-center sm:items-start">
+                <div className="skeleton-avatar w-8 h-8 mb-4 rounded-full" />
+                <div className="skeleton-text w-24 h-4 mb-2" />
+                <div className="skeleton-text w-12 h-8" />
+              </div>
+            ))}
+          </>
+        ) : (
+          [
+            { icon: TrendingUp, label: 'Total Errands', value: stats.totalErrands },
+            { icon: CheckCircle, label: 'Completed', value: stats.completed },
+            { icon: Clock, label: 'Pending', value: stats.pending },
+          ].map((stat, idx) => {
+            const Icon = stat.icon;
+            return (
+              <motion.div
+                key={idx}
+                className="glass-card rounded-2xl p-6 flex flex-col items-center sm:items-start text-center sm:text-left"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + idx * 0.1 }}
+              >
+                <Icon className="w-8 h-8 text-primary-400 mb-4" />
+                <p className="text-white/60 text-sm mb-1">{stat.label}</p>
+                <p className="text-4xl font-bold text-white">{stat.value}</p>
+              </motion.div>
+            );
+          })
+        )}
       </div>
+
+      {!isLoadingStats && stats.totalErrands === 0 && (
+        <motion.div
+          className="glass-card rounded-2xl p-8 mb-12 text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <h3 className="text-2xl font-bold text-white mb-2">No errands yet!</h3>
+          <p className="text-white/60">You haven't posted any errands. Click 'Create Errand' above to get started.</p>
+        </motion.div>
+      )}
 
       {/* Pricing Preview */}
       <div className="grid lg:grid-cols-3 gap-8 mb-12">

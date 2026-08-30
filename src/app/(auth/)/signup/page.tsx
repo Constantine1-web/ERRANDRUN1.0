@@ -10,7 +10,8 @@ import { Mail, Loader } from 'lucide-react';
 
 function SignupForm() {
   const searchParams = useSearchParams();
-  const userRole = (searchParams.get('role') as 'user' | 'runner') || 'user';
+  const initialRole = (searchParams.get('role') as 'user' | 'runner') || 'user';
+  const [userRole, setUserRole] = useState<'user' | 'runner'>(initialRole);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -118,74 +119,98 @@ function SignupForm() {
       </Link>
 
       <motion.div
-        className="glass-card rounded-3xl p-8 max-w-md w-full"
+        className="glass-card rounded-3xl p-6 sm:p-8 max-w-md w-full mx-auto"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <h1 className="text-3xl font-bold text-white mb-2">Join ErrandRun</h1>
-        <p className="text-white/60 mb-8">
-          Sign up as a {userRole === 'runner' ? 'runner' : 'student'} to get started
+        <p className="text-white/60 mb-6">
+          Sign up to get started on campus
         </p>
 
-        <form onSubmit={handleSignup} className="space-y-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Full Name</label>
+        {/* Role Selector Tabs */}
+        <div className="flex bg-white/5 p-1 rounded-xl mb-6">
+          <button
+            type="button"
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+              userRole === 'user' ? 'bg-primary-500 text-white' : 'text-white/60 hover:text-white'
+            }`}
+            onClick={() => setUserRole('user')}
+          >
+            Student
+          </button>
+          <button
+            type="button"
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+              userRole === 'runner' ? 'bg-primary-500 text-white' : 'text-white/60 hover:text-white'
+            }`}
+            onClick={() => setUserRole('runner')}
+          >
+            Runner
+          </button>
+        </div>
+
+        <form onSubmit={handleSignup} className="space-y-5 mb-6">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-white/80">Full Name</label>
             <input
               type="text"
               value={formData.fullName}
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
               placeholder="John Doe"
-              className="input-field"
+              className="input w-full"
               disabled={loading}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Email</label>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-white/80">Email</label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="john@university.edu"
-              className="input-field"
+              className="input w-full"
               disabled={loading}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Password</label>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-white/80">Password</label>
             <input
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="••••••••"
-              className="input-field"
+              className="input w-full"
               disabled={loading}
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Student ID</label>
-            <input
-              type="text"
-              value={formData.studentId}
-              onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-              placeholder="UI/2023/001234"
-              className="input-field"
-              disabled={loading}
-            />
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-white/80">Student ID</label>
+              <input
+                type="text"
+                value={formData.studentId}
+                onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                placeholder="UI/2023/001"
+                className="input w-full font-mono text-sm"
+                disabled={loading}
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Phone Number</label>
-            <input
-              type="tel"
-              value={formData.phoneNumber}
-              onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-              placeholder="+234 800 000 0000"
-              className="input-field"
-              disabled={loading}
-            />
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-white/80">Phone Number</label>
+              <input
+                type="tel"
+                value={formData.phoneNumber}
+                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                placeholder="+234 800 0000"
+                className="input w-full font-mono text-sm"
+                disabled={loading}
+              />
+            </div>
           </div>
 
           <button

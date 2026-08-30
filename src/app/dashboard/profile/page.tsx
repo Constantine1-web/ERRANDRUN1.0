@@ -113,102 +113,121 @@ export default function ProfilePage() {
           </div>
 
           {/* Form Fields */}
-          {editing ? (
-            <div className="space-y-6 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">Full Name</label>
-                <input
-                  type="text"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  className="input-field"
-                />
+          <div className="space-y-4 mb-6">
+            <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+              <User className="w-5 h-5 text-white/60" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white/60 text-sm">Name</p>
+                <p className="text-white font-medium truncate">{profile?.full_name}</p>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">Student ID</label>
-                <input
-                  type="text"
-                  value={formData.student_id}
-                  disabled
-                  className="input-field opacity-50 cursor-not-allowed"
-                />
+            <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+              <BookOpen className="w-5 h-5 text-white/60" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white/60 text-sm">Student ID</p>
+                <p className="text-white font-medium font-mono truncate">{profile?.student_id}</p>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">Phone Number</label>
-                <input
-                  type="tel"
-                  value={formData.phone_number}
-                  onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                  className="input-field"
-                />
+            <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+              <Phone className="w-5 h-5 text-white/60" />
+              <div className="flex-1 min-w-0">
+                <p className="text-white/60 text-sm">Phone</p>
+                <p className="text-white font-medium truncate">{profile?.phone_number}</p>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">Bio</label>
-                <textarea
-                  value={formData.bio || ''}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  placeholder="Tell us about yourself..."
-                  className="input-field resize-none h-24"
-                />
+            {profile?.rating && (
+              <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg border border-yellow-500/20">
+                <div className="text-2xl">⭐</div>
+                <div className="flex-1">
+                  <p className="text-white/60 text-sm">Rating</p>
+                  <p className="text-white font-bold text-lg text-yellow-400">{profile.rating.toFixed(1)} <span className="text-white/40 text-sm font-normal">/ 5.0</span></p>
+                </div>
               </div>
+            )}
 
-              <div className="flex gap-3 pt-4">
-                <button onClick={handleSave} className="btn-primary flex-1">
-                  Save Changes
-                </button>
-                <button
+            <button onClick={() => setEditing(true)} className="btn-secondary w-full sm:w-auto mt-4 px-8">
+              Edit Profile
+            </button>
+          </div>
+
+          {editing && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6 backdrop-blur-sm">
+              <motion.div 
+                initial={{ opacity: 0, y: 100 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 w-full max-w-md relative max-h-[90vh] overflow-y-auto"
+              >
+                <button 
                   onClick={() => {
                     setEditing(false);
                     setFormData(profile);
                   }}
-                  className="btn-secondary flex-1"
+                  className="absolute top-6 right-6 text-white/40 hover:text-white"
                 >
-                  Cancel
+                  ✕
                 </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
-                <User className="w-5 h-5 text-white/60" />
-                <div className="flex-1">
-                  <p className="text-white/60 text-sm">Name</p>
-                  <p className="text-white font-medium">{profile?.full_name}</p>
-                </div>
-              </div>
+                <h3 className="text-2xl font-bold text-white mb-6">Edit Profile</h3>
+                
+                <div className="space-y-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      value={formData.full_name}
+                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                      className="input w-full"
+                    />
+                  </div>
 
-              <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
-                <BookOpen className="w-5 h-5 text-white/60" />
-                <div className="flex-1">
-                  <p className="text-white/60 text-sm">Student ID</p>
-                  <p className="text-white font-medium">{profile?.student_id}</p>
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Student ID</label>
+                    <input
+                      type="text"
+                      value={formData.student_id}
+                      disabled
+                      className="input w-full opacity-50 cursor-not-allowed font-mono"
+                    />
+                  </div>
 
-              <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
-                <Phone className="w-5 h-5 text-white/60" />
-                <div className="flex-1">
-                  <p className="text-white/60 text-sm">Phone</p>
-                  <p className="text-white font-medium">{profile?.phone_number}</p>
-                </div>
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={formData.phone_number}
+                      onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                      className="input w-full"
+                    />
+                  </div>
 
-              {profile?.rating && (
-                <div className="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
-                  <span>⭐</span>
-                  <div className="flex-1">
-                    <p className="text-white/60 text-sm">Rating</p>
-                    <p className="text-white font-medium">{profile.rating.toFixed(1)} / 5.0</p>
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">Bio</label>
+                    <textarea
+                      value={formData.bio || ''}
+                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                      placeholder="Tell us about yourself..."
+                      className="textarea w-full resize-none h-24"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/10">
+                    <button onClick={handleSave} className="btn-primary w-full sm:flex-1 justify-center">
+                      Save Changes
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditing(false);
+                        setFormData(profile);
+                      }}
+                      className="btn-secondary w-full sm:flex-1 justify-center"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
-              )}
-
-              <button onClick={() => setEditing(true)} className="btn-secondary w-full mt-4">
-                Edit Profile
-              </button>
+              </motion.div>
             </div>
           )}
 

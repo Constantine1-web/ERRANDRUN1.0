@@ -89,10 +89,10 @@ export default function AcceptedErrandPage() {
         ) : null}
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link href={`/dashboard/runner/track/${errandId}`} className="btn-primary inline-flex items-center justify-center gap-2">
+          <Link href={`/dashboard/runner/track/${errandId}`} className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-2">
             <MapPin className="w-4 h-4" /> Go to tracking now
           </Link>
-          <Link href="/dashboard/runner" className="btn-secondary inline-flex items-center justify-center gap-2">
+          <Link href="/dashboard/runner" className="btn-secondary w-full sm:w-auto inline-flex items-center justify-center gap-2">
             Back to runner dashboard
           </Link>
         </div>
