@@ -12,6 +12,7 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { useErrandTracking } from '@/hooks/useRealtimeErrands';
 import type { Errand } from '@/types';
 import { formatCurrency } from '@/utils/pricing';
+import toast from 'react-hot-toast';
 
 const defaultIcon = L.Icon.Default;
 defaultIcon.mergeOptions({
@@ -70,7 +71,8 @@ export default function ErrandDetailPage() {
         const response = await fetch(`/api/payments?reference=${encodeURIComponent(paymentReference)}`);
         const result = await response.json();
         if (result?.success) {
-          console.log('Payment confirmed', result.data);
+          toast.success('Payment confirmed! Your errand is now active.');
+          setErrand((current) => (current ? { ...current, status: 'unassigned' } : current));
         }
       } catch (error) {
         console.error('Payment verification failed', error);

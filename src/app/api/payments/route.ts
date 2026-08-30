@@ -56,7 +56,9 @@ export async function POST(request: NextRequest) {
             ...metadata,
           },
           channels: ['card', 'bank_transfer', 'ussd'],
-          callback_url: `${appUrl}/dashboard/user/errand/${errandId}?payment_reference=${payment.id}`,
+          callback_url: errandId
+            ? `${appUrl}/dashboard/user/errand/${errandId}`
+            : `${appUrl}/dashboard/wallet`,
         },
         {
           headers: {
@@ -135,7 +137,7 @@ export async function GET(request: NextRequest) {
         .eq('reference', reference)
         .single();
 
-      if (payment) {
+      if (payment && payment.status !== 'completed') {
         // Update payment status
         await supabase
           .from('payments')
@@ -162,12 +164,12 @@ export async function GET(request: NextRequest) {
             .single();
 
           if (wallet.data) {
-            const newBalance = wallet.data.balance + payment.amount;
+            const newBalance = Number(wallet.data.balance) + Number(payment.amount);
             await supabase
               .from('wallets')
               .update({
                 balance: newBalance,
-                total_spent: wallet.data.total_spent + payment.amount,
+                total_spent: Number(wallet.data.total_spent || 0),
                 last_updated: new Date().toISOString(),
               })
               .eq('id', wallet.data.id);
@@ -180,7 +182,7 @@ export async function GET(request: NextRequest) {
                 amount: payment.amount,
                 reference_id: payment.id,
                 reference_type: 'payment',
-                description: `Payment via Paystack - Reference: ${reference}`,
+                description: `Deposit via Paystack - Reference: ${reference}`,
                 balance_after: newBalance,
               },
             ]);

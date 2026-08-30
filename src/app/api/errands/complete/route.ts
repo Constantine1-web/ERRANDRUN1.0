@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     const { data: errand, error: fetchError } = await supabase
       .from('errands')
-      .select('id,status')
+      .select('id, status, runner_id, runner_amount')
       .eq('id', errandId)
       .single();
 
@@ -44,6 +44,42 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('Errand completion update failed:', updateError);
       return NextResponse.json({ error: 'Failed to complete errand' }, { status: 500 });
+    }
+
+    // Credit Runner Wallet
+    if (errand.runner_id && errand.runner_amount > 0) {
+      // Get current wallet balance
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('id, balance, total_earned')
+        .eq('user_id', errand.runner_id)
+        .single();
+        
+      if (wallet) {
+        const newBalance = Number(wallet.balance) + Number(errand.runner_amount);
+        const newTotalEarned = Number(wallet.total_earned) + Number(errand.runner_amount);
+        
+        await supabase
+          .from('wallets')
+          .update({ 
+            balance: newBalance, 
+            total_earned: newTotalEarned, 
+            last_updated: new Date().toISOString() 
+          })
+          .eq('id', wallet.id);
+          
+        await supabase
+          .from('wallet_transactions')
+          .insert({
+            wallet_id: wallet.id,
+            transaction_type: 'credit',
+            amount: errand.runner_amount,
+            reference_id: errand.id,
+            reference_type: 'errand_completion',
+            description: `Earnings for completed errand`,
+            balance_after: newBalance
+          });
+      }
     }
 
     return NextResponse.json({ success: true });
