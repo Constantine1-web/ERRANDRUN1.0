@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   experimental: {
     optimizePackageImports: ['@radix-ui/react-*', 'lucide-react'],
   },
@@ -19,6 +18,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: '**.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
       },
       {
         protocol: 'http',
