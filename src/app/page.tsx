@@ -152,7 +152,7 @@ export default function Home() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
           >
             <Link
-              href="/signup?role=user"
+              href="/request-errand"
               className="w-full sm:w-auto btn-primary py-4 px-8 text-base font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary-500/25 group"
             >
               <span>Request an Errand</span>
@@ -160,7 +160,7 @@ export default function Home() {
             </Link>
 
             <Link
-              href="/signup?role=runner"
+              href="/become-a-runner"
               className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-white font-bold text-base transition-all flex items-center justify-center gap-2 active:scale-95"
             >
               <Bike className="w-5 h-5 text-emerald-400" />
@@ -400,7 +400,7 @@ export default function Home() {
               </div>
             </div>
 
-            <Link href="/signup?role=user" className="btn-primary w-full mt-6 py-3 text-sm flex items-center justify-center gap-2">
+            <Link href="/request-errand" className="btn-primary w-full mt-6 py-3 text-sm flex items-center justify-center gap-2">
               <span>Post This Errand</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
@@ -465,10 +465,10 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/signup?role=user" className="btn-primary py-4 px-8 text-base font-bold w-full sm:w-auto">
+            <Link href="/request-errand" className="btn-primary py-4 px-8 text-base font-bold w-full sm:w-auto">
               Create User Account
             </Link>
-            <Link href="/signup?role=runner" className="btn-secondary py-4 px-8 text-base font-bold w-full sm:w-auto">
+            <Link href="/become-a-runner" className="btn-secondary py-4 px-8 text-base font-bold w-full sm:w-auto">
               Apply as a Runner
             </Link>
           </div>
