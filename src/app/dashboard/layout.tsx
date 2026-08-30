@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { useSessionTracker } from '@/hooks/useSessionTracker';
-import { Home, Zap, Wallet, User, LogOut } from 'lucide-react';
+import { Home, Zap, Wallet, User, LogOut, ShieldCheck, Bike } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function DashboardLayout({
@@ -80,10 +80,14 @@ export default function DashboardLayout({
   };
 
   const navItems = [
-    { icon: Home, label: 'Home', href: '/dashboard/user', section: 'user' },
-    { icon: Zap, label: 'Errands', href: '/dashboard/errands', section: 'user' },
-    { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet', section: 'user' },
-    { icon: User, label: 'Profile', href: '/dashboard/profile', section: 'user' },
+    { icon: Home, label: 'Home', href: '/dashboard/user' },
+    { icon: Zap, label: 'Errands', href: '/dashboard/errands' },
+    ...(user?.role === 'runner' || (user?.role as string) === 'admin'
+      ? [{ icon: Bike, label: 'Runner Hub', href: '/dashboard/runner' }]
+      : []),
+    { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet' },
+    { icon: ShieldCheck, label: 'Admin Vetting', href: '/dashboard/admin' },
+    { icon: User, label: 'Profile', href: '/dashboard/profile' },
   ];
 
   return (

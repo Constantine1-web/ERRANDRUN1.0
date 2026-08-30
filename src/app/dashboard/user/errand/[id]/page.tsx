@@ -62,6 +62,46 @@ export default function ErrandDetailPage() {
 
   const searchParams = useSearchParams();
   const paymentReference = searchParams.get('reference') || searchParams.get('payment_reference');
+  const [existingRating, setExistingRating] = useState<any>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedStars, setSelectedStars] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [runnerProfile, setRunnerProfile] = useState<any>(null);
+
+  const availableTags = [
+    '⚡ Super Fast Delivery',
+    '🤝 Very Polite & Friendly',
+    '📦 Handled Items Carefully',
+    '📞 Great Communication',
+    '🎯 Followed All Instructions',
+  ];
+
+  // Fetch runner profile and existing rating when errand loads
+  useEffect(() => {
+    if (!errand) return;
+
+    if (errand.runner_id) {
+      supabase
+        .from('profiles')
+        .select('id, full_name, student_id, rating, total_ratings, avatar_url')
+        .eq('id', errand.runner_id)
+        .single()
+        .then(({ data }) => setRunnerProfile(data));
+    }
+
+    if (errand.status === 'completed') {
+      fetch(`/api/ratings?errandId=${errand.id}`)
+        .then((res) => res.json())
+        .then((res) => {
+          if (res.success && res.data && res.data.length > 0) {
+            setExistingRating(res.data[0]);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [errand]);
 
   useEffect(() => {
     if (!paymentReference) return;
@@ -101,16 +141,67 @@ export default function ErrandDetailPage() {
 
       setErrand((current) =>
         current
-          ? { ...current, status: 'completed', actualCompletionTime: new Date().toISOString() }
+          ? { ...current, status: 'completed', actual_completion_time: new Date().toISOString() }
           : current
       );
       setCompletionMessage('Delivery marked complete. Thank you for confirming.');
-    } catch (error) {
+      toast.success('Errand marked completed! Runner wallet credited.');
+      setShowRatingModal(true);
+    } catch (error: any) {
       console.error('Completion confirmation failed', error);
-      setCompletionMessage('Unable to confirm completion. Please try again.');
+      setCompletionMessage(error.message || 'Unable to confirm completion. Please try again.');
+      toast.error('Failed to mark completed');
     } finally {
       setIsCompleting(false);
     }
+  };
+
+  const handleSubmitRating = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!errand || !errand.runner_id) return;
+
+    try {
+      setSubmittingRating(true);
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (!userId) {
+        toast.error('Please sign in');
+        return;
+      }
+
+      const res = await fetch('/api/ratings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          errandId: errand.id,
+          raterId: userId,
+          rateeId: errand.runner_id,
+          rating: selectedStars,
+          review: reviewComment,
+          categories: selectedTags,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to submit rating');
+      }
+
+      toast.success('Thank you for rating your runner!');
+      setExistingRating(data.data);
+      setShowRatingModal(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Could not submit rating');
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
   };
 
   const latestTracking = tracking[0] || null;
@@ -209,7 +300,7 @@ export default function ErrandDetailPage() {
                 )}
               </div>
               <div className="glass-card p-4 rounded-3xl">
-                <h4 className="text-sm text-white/60 mb-3">Confirm Delivery</h4>
+                <h4 className="text-sm text-white/60 mb-3">Delivery & Runner Review</h4>
                 {errand.status === 'assigned' || errand.status === 'in_progress' ? (
                   <div className="space-y-3">
                     <p className="text-sm text-white/60">
@@ -228,7 +319,52 @@ export default function ErrandDetailPage() {
                     ) : null}
                   </div>
                 ) : errand.status === 'completed' ? (
-                  <p className="text-sm text-white/60">This errand has already been marked completed.</p>
+                  <div className="space-y-4">
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
+                      <p className="text-xs text-emerald-300 font-semibold mb-1">✓ Errand Completed</p>
+                      <p className="text-xs text-white/60">Payment released to runner wallet.</p>
+                    </div>
+
+                    {existingRating ? (
+                      <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-white/60 font-medium">Your Rating:</span>
+                          <div className="flex text-amber-400 text-sm">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span key={star}>
+                                {star <= existingRating.rating ? '★' : '☆'}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        {existingRating.review && (
+                          <p className="text-xs text-white/80 italic mt-1 bg-white/5 p-2 rounded-xl">
+                            "{existingRating.review}"
+                          </p>
+                        )}
+                        {existingRating.categories && Array.isArray(existingRating.categories) && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {existingRating.categories.map((c: string, idx: number) => (
+                              <span
+                                key={idx}
+                                className="px-2 py-0.5 bg-primary-500/10 border border-primary-500/20 text-primary-300 text-[10px] rounded-full"
+                              >
+                                {c}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowRatingModal(true)}
+                        className="w-full btn-primary py-2.5 text-xs flex items-center justify-center gap-1.5"
+                      >
+                        ⭐ Rate & Review Runner
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-sm text-white/60">
                     Delivery confirmation is available once a runner is assigned and in progress.
@@ -236,6 +372,93 @@ export default function ErrandDetailPage() {
                 )}
               </div>
             </aside>
+          </div>
+        </div>
+      )}
+
+      {/* RATING MODAL */}
+      {showRatingModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="glass-card rounded-3xl p-6 max-w-md w-full border border-white/20 relative">
+            <button
+              type="button"
+              onClick={() => setShowRatingModal(false)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white"
+            >
+              ✕
+            </button>
+
+            <h3 className="text-2xl font-bold text-white mb-1">Rate Your Runner</h3>
+            <p className="text-xs text-white/60 mb-6">
+              How was your errand experience with {runnerProfile?.full_name || 'your campus runner'}?
+            </p>
+
+            <form onSubmit={handleSubmitRating} className="space-y-5">
+              {/* Star Selector */}
+              <div className="flex items-center justify-center gap-2 py-3 bg-white/5 rounded-2xl">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setSelectedStars(star)}
+                    className={`text-3xl transition-transform hover:scale-125 ${
+                      star <= selectedStars ? 'text-amber-400' : 'text-white/20'
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+
+              {/* Quick Compliment Tags */}
+              <div>
+                <label className="text-xs text-white/60 block mb-2 font-medium">
+                  Select compliments:
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTags.map((tag) => {
+                    const active = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleTag(tag)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                          active
+                            ? 'bg-primary-500 text-white border-primary-500'
+                            : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Review Comment */}
+              <div>
+                <label className="text-xs text-white/60 block mb-1.5 font-medium">
+                  Review Comment (optional):
+                </label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  placeholder="Share details about the delivery or communication..."
+                  className="input textarea w-full text-xs"
+                  rows={3}
+                />
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={submittingRating}
+                className="w-full btn-primary py-3 text-sm flex items-center justify-center gap-2"
+              >
+                {submittingRating ? 'Submitting...' : 'Submit Rating & Feedback'}
+              </button>
+            </form>
           </div>
         </div>
       )}
