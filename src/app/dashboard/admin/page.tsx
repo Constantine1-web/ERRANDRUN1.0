@@ -16,6 +16,10 @@ import {
   Users,
   DollarSign,
   Loader2,
+  Package,
+  AlertTriangle,
+  RefreshCw,
+  Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '@/utils/pricing';
@@ -42,6 +46,51 @@ interface RunnerApp {
   };
 }
 
+interface ErrandRecord {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  pickup_location: string;
+  delivery_location: string;
+  total_fee: number;
+  platform_fee: number;
+  runner_amount: number;
+  status: string;
+  priority: string;
+  created_at: string;
+  requester?: { id: string; full_name: string; phone_number: string; student_id: string };
+  runner?: { id: string; full_name: string; phone_number: string; student_id: string; rating?: number };
+}
+
+interface UserProfileRecord {
+  id: string;
+  full_name: string;
+  student_id: string;
+  phone_number: string;
+  role: 'user' | 'runner' | 'admin';
+  verification_status: string;
+  rating?: number;
+  total_ratings?: number;
+  created_at: string;
+  wallets?: { balance: number; total_earned: number; total_spent: number }[];
+}
+
+interface DisputeRecord {
+  id: string;
+  errand_id: string;
+  reason: string;
+  description: string;
+  status: 'open' | 'under_review' | 'resolved' | 'closed';
+  resolution_type?: string;
+  resolution_amount?: number;
+  admin_notes?: string;
+  created_at: string;
+  initiator?: { id: string; full_name: string; phone_number: string };
+  respondent?: { id: string; full_name: string; phone_number: string };
+  errand?: { id: string; title: string; total_fee: number; status: string };
+}
+
 interface PlatformStats {
   totalErrands: number;
   completedCount: number;
@@ -55,17 +104,40 @@ interface PlatformStats {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'applications' | 'stats' | 'users'>('applications');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'denied'>('pending');
+  const [activeTab, setActiveTab] = useState<'applications' | 'errands' | 'users' | 'disputes' | 'stats'>('applications');
+  
+  // Runner Apps State
+  const [appStatusFilter, setAppStatusFilter] = useState<'pending' | 'approved' | 'denied' | 'all'>('pending');
   const [applications, setApplications] = useState<RunnerApp[]>([]);
-  const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loadingApps, setLoadingApps] = useState(true);
-  const [loadingStats, setLoadingStats] = useState(true);
+  const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedDocUrl, setSelectedDocUrl] = useState<string | null>(null);
-  const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
+
+  // Errands State
+  const [errands, setErrands] = useState<ErrandRecord[]>([]);
+  const [errandStatusFilter, setErrandStatusFilter] = useState<string>('all');
+  const [loadingErrands, setLoadingErrands] = useState(false);
+  const [selectedErrand, setSelectedErrand] = useState<ErrandRecord | null>(null);
+
+  // Users State
+  const [usersList, setUsersList] = useState<UserProfileRecord[]>([]);
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('all');
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Disputes State
+  const [disputes, setDisputes] = useState<DisputeRecord[]>([]);
+  const [loadingDisputes, setLoadingDisputes] = useState(false);
+  const [disputeNotes, setDisputeNotes] = useState<Record<string, string>>({});
+
+  // Stats State
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // Search
   const [searchQuery, setSearchQuery] = useState('');
 
+  // 1. Fetch Stats
   const fetchStats = useCallback(async () => {
     try {
       setLoadingStats(true);
@@ -81,10 +153,11 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  // 2. Fetch Runner Applications
   const fetchApplications = useCallback(async () => {
     try {
       setLoadingApps(true);
-      const res = await fetch(`/api/admin/runners?status=${statusFilter}`);
+      const res = await fetch(`/api/admin/runners?status=${appStatusFilter}`);
       const data = await res.json();
       if (data.success) {
         setApplications(data.data || []);
@@ -95,16 +168,70 @@ export default function AdminDashboard() {
     } finally {
       setLoadingApps(false);
     }
-  }, [statusFilter]);
+  }, [appStatusFilter]);
+
+  // 3. Fetch Errands
+  const fetchErrands = useCallback(async () => {
+    try {
+      setLoadingErrands(true);
+      const res = await fetch(`/api/admin/errands?status=${errandStatusFilter}`);
+      const data = await res.json();
+      if (data.success) {
+        setErrands(data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch errands', err);
+      toast.error('Could not load platform errands');
+    } finally {
+      setLoadingErrands(false);
+    }
+  }, [errandStatusFilter]);
+
+  // 4. Fetch Users
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoadingUsers(true);
+      const res = await fetch(`/api/admin/users?role=${userRoleFilter}`);
+      const data = await res.json();
+      if (data.success) {
+        setUsersList(data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch users', err);
+      toast.error('Could not load users directory');
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [userRoleFilter]);
+
+  // 5. Fetch Disputes
+  const fetchDisputes = useCallback(async () => {
+    try {
+      setLoadingDisputes(true);
+      const res = await fetch('/api/admin/disputes');
+      const data = await res.json();
+      if (data.success) {
+        setDisputes(data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch disputes', err);
+    } finally {
+      setLoadingDisputes(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
 
   useEffect(() => {
-    fetchApplications();
-  }, [fetchApplications]);
+    if (activeTab === 'applications') fetchApplications();
+    if (activeTab === 'errands') fetchErrands();
+    if (activeTab === 'users') fetchUsers();
+    if (activeTab === 'disputes') fetchDisputes();
+  }, [activeTab, fetchApplications, fetchErrands, fetchUsers, fetchDisputes]);
 
+  // Handle Review Runner
   const handleReview = async (app: RunnerApp, action: 'approve' | 'reject') => {
     try {
       setProcessingId(app.id);
@@ -128,11 +255,10 @@ export default function AdminDashboard() {
 
       toast.success(
         action === 'approve'
-          ? `Runner verified & approved! Account role upgraded.`
+          ? `Runner verified & approved! Account upgraded to runner.`
           : `Application rejected.`
       );
 
-      // Refresh list & stats
       await Promise.all([fetchApplications(), fetchStats()]);
     } catch (error: any) {
       console.error(error);
@@ -142,124 +268,241 @@ export default function AdminDashboard() {
     }
   };
 
+  // Handle Errand Intervention
+  const handleErrandAction = async (errandId: string, action: 'cancel' | 'complete' | 'unassign') => {
+    try {
+      const res = await fetch('/api/admin/errands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ errandId, action }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Action failed');
+
+      toast.success(data.message || 'Action executed successfully');
+      setSelectedErrand(null);
+      await Promise.all([fetchErrands(), fetchStats()]);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to execute errand action');
+    }
+  };
+
+  // Handle User Role Change
+  const handleUserRoleChange = async (userId: string, newRole: string) => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, role: newRole }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to update role');
+
+      toast.success(`User role updated to ${newRole}`);
+      await fetchUsers();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to update role');
+    }
+  };
+
+  // Handle Dispute Resolution
+  const handleResolveDispute = async (disputeId: string, resolutionType: string) => {
+    try {
+      const notes = disputeNotes[disputeId] || '';
+      const res = await fetch('/api/admin/disputes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          disputeId,
+          resolutionType,
+          adminNotes: notes,
+          status: 'resolved',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to resolve dispute');
+
+      toast.success(`Dispute marked as resolved (${resolutionType})`);
+      await fetchDisputes();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to update dispute');
+    }
+  };
+
+  // Search Filters
   const filteredApps = applications.filter((app) => {
     const q = searchQuery.toLowerCase();
-    const name = app.profiles?.full_name?.toLowerCase() || '';
-    const studentId = app.profiles?.student_id?.toLowerCase() || '';
-    const regNum = app.reg_number?.toLowerCase() || '';
-    const phone = app.profiles?.phone_number || '';
-    return name.includes(q) || studentId.includes(q) || regNum.includes(q) || phone.includes(q);
+    return (
+      app.profiles?.full_name?.toLowerCase().includes(q) ||
+      app.profiles?.student_id?.toLowerCase().includes(q) ||
+      app.reg_number?.toLowerCase().includes(q) ||
+      app.profiles?.phone_number?.includes(q)
+    );
+  });
+
+  const filteredErrands = errands.filter((e) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      e.title.toLowerCase().includes(q) ||
+      e.id.toLowerCase().includes(q) ||
+      e.pickup_location.toLowerCase().includes(q) ||
+      e.delivery_location.toLowerCase().includes(q) ||
+      e.requester?.full_name?.toLowerCase().includes(q) ||
+      e.runner?.full_name?.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredUsers = usersList.filter((u) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      u.full_name?.toLowerCase().includes(q) ||
+      u.student_id?.toLowerCase().includes(q) ||
+      u.phone_number?.includes(q)
+    );
   });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      {/* Top Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-purple/20 border border-primary-500/30">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-purple/20 border border-primary-500/30">
               <ShieldCheck className="w-7 h-7 text-primary-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">Campus Vetting & Admin Panel</h1>
+              <h1 className="text-3xl font-extrabold text-white">Platform Administration</h1>
               <p className="text-white/60 text-sm">
-                Anti-fraud runner identity checks, student ID validation, and platform metrics
+                Runner identity verification, live errand management, disputes, and marketplace metrics
               </p>
             </div>
           </div>
         </div>
 
-        {/* Quick Tabs */}
-        <div className="flex items-center gap-2 bg-white/5 p-1.5 rounded-2xl border border-white/10">
+        {/* Global Action & Refresh */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setActiveTab('applications')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'applications'
-                ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
+            onClick={() => {
+              fetchStats();
+              if (activeTab === 'applications') fetchApplications();
+              if (activeTab === 'errands') fetchErrands();
+              if (activeTab === 'users') fetchUsers();
+              if (activeTab === 'disputes') fetchDisputes();
+              toast.success('Data refreshed');
+            }}
+            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white/80 hover:text-white flex items-center gap-2 transition-all"
           >
-            Runner Vetting
-            {stats && stats.pendingApplications > 0 && (
-              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                {stats.pendingApplications}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('stats')}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              activeTab === 'stats'
-                ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
-                : 'text-white/60 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            Platform Stats
+            <RefreshCw className="w-3.5 h-3.5" />
+            Refresh Data
           </button>
         </div>
       </div>
 
-      {/* Overview Stat Cards */}
+      {/* KPI Metric Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="glass-card rounded-3xl p-5 border border-white/10">
           <div className="flex items-center justify-between text-white/60 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Pending Vetting</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Pending Vetting</span>
             <Clock className="w-5 h-5 text-amber-400" />
           </div>
-          <div className="text-3xl font-bold text-white">
+          <div className="text-3xl font-black text-white">
             {loadingStats ? '…' : stats?.pendingApplications || 0}
           </div>
-          <p className="text-xs text-amber-400/80 mt-1">Awaiting ID check</p>
+          <p className="text-xs text-amber-400/80 mt-1">Awaiting ID Card Inspection</p>
         </div>
 
         <div className="glass-card rounded-3xl p-5 border border-white/10">
           <div className="flex items-center justify-between text-white/60 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Verified Runners</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Verified Runners</span>
             <UserCheck className="w-5 h-5 text-emerald-400" />
           </div>
-          <div className="text-3xl font-bold text-white">
+          <div className="text-3xl font-black text-white">
             {loadingStats ? '…' : stats?.totalRunners || 0}
           </div>
-          <p className="text-xs text-emerald-400/80 mt-1">Approved students</p>
+          <p className="text-xs text-emerald-400/80 mt-1">Authorized campus runners</p>
         </div>
 
         <div className="glass-card rounded-3xl p-5 border border-white/10">
           <div className="flex items-center justify-between text-white/60 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Completed Tasks</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Completed Tasks</span>
             <PackageCheck className="w-5 h-5 text-primary-400" />
           </div>
-          <div className="text-3xl font-bold text-white">
+          <div className="text-3xl font-black text-white">
             {loadingStats ? '…' : stats?.completedCount || 0}
           </div>
           <p className="text-xs text-white/60 mt-1">
-            out of {stats?.totalErrands || 0} placed
+            of {stats?.totalErrands || 0} total placed
           </p>
         </div>
 
         <div className="glass-card rounded-3xl p-5 border border-white/10">
           <div className="flex items-center justify-between text-white/60 mb-2">
-            <span className="text-xs font-medium uppercase tracking-wider">Platform Revenue</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Platform Revenue</span>
             <DollarSign className="w-5 h-5 text-green-400" />
           </div>
-          <div className="text-3xl font-bold text-green-400">
+          <div className="text-3xl font-black text-green-400">
             {loadingStats ? '…' : formatCurrency(stats?.totalRevenue || 0)}
           </div>
-          <p className="text-xs text-white/60 mt-1">20% commission collected</p>
+          <p className="text-xs text-white/60 mt-1">20% commission earned</p>
         </div>
       </div>
 
-      {/* TAB 1: RUNNER APPLICATIONS VETTING */}
+      {/* Main Tab Navigation Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 border-b border-white/10 scrollbar-none">
+        {[
+          {
+            id: 'applications',
+            label: 'Runner Applications',
+            icon: ShieldCheck,
+            badge: stats && stats.pendingApplications > 0 ? stats.pendingApplications : null,
+          },
+          { id: 'errands', label: 'All Campus Errands', icon: Package },
+          { id: 'users', label: 'User Directory', icon: Users },
+          { id: 'disputes', label: 'Disputes & Claims', icon: AlertTriangle },
+          { id: 'stats', label: 'Financial Analytics', icon: TrendingUp },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id as any);
+                setSearchQuery('');
+              }}
+              className={`px-4 py-2.5 rounded-2xl text-sm font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
+                isActive
+                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
+                  : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+              {tab.badge && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500 text-dark-base">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* TAB 1: RUNNER APPLICATIONS (VETTING CENTER) */}
       {activeTab === 'applications' && (
         <div className="space-y-6">
-          {/* Filter Bar */}
+          {/* Filter & Search Bar */}
           <div className="glass-card rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 w-full sm:w-auto">
               {(['pending', 'approved', 'denied', 'all'] as const).map((status) => (
                 <button
                   key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
-                    statusFilter === status
+                  onClick={() => setAppStatusFilter(status)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                    appStatusFilter === status
                       ? 'bg-white text-dark-base'
                       : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
                   }`}
@@ -269,14 +512,14 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search name, matric, phone..."
-                className="input pl-9 w-full text-sm"
+                placeholder="Search runner name, matric, phone..."
+                className="input pl-10 w-full text-xs"
               />
             </div>
           </div>
@@ -290,11 +533,11 @@ export default function AdminDashboard() {
           ) : filteredApps.length === 0 ? (
             <div className="glass-card rounded-3xl p-12 text-center border border-white/10">
               <CheckCircle2 className="w-12 h-12 text-white/20 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-white mb-1">No applications found</h3>
+              <h3 className="text-lg font-bold text-white mb-1">No runner applications found</h3>
               <p className="text-white/60 text-sm max-w-md mx-auto">
-                {statusFilter === 'pending'
-                  ? 'All caught up! There are no pending runner applications to review at this moment.'
-                  : `No applications with status "${statusFilter}".`}
+                {appStatusFilter === 'pending'
+                  ? 'All caught up! No pending runner verification requests.'
+                  : `No applications match filter "${appStatusFilter}".`}
               </p>
             </div>
           ) : (
@@ -307,12 +550,10 @@ export default function AdminDashboard() {
                   <motion.div
                     key={app.id}
                     layout
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
                     className="glass-card rounded-3xl p-6 border border-white/10 flex flex-col justify-between"
                   >
                     <div>
-                      {/* Top status bar */}
+                      {/* Top Header */}
                       <div className="flex items-start justify-between gap-3 mb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-purple/20 border border-primary-500/30 flex items-center justify-center text-primary-300 font-bold text-lg">
@@ -337,10 +578,10 @@ export default function AdminDashboard() {
                         </span>
                       </div>
 
-                      {/* Academic & Logistics Meta */}
+                      {/* Meta Grid */}
                       <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/5 rounded-2xl border border-white/5 mb-4 text-xs">
                         <div>
-                          <span className="text-white/40 block mb-0.5">Student Matric/ID</span>
+                          <span className="text-white/40 block mb-0.5">Student ID</span>
                           <span className="font-semibold text-white font-mono">{profile?.student_id || 'N/A'}</span>
                         </div>
                         <div>
@@ -352,12 +593,12 @@ export default function AdminDashboard() {
                           <span className="font-semibold text-primary-300 capitalize">{app.transport_method}</span>
                         </div>
                         <div>
-                          <span className="text-white/40 block mb-0.5">Applied Date</span>
+                          <span className="text-white/40 block mb-0.5">Submitted On</span>
                           <span className="text-white/70">{new Date(app.created_at).toLocaleDateString()}</span>
                         </div>
                       </div>
 
-                      {/* Document Preview Link */}
+                      {/* Document Viewer Button */}
                       <div className="mb-4">
                         <label className="text-xs text-white/60 font-medium block mb-2">
                           Uploaded Student ID / Document Proof:
@@ -370,14 +611,14 @@ export default function AdminDashboard() {
                               className="flex items-center gap-2 px-3.5 py-2 bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/30 rounded-xl text-primary-300 text-xs font-semibold transition-all"
                             >
                               <FileText className="w-4 h-4" />
-                              View Uploaded ID Card / Doc
+                              Inspect Uploaded Document
                             </button>
                             <a
                               href={app.document_proof_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-white/60 hover:text-white transition-all text-xs flex items-center gap-1"
-                              title="Open in new tab"
+                              className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-white/60 hover:text-white transition-all text-xs"
+                              title="Open in new window"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>
@@ -390,7 +631,7 @@ export default function AdminDashboard() {
                       {/* Admin Notes */}
                       <div className="mb-4">
                         <label className="text-xs text-white/60 font-medium block mb-1.5">
-                          Admin Notes (Reason / Confirmation record):
+                          Admin Review Notes:
                         </label>
                         <input
                           type="text"
@@ -398,7 +639,7 @@ export default function AdminDashboard() {
                           onChange={(e) =>
                             setAdminNotes((prev) => ({ ...prev, [app.id]: e.target.value }))
                           }
-                          placeholder="e.g. Verified against Department list"
+                          placeholder="e.g. Matric matches university list"
                           className="input w-full text-xs"
                         />
                       </div>
@@ -434,7 +675,314 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB 2: PLATFORM STATS */}
+      {/* TAB 2: ALL CAMPUS ERRANDS (LIVE FEED & INTERVENTIONS) */}
+      {activeTab === 'errands' && (
+        <div className="space-y-6">
+          <div className="glass-card rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+              {['all', 'unassigned', 'assigned', 'in_progress', 'completed', 'cancelled'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setErrandStatusFilter(status)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
+                    errandStatusFilter === status
+                      ? 'bg-white text-dark-base'
+                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {status.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search errand title, ID, requester..."
+                className="input pl-10 w-full text-xs"
+              />
+            </div>
+          </div>
+
+          {loadingErrands ? (
+            <div className="glass-card rounded-3xl p-12 text-center">
+              <Loader2 className="w-8 h-8 text-primary-400 animate-spin mx-auto mb-3" />
+              <p className="text-white/60 text-sm">Loading errands...</p>
+            </div>
+          ) : filteredErrands.length === 0 ? (
+            <div className="glass-card rounded-3xl p-12 text-center border border-white/10">
+              <Package className="w-12 h-12 text-white/20 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-white mb-1">No errands found</h3>
+              <p className="text-white/60 text-sm">No tasks matching the selected filters.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredErrands.map((errand) => (
+                <div
+                  key={errand.id}
+                  className="glass-card rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                >
+                  <div className="space-y-2 max-w-2xl">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-mono text-primary-400 font-bold">
+                        #{errand.id.substring(0, 8)}
+                      </span>
+                      <h3 className="font-bold text-white text-base">{errand.title}</h3>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                          errand.status === 'completed'
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                            : errand.status === 'cancelled'
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                            : errand.status === 'in_progress' || errand.status === 'assigned'
+                            ? 'bg-primary-500/20 text-primary-300 border-primary-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                        }`}
+                      >
+                        {errand.status.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-white/60 line-clamp-1">{errand.description}</p>
+
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-white/60">
+                      <span>From: <strong className="text-white">{errand.pickup_location}</strong></span>
+                      <span>To: <strong className="text-white">{errand.delivery_location}</strong></span>
+                      <span>Requester: <strong className="text-white">{errand.requester?.full_name || 'N/A'}</strong></span>
+                      <span>Runner: <strong className="text-white">{errand.runner?.full_name || 'Unassigned'}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between lg:justify-end gap-6 pt-3 lg:pt-0 border-t lg:border-t-0 border-white/10">
+                    <div className="text-right">
+                      <span className="text-xs text-white/40 block">Total Fee</span>
+                      <span className="text-base font-bold text-white">{formatCurrency(errand.total_fee)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedErrand(errand)}
+                        className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-all flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        Inspect
+                      </button>
+
+                      {errand.status !== 'completed' && errand.status !== 'cancelled' && (
+                        <button
+                          type="button"
+                          onClick={() => handleErrandAction(errand.id, 'cancel')}
+                          className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 text-xs font-semibold transition-all"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: USER DIRECTORY */}
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+          <div className="glass-card rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              {['all', 'user', 'runner', 'admin'].map((role) => (
+                <button
+                  key={role}
+                  onClick={() => setUserRoleFilter(role)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                    userRoleFilter === role
+                      ? 'bg-white text-dark-base'
+                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full sm:w-80">
+              <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search user name, ID, phone..."
+                className="input pl-10 w-full text-xs"
+              />
+            </div>
+          </div>
+
+          {loadingUsers ? (
+            <div className="glass-card rounded-3xl p-12 text-center">
+              <Loader2 className="w-8 h-8 text-primary-400 animate-spin mx-auto mb-3" />
+              <p className="text-white/60 text-sm">Loading user directory...</p>
+            </div>
+          ) : (
+            <div className="glass-card rounded-3xl border border-white/10 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-white/5 text-white/40 uppercase tracking-wider font-semibold border-b border-white/10">
+                    <tr>
+                      <th className="p-4">Student / User</th>
+                      <th className="p-4">Student ID</th>
+                      <th className="p-4">Phone</th>
+                      <th className="p-4">Role</th>
+                      <th className="p-4">Verification</th>
+                      <th className="p-4">Rating</th>
+                      <th className="p-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredUsers.map((u) => (
+                      <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="p-4 font-bold text-white">{u.full_name}</td>
+                        <td className="p-4 font-mono text-white/80">{u.student_id || 'N/A'}</td>
+                        <td className="p-4 text-white/60">{u.phone_number || 'N/A'}</td>
+                        <td className="p-4">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[10px] ${
+                              u.role === 'admin'
+                                ? 'bg-accent-purple/20 text-accent-purple'
+                                : u.role === 'runner'
+                                ? 'bg-emerald-500/20 text-emerald-300'
+                                : 'bg-white/10 text-white/80'
+                            }`}
+                          >
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full font-semibold text-[10px] ${
+                              u.verification_status === 'verified'
+                                ? 'text-emerald-400'
+                                : u.verification_status === 'pending'
+                                ? 'text-amber-400'
+                                : 'text-white/40'
+                            }`}
+                          >
+                            {u.verification_status}
+                          </span>
+                        </td>
+                        <td className="p-4 font-semibold text-amber-400">
+                          {u.rating ? `★ ${u.rating}` : '—'}
+                        </td>
+                        <td className="p-4 text-right">
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleUserRoleChange(u.id, e.target.value)}
+                            className="bg-white/5 border border-white/10 rounded-lg text-[11px] p-1 text-white"
+                          >
+                            <option value="user" className="bg-dark-base">Set as User</option>
+                            <option value="runner" className="bg-dark-base">Set as Runner</option>
+                            <option value="admin" className="bg-dark-base">Set as Admin</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: DISPUTES CENTER */}
+      {activeTab === 'disputes' && (
+        <div className="space-y-6">
+          {loadingDisputes ? (
+            <div className="glass-card rounded-3xl p-12 text-center">
+              <Loader2 className="w-8 h-8 text-primary-400 animate-spin mx-auto mb-3" />
+              <p className="text-white/60 text-sm">Loading disputes...</p>
+            </div>
+          ) : disputes.length === 0 ? (
+            <div className="glass-card rounded-3xl p-12 text-center border border-white/10">
+              <CheckCircle2 className="w-12 h-12 text-emerald-400/40 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-white mb-1">Zero Open Disputes</h3>
+              <p className="text-white/60 text-sm">No unresolved issues or claims from students.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {disputes.map((d) => (
+                <div key={d.id} className="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <span className="text-xs font-bold text-rose-400 uppercase tracking-wider block mb-1">
+                        Dispute #{d.id.substring(0, 8)}
+                      </span>
+                      <h3 className="text-base font-bold text-white">{d.reason}</h3>
+                      <p className="text-xs text-white/60 mt-1">{d.description}</p>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                      {d.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3.5 bg-white/5 rounded-2xl text-xs">
+                    <div>
+                      <span className="text-white/40 block mb-0.5">Initiator</span>
+                      <span className="font-semibold text-white">{d.initiator?.full_name || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-white/40 block mb-0.5">Respondent</span>
+                      <span className="font-semibold text-white">{d.respondent?.full_name || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-white/40 block mb-0.5">Errand Value</span>
+                      <span className="font-semibold text-white">{formatCurrency(d.errand?.total_fee || 0)}</span>
+                    </div>
+                  </div>
+
+                  {/* Resolution Input */}
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                    <input
+                      type="text"
+                      placeholder="Admin arbitration notes..."
+                      value={disputeNotes[d.id] || ''}
+                      onChange={(e) => setDisputeNotes((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                      className="input w-full text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleResolveDispute(d.id, 'refund')}
+                      className="btn-primary py-2 px-4 text-xs whitespace-nowrap bg-rose-600 hover:bg-rose-500 border-rose-500"
+                    >
+                      Refund Requester
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleResolveDispute(d.id, 'compensation')}
+                      className="btn-secondary py-2 px-4 text-xs whitespace-nowrap"
+                    >
+                      Compensate Runner
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleResolveDispute(d.id, 'no_action')}
+                      className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs whitespace-nowrap"
+                    >
+                      Dismiss Claim
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 5: FINANCIAL & PLATFORM ANALYTICS */}
       {activeTab === 'stats' && stats && (
         <div className="space-y-6">
           <div className="grid md:grid-cols-3 gap-6">
@@ -445,14 +993,14 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <h3 className="font-bold text-white">Gross Marketplace Volume</h3>
-                  <p className="text-xs text-white/60">Total errand transactions</p>
+                  <p className="text-xs text-white/60">Total transaction value</p>
                 </div>
               </div>
-              <div className="text-3xl font-bold text-white">
+              <div className="text-3xl font-black text-white">
                 {formatCurrency(stats.totalVolume)}
               </div>
               <div className="text-xs text-white/60">
-                Paid out to student runners:{' '}
+                Total paid to student runners:{' '}
                 <strong className="text-green-400">{formatCurrency(stats.totalRunnerPayouts)}</strong>
               </div>
             </div>
@@ -463,11 +1011,11 @@ export default function AdminDashboard() {
                   <PackageCheck className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white">Errand Completion Rate</h3>
-                  <p className="text-xs text-white/60">Successful fulfillment</p>
+                  <h3 className="font-bold text-white">Fulfillment Health</h3>
+                  <p className="text-xs text-white/60">Completion rate</p>
                 </div>
               </div>
-              <div className="text-3xl font-bold text-white">
+              <div className="text-3xl font-black text-white">
                 {stats.totalErrands > 0
                   ? `${Math.round((stats.completedCount / stats.totalErrands) * 100)}%`
                   : '100%'}
@@ -483,22 +1031,120 @@ export default function AdminDashboard() {
                   <Users className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white">Campus Community</h3>
-                  <p className="text-xs text-white/60">Registered users</p>
+                  <h3 className="font-bold text-white">Community Size</h3>
+                  <p className="text-xs text-white/60">Registered students</p>
                 </div>
               </div>
-              <div className="text-3xl font-bold text-white">
+              <div className="text-3xl font-black text-white">
                 {stats.totalUsers}
               </div>
               <div className="text-xs text-white/60">
-                {stats.totalRunners} verified runners actively working
+                {stats.totalRunners} verified runners actively fulfilling tasks
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Document Proof Modal Preview */}
+      {/* ERRAND INSPECT MODAL */}
+      <AnimatePresence>
+        {selectedErrand && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="glass-card rounded-3xl p-6 max-w-xl w-full border border-white/20 relative"
+            >
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+                <div>
+                  <span className="text-xs font-mono text-primary-400 font-bold block">
+                    Errand #{selectedErrand.id}
+                  </span>
+                  <h3 className="text-lg font-bold text-white">{selectedErrand.title}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedErrand(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs">
+                <div>
+                  <span className="text-white/40 block mb-1">Description</span>
+                  <p className="p-3 bg-white/5 rounded-2xl text-white/80">{selectedErrand.description}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/5 rounded-2xl">
+                  <div>
+                    <span className="text-white/40 block">Pickup Point</span>
+                    <span className="font-semibold text-white">{selectedErrand.pickup_location}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block">Drop-off Point</span>
+                    <span className="font-semibold text-white">{selectedErrand.delivery_location}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block">Requester</span>
+                    <span className="font-semibold text-white">{selectedErrand.requester?.full_name}</span>
+                    <span className="text-white/40 block">{selectedErrand.requester?.phone_number}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block">Runner</span>
+                    <span className="font-semibold text-white">{selectedErrand.runner?.full_name || 'None'}</span>
+                    <span className="text-white/40 block">{selectedErrand.runner?.phone_number || '—'}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 p-3.5 bg-white/5 rounded-2xl text-center">
+                  <div>
+                    <span className="text-white/40 block">Total Fee</span>
+                    <span className="font-bold text-white text-sm">{formatCurrency(selectedErrand.total_fee)}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block">Runner Share</span>
+                    <span className="font-bold text-emerald-400 text-sm">{formatCurrency(selectedErrand.runner_amount)}</span>
+                  </div>
+                  <div>
+                    <span className="text-white/40 block">Platform (20%)</span>
+                    <span className="font-bold text-primary-400 text-sm">{formatCurrency(selectedErrand.platform_fee)}</span>
+                  </div>
+                </div>
+
+                {/* Admin Actions */}
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleErrandAction(selectedErrand.id, 'unassign')}
+                    className="flex-1 btn-secondary py-2 text-xs"
+                  >
+                    Unassign Runner
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleErrandAction(selectedErrand.id, 'complete')}
+                    className="flex-1 btn-primary py-2 text-xs bg-emerald-600 hover:bg-emerald-500 border-emerald-500"
+                  >
+                    Force Complete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleErrandAction(selectedErrand.id, 'cancel')}
+                    className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* DOCUMENT PREVIEW MODAL */}
       <AnimatePresence>
         {selectedDocUrl && (
           <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
@@ -535,7 +1181,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="pt-4 flex justify-between items-center text-xs text-white/60">
-                <span>Check student ID name, photo, and matric against registration record</span>
+                <span>Verify student photo, matric number, and institution seal</span>
                 <button
                   type="button"
                   onClick={() => setSelectedDocUrl(null)}
