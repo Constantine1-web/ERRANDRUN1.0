@@ -1,18 +1,5 @@
 import type { ErrandCategory, ErrandPriority, PricingBreakdown } from '@/types';
 
-// Base fee structure for Nigerian universities
-const BASE_FEES: Record<ErrandCategory, { min: number; max: number }> = {
-  academic: { min: 800, max: 1500 },
-  food_delivery: { min: 1000, max: 2000 },
-  campus_errand: { min: 800, max: 1500 },
-  personal: { min: 1500, max: 3000 },
-  custom: { min: 2000, max: 7000 },
-};
-
-// Distance surcharge rates (per km)
-const DISTANCE_SURCHARGE_PER_KM = 100;
-const MAX_DISTANCE_KM = 15;
-
 // Queue complexity fee
 const QUEUE_COMPLEXITY_FEE = 500;
 
@@ -40,7 +27,7 @@ const PLATFORM_FEE_PERCENTAGE = 0.2;
  * Calculate pricing based on errand details
  */
 export function calculatePricing(
-  category: ErrandCategory, // Still useful for metrics, but no longer dictates base fee
+  _category: ErrandCategory, // Still useful for metrics, but no longer dictates base fee
   priority: ErrandPriority = 'normal',
   distanceKm: number = 0,
   hasQueueComplexity: boolean = false,

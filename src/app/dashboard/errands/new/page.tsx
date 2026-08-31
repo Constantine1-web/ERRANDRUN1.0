@@ -112,7 +112,7 @@ export default function NewErrandPage() {
 
       const paymentResult = await paymentResponse.json();
       if (!paymentResponse.ok || !paymentResult.success) {
-        console.error('Payment init failed', paymentResult);
+        console.warn('Payment init failed', paymentResult);
         toast.error(paymentResult.error || 'Could not initialize payment.');
         router.push(`/dashboard/user/errand/${data.id}`);
         return;
@@ -122,7 +122,7 @@ export default function NewErrandPage() {
       window.location.href = paymentResult.data.authorization_url;
       return;
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       toast.error(err.message || 'Failed to create errand');
     } finally {
       setSubmitting(false);

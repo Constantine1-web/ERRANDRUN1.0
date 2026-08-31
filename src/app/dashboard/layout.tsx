@@ -94,8 +94,8 @@ export default function DashboardLayout({
               insurancePlanId: profile.insurance_plan_id || undefined,
             });
           }
-        } catch (error) {
-          console.error('Failed to load user profile in layout:', error);
+        } catch (error: any) {
+          console.warn('Failed to load user profile in layout:', error?.message || error);
         }
       }
     };
