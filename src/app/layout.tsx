@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import Providers from '@/app/providers';
@@ -15,10 +15,19 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#0B0F17',
+  viewportFit: 'cover',
+};
+
 export const metadata: Metadata = {
   title: 'ErrandRun - Campus Logistics Made Easy',
   description: 'Premium peer-to-peer campus logistics and errand-running for Nigerian university students',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -37,10 +46,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} dark`} suppressHydrationWarning>
       <head>
-        <meta name="theme-color" content="#0B0F19" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icon.png" />
       </head>
-      <body className="bg-dark-base text-foreground">
+      <body className="bg-dark-base text-foreground antialiased no-select">
         <Providers>{children}</Providers>
       </body>
     </html>

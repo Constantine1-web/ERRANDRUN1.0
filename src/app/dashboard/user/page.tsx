@@ -4,12 +4,22 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
-import { DynamicPricingCard } from '@/components/dynamic-pricing-card';
-import { Plus, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { 
+  Plus, 
+  MapPin, 
+  Utensils, 
+  Printer, 
+  Users, 
+  Package, 
+  ArrowRight,
+  TrendingUp
+} from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function UserDashboard() {
   const { user } = useAppStore();
+  const router = useRouter();
   const [stats, setStats] = useState({ totalErrands: 0, completed: 0, pending: 0 });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
@@ -18,7 +28,6 @@ export default function UserDashboard() {
       if (!user?.id) return;
 
       try {
-        // Fetch user errands stats
         const { data, error } = await supabase
           .from('errands')
           .select('id, status')
@@ -44,162 +53,170 @@ export default function UserDashboard() {
     fetchStats();
   }, [user]);
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Welcome Section */}
-      <motion.div
-        className="mb-12"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <h1 className="heading-page text-white mb-3">
-          What needs doing today?
-        </h1>
-        <p className="text-xl text-white/60">
-          Let our runners handle it while you focus on what matters
-        </p>
-      </motion.div>
+  const categories = [
+    { id: 'food', label: 'Food', icon: Utensils, color: 'text-orange-400', bg: 'bg-orange-500/10' },
+    { id: 'print', label: 'Print', icon: Printer, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    { id: 'queue', label: 'Queues', icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+    { id: 'parcel', label: 'Parcels', icon: Package, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  ];
 
-      {/* Quick Action */}
+  const quickTasks = [
+    {
+      id: 1,
+      title: 'Cafeteria Run',
+      desc: 'Hot meal delivery',
+      price: '₦800',
+      icon: Utensils,
+      color: 'bg-orange-500',
+      category: 'food'
+    },
+    {
+      id: 2,
+      title: 'Clearance Queue',
+      desc: 'Admin block standing',
+      price: '₦1500',
+      icon: Users,
+      color: 'bg-purple-500',
+      category: 'academic'
+    },
+    {
+      id: 3,
+      title: 'Collect Handout',
+      desc: 'Photocopy & deliver',
+      price: '₦600',
+      icon: Printer,
+      color: 'bg-blue-500',
+      category: 'academic'
+    }
+  ];
+
+  return (
+    <div className="max-w-[500px] mx-auto md:max-w-6xl px-4 py-4 md:py-8 space-y-6 md:space-y-8">
+      
+      {/* 1. Location Selector (App Style) */}
+      <div className="flex items-center gap-2 pt-2 md:pt-0">
+        <MapPin className="w-4 h-4 text-primary-400" />
+        <div className="flex flex-col">
+          <span className="text-[10px] text-white/50 font-medium uppercase tracking-wider">Current Campus</span>
+          <button className="text-sm font-bold text-white flex items-center gap-1 hover:text-primary-400 transition-colors">
+            University of Ibadan, Oyo <span className="text-[10px]">▼</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Vibrant Hero Card */}
       <motion.div
-        className="mb-12 glass-card rounded-3xl p-8"
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        className="w-full rounded-3xl p-6 md:p-8 relative overflow-hidden bg-gradient-to-br from-primary-600 to-accent-purple shadow-xl shadow-primary-500/20"
       >
-        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="w-full text-center md:text-left">
-            <h2 className="text-3xl font-bold text-white mb-2">
-              Post a new errand
-            </h2>
-            <p className="text-white/60">
-              Get matched with a verified runner in seconds
-            </p>
-          </div>
+        <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/20 rounded-full blur-xl" />
+        
+        <div className="relative z-10 flex flex-col items-start w-full">
+          <span className="px-3 py-1 bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider rounded-full backdrop-blur-md mb-4">
+            Priority Errand
+          </span>
+          <h2 className="text-3xl md:text-4xl font-black text-white mb-2 leading-tight">
+            DELEGATE <br/> YOUR TASKS
+          </h2>
+          <p className="text-white/80 text-sm mb-6 max-w-[200px] md:max-w-xs">
+            Verified student runners ready in minutes.
+          </p>
+          
           <Link
             href="/dashboard/errands/new"
-            className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2 whitespace-nowrap"
+            className="bg-white text-primary-600 px-6 py-3 rounded-full font-bold text-sm flex items-center gap-2 hover:scale-105 transition-transform active:scale-95 shadow-lg"
           >
-            <Plus className="w-5 h-5" />
-            Create Errand
+            Draft Errand <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </motion.div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
-        {isLoadingStats ? (
-          <>
-            {[1, 2, 3].map((_, idx) => (
-              <div key={idx} className="glass-card rounded-2xl p-6 flex flex-col items-center sm:items-start">
-                <div className="skeleton-avatar w-8 h-8 mb-4 rounded-full" />
-                <div className="skeleton-text w-24 h-4 mb-2" />
-                <div className="skeleton-text w-12 h-8" />
-              </div>
-            ))}
-          </>
-        ) : (
-          [
-            { icon: TrendingUp, label: 'Total Errands', value: stats.totalErrands },
-            { icon: CheckCircle, label: 'Completed', value: stats.completed },
-            { icon: Clock, label: 'Pending', value: stats.pending },
-          ].map((stat, idx) => {
-            const Icon = stat.icon;
+      {/* 3. Category Row */}
+      <div className="space-y-3">
+        <div className="flex overflow-x-auto scrollbar-none gap-4 pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+          {categories.map((cat) => {
+            const Icon = cat.icon;
             return (
-              <motion.div
-                key={idx}
-                className="glass-card rounded-2xl p-6 flex flex-col items-center sm:items-start text-center sm:text-left"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + idx * 0.1 }}
+              <button
+                key={cat.id}
+                onClick={() => router.push(`/dashboard/errands/new?category=${cat.id}`)}
+                className="flex flex-col items-center gap-2 flex-shrink-0 group"
               >
-                <Icon className="w-8 h-8 text-primary-400 mb-4" />
-                <p className="text-white/60 text-sm mb-1">{stat.label}</p>
-                <p className="text-4xl font-bold text-white">{stat.value}</p>
-              </motion.div>
+                <div className={`w-16 h-16 rounded-full ${cat.bg} border border-white/5 flex items-center justify-center transition-transform group-hover:scale-110 active:scale-95`}>
+                  <Icon className={`w-7 h-7 ${cat.color}`} />
+                </div>
+                <span className="text-[11px] font-bold text-white/70 group-hover:text-white transition-colors">
+                  {cat.label}
+                </span>
+              </button>
             );
-          })
-        )}
+          })}
+        </div>
       </div>
 
-      {!isLoadingStats && stats.totalErrands === 0 && (
+      {/* 4. Quick Tasks (Like "Popular Items") */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-white">Quick Tasks</h3>
+          <Link href="/dashboard/errands/new" className="text-xs font-bold text-primary-400 hover:text-primary-300">
+            View All →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          {quickTasks.map((task) => {
+            const Icon = task.icon;
+            return (
+              <div key={task.id} className="glass-card rounded-2xl p-4 flex flex-col h-full border border-white/5 relative group hover:border-white/10 transition-colors">
+                <div className={`w-10 h-10 rounded-xl ${task.color} bg-opacity-20 flex items-center justify-center mb-3`}>
+                  <Icon className={`w-5 h-5 text-white`} />
+                </div>
+                <h4 className="font-bold text-white text-sm leading-tight mb-1">{task.title}</h4>
+                <p className="text-[10px] text-white/50 mb-4">{task.desc}</p>
+                
+                <div className="mt-auto flex items-center justify-between">
+                  <span className="font-mono font-bold text-emerald-400 text-xs">{task.price}</span>
+                  <button 
+                    onClick={() => router.push(`/dashboard/errands/new?category=${task.category}`)}
+                    className={`w-7 h-7 rounded-full ${task.color} flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform shadow-lg shadow-black/20`}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 5. Rewards / Runner Banner */}
+      {user?.role !== 'runner' && (
         <motion.div
-          className="glass-card rounded-2xl p-8 mb-12 text-center"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-2xl p-4 flex items-center gap-4 border border-white/5 relative overflow-hidden mt-6 mb-8 md:mb-0"
         >
-          <h3 className="text-2xl font-bold text-white mb-2">No errands yet!</h3>
-          <p className="text-white/60">You haven't posted any errands. Click 'Create Errand' above to get started.</p>
+          <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl" />
+          
+          <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center shrink-0">
+            <TrendingUp className="w-6 h-6 text-emerald-400" />
+          </div>
+          
+          <div className="flex-1 min-w-0 z-10">
+            <h4 className="font-bold text-white text-sm mb-0.5">Runner Rewards</h4>
+            <p className="text-[10px] text-white/50 leading-tight">Apply to be a runner and earn up to 80% per task!</p>
+          </div>
+          
+          <Link href="/become-a-runner" className="shrink-0 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors z-10">
+            Join Now
+          </Link>
         </motion.div>
       )}
 
-      {/* Pricing Preview */}
-      <div className="grid lg:grid-cols-3 gap-8 mb-12">
-        <motion.div
-          className="lg:col-span-2"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h2 className="text-2xl font-bold text-white mb-6">Pricing Preview</h2>
-          <DynamicPricingCard
-            category="academic"
-            priority="normal"
-            distanceKm={2}
-            interactive={true}
-          />
-        </motion.div>
-
-        {/* Quick Features */}
-        <motion.div
-          className="glass-card rounded-2xl p-6 space-y-4"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h3 className="text-xl font-bold text-white mb-6">Key Features</h3>
-          {[
-            '✅ Real-time tracking',
-            '🛡️ Comprehensive insurance',
-            '⭐ Verified runners',
-            '💬 In-app messaging',
-            '⚡ Smart matching',
-            '📱 Mobile-optimized',
-          ].map((feature, idx) => (
-            <div key={idx} className="text-white/80 text-sm">
-              {feature}
-            </div>
-          ))}
-        </motion.div>
-      </div>
-
-      {/* Recent Activity */}
-      <motion.div
-        className="glass-card rounded-2xl p-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        <h2 className="text-2xl font-bold text-white mb-6">Getting Started</h2>
-        <div className="space-y-4">
-          {[
-            { num: '1', title: 'Complete Your Profile', desc: 'Add your student ID and verify your account' },
-            { num: '2', title: 'Post an Errand', desc: 'Tell us what you need done and your budget' },
-            { num: '3', title: 'Get Matched', desc: 'Our smart system finds the best runner for you' },
-            { num: '4', title: 'Track & Confirm', desc: 'Monitor progress in real-time and confirm completion' },
-          ].map((step, idx) => (
-            <div key={idx} className="flex gap-4 pb-4 border-b border-white/5 last:border-0">
-              <div className="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center flex-shrink-0">
-                <span className="text-primary-400 font-bold text-sm">{step.num}</span>
-              </div>
-              <div>
-                <h4 className="text-white font-medium mb-1">{step.title}</h4>
-                <p className="text-white/60 text-sm">{step.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+      {/* Bottom spacer for mobile scroll */}
+      <div className="h-6 md:hidden" />
     </div>
   );
 }
