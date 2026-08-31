@@ -34,26 +34,25 @@ const PLATFORM_FEE_PERCENTAGE = 0.2;
  * Calculate pricing based on errand details
  */
 export function calculatePricing(
-  category: ErrandCategory,
+  category: ErrandCategory, // Still useful for metrics, but no longer dictates base fee
   priority: ErrandPriority = 'normal',
-  distanceKm: number = 2,
+  distanceKm: number = 0,
   hasQueueComplexity: boolean = false,
   weatherSurgeApplied: boolean = false
 ): PricingBreakdown {
-  // Calculate base fee
-  const baseFeeRange = BASE_FEES[category];
-  const baseFee = baseFeeRange.min + (baseFeeRange.max - baseFeeRange.min) * 0.5;
+  // Ensure minimum distance of 1km for calculation
+  const effectiveDistance = Math.max(1, distanceKm);
+  
+  // Rate is strictly 800 Naira per KM
+  const baseFee = Math.round(effectiveDistance * 800);
 
-  // Calculate distance surcharge
-  const distanceSurcharge = Math.min(
-    distanceKm * DISTANCE_SURCHARGE_PER_KM,
-    MAX_DISTANCE_KM * DISTANCE_SURCHARGE_PER_KM
-  );
+  // We no longer need a separate distance surcharge because base fee IS the distance fee
+  const distanceSurcharge = 0;
 
-  // Queue complexity fee
+  // Queue complexity fee (flat 500 Naira if applicable)
   const queueComplexityFee = hasQueueComplexity ? QUEUE_COMPLEXITY_FEE : 0;
 
-  // Weather surge
+  // Weather surge (10% on top of base fee)
   const weatherSurge = weatherSurgeApplied ? baseFee * (WEATHER_SURGE - 1) : 0;
 
   // Get urgency multiplier
@@ -102,7 +101,8 @@ export function calculateDistance(
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  // Multiply straight-line distance by ~1.3 to approximate actual road/walking distance
+  return R * c * 1.3;
 }
 
 /**

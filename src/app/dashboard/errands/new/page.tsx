@@ -238,8 +238,10 @@ export default function NewErrandPage() {
                 <strong className="text-2xl">{formatCurrency(pricing.totalFee)}</strong>
               </div>
               <div className="space-y-2.5 text-sm text-white/60">
-                <div className="flex justify-between"><span>Base fee</span><span>{formatCurrency(pricing.baseFee)}</span></div>
-                <div className="flex justify-between"><span>Distance</span><span>{formatCurrency(pricing.distanceSurcharge)}</span></div>
+                <div className="flex justify-between">
+                  <span>Distance Fee ({distanceKm ? Math.max(1, distanceKm).toFixed(1) : '1.0'} km)</span>
+                  <span>{formatCurrency(pricing.baseFee)}</span>
+                </div>
                 {pricing.queueComplexityFee > 0 && <div className="flex justify-between"><span>Queue</span><span>{formatCurrency(pricing.queueComplexityFee)}</span></div>}
                 {pricing.weatherSurge > 0 && <div className="flex justify-between"><span>Weather</span><span>{formatCurrency(pricing.weatherSurge)}</span></div>}
                 <div className="flex justify-between pt-3 mt-3 border-t border-white/10 text-white/80"><span>Platform fee (20%)</span><span>{formatCurrency(pricing.platformFee)}</span></div>
