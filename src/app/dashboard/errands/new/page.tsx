@@ -7,6 +7,9 @@ import { calculateDistance, calculatePricing, formatCurrency, estimateQueueCompl
 import type { ErrandCategory, ErrandPriority } from '@/types';
 import toast from 'react-hot-toast';
 
+import { MapPicker } from '@/components/MapPicker';
+import { MapPin } from 'lucide-react';
+
 export default function NewErrandPage() {
   const router = useRouter();
 
@@ -22,6 +25,9 @@ export default function NewErrandPage() {
   const [priority, setPriority] = useState<ErrandPriority>('normal');
   const [hasQueue, setHasQueue] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  
+  const [mapModalOpen, setMapModalOpen] = useState<'pickup' | 'delivery' | null>(null);
+  const [allowNegotiation, setAllowNegotiation] = useState(true);
 
   const distanceKm = useMemo(() => {
     if (pickupLat && pickupLng && deliveryLat && deliveryLng) {
@@ -148,25 +154,64 @@ export default function NewErrandPage() {
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="textarea w-full" rows={4} placeholder="Details for the runner" />
           </label>
 
-          <label className="block space-y-1.5">
+          {/* Map Modals */}
+          {mapModalOpen === 'pickup' && (
+            <MapPicker 
+              title="Select Pickup Location"
+              initialLat={pickupLat || undefined}
+              initialLng={pickupLng || undefined}
+              onConfirm={(lat: number, lng: number, address: string) => {
+                setPickupLat(lat);
+                setPickupLng(lng);
+                setPickupLocation(address);
+                setMapModalOpen(null);
+              }}
+              onCancel={() => setMapModalOpen(null)}
+            />
+          )}
+
+          {mapModalOpen === 'delivery' && (
+            <MapPicker 
+              title="Select Delivery Location"
+              initialLat={deliveryLat || undefined}
+              initialLng={deliveryLng || undefined}
+              onConfirm={(lat: number, lng: number, address: string) => {
+                setDeliveryLat(lat);
+                setDeliveryLng(lng);
+                setDeliveryLocation(address);
+                setMapModalOpen(null);
+              }}
+              onCancel={() => setMapModalOpen(null)}
+            />
+          )}
+
+          <div className="space-y-1.5">
             <span className="text-sm font-medium text-white/80">Pickup Location</span>
-            <input value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)} className="input w-full" placeholder="e.g., Main Library" />
-          </label>
-
-          <div className="grid grid-cols-2 gap-3">
-            <input value={pickupLat ?? ''} onChange={(e) => setPickupLat(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Pickup lat" className="input w-full min-w-0" />
-            <input value={pickupLng ?? ''} onChange={(e) => setPickupLng(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Pickup lng" className="input w-full min-w-0" />
+            <div className="flex gap-2">
+              <input value={pickupLocation} readOnly className="input w-full bg-dark-secondary/50 text-white/60 cursor-not-allowed" placeholder="Select on map..." />
+              <button type="button" onClick={() => setMapModalOpen('pickup')} className="btn-secondary whitespace-nowrap">
+                <MapPin className="w-4 h-4 mr-2 inline" /> Map
+              </button>
+            </div>
           </div>
 
-          <label className="block space-y-1.5">
+          <div className="space-y-1.5">
             <span className="text-sm font-medium text-white/80">Delivery Location</span>
-            <input value={deliveryLocation} onChange={(e) => setDeliveryLocation(e.target.value)} className="input w-full" placeholder="e.g., Hostel A" />
-          </label>
-
-          <div className="grid grid-cols-2 gap-3">
-            <input value={deliveryLat ?? ''} onChange={(e) => setDeliveryLat(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Delivery lat" className="input w-full min-w-0" />
-            <input value={deliveryLng ?? ''} onChange={(e) => setDeliveryLng(e.target.value ? parseFloat(e.target.value) : null)} placeholder="Delivery lng" className="input w-full min-w-0" />
+            <div className="flex gap-2">
+              <input value={deliveryLocation} readOnly className="input w-full bg-dark-secondary/50 text-white/60 cursor-not-allowed" placeholder="Select on map..." />
+              <button type="button" onClick={() => setMapModalOpen('delivery')} className="btn-secondary whitespace-nowrap">
+                <MapPin className="w-4 h-4 mr-2 inline" /> Map
+              </button>
+            </div>
           </div>
+
+          <label className="flex items-center gap-3 p-4 bg-brand-blue/5 border border-brand-blue/20 rounded-xl cursor-pointer">
+            <input type="checkbox" checked={allowNegotiation} onChange={(e) => setAllowNegotiation(e.target.checked)} className="w-5 h-5 rounded border-white/20 bg-dark-secondary text-brand-blue focus:ring-brand-blue focus:ring-offset-dark-base" />
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-white">Allow Runners to Negotiate</span>
+              <span className="text-xs text-white/60">Runners can counter-offer if they think the standard fee is too low for this distance.</span>
+            </div>
+          </label>
 
           <label className="block space-y-1.5">
             <span className="text-sm font-medium text-white/80">Priority</span>
