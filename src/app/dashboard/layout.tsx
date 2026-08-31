@@ -58,11 +58,11 @@ export default function DashboardLayout({
               id: profile.id,
               email: session.user.email || '',
               fullName: profile.full_name,
-              studentId: profile.student_id,
-              phoneNumber: profile.phone_number,
+              studentId: profile.studentId,
+              phoneNumber: profile.phoneNumber,
               role: profile.role,
               avatarUrl: profile.avatar_url || undefined,
-              verificationStatus: profile.verification_status,
+              verificationStatus: profile.verificationStatus,
               rating: profile.rating || undefined,
               insurancePlanId: profile.insurance_plan_id || undefined,
             });
@@ -249,8 +249,23 @@ export default function DashboardLayout({
       </aside>
 
       {/* ═══ MAIN CONTENT ═══ */}
-      <main className="flex-1 w-full pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-0">
-        {children}
+      <main className="flex-1 w-full pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-0 flex flex-col">
+        {user && user.verificationStatus !== 'verified' && (
+          <div className="bg-brand-yellow/10 border-b border-brand-yellow/20 px-4 py-3 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <span className="text-brand-yellow text-xl">⚠️</span>
+              <p className="text-xs sm:text-sm text-brand-yellow font-medium">
+                Please verify your student profile to post or accept errands.
+              </p>
+            </div>
+            <Link href="/dashboard/verify" className="shrink-0 bg-brand-yellow text-dark-base px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-yellow-500 transition-colors">
+              Verify Now
+            </Link>
+          </div>
+        )}
+        <div className="flex-1 relative">
+          {children}
+        </div>
       </main>
 
       {/* ═══ FLOATING PILL BOTTOM NAVIGATION BAR (MOBILE) ═══ */}

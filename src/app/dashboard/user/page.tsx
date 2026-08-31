@@ -91,12 +91,18 @@ export default function UserDashboard() {
             Verified student runners ready in minutes.
           </p>
           
-          <Link
-            href="/dashboard/errands/new"
+          <button
+            onClick={() => {
+              if (user?.verificationStatus !== 'verified') {
+                router.push('/dashboard/verify');
+              } else {
+                router.push('/dashboard/errands/new');
+              }
+            }}
             className="bg-white text-primary-600 px-6 py-3 rounded-full font-bold text-sm flex items-center gap-2 hover:scale-105 transition-transform active:scale-95 shadow-lg"
           >
             Draft Errand <ArrowRight className="w-4 h-4" />
-          </Link>
+          </button>
         </div>
       </motion.div>
 
@@ -108,7 +114,13 @@ export default function UserDashboard() {
             return (
               <button
                 key={cat.id}
-                onClick={() => router.push(`/dashboard/errands/new?category=${cat.id}`)}
+                onClick={() => {
+                  if (user?.verificationStatus !== 'verified') {
+                    router.push('/dashboard/verify');
+                  } else {
+                    router.push(`/dashboard/errands/new?category=${cat.id}`);
+                  }
+                }}
                 className="flex flex-col items-center gap-2 flex-shrink-0 group"
               >
                 <div className={`w-16 h-16 rounded-full ${cat.bg} border border-white/5 flex items-center justify-center transition-transform group-hover:scale-110 active:scale-95`}>
@@ -146,7 +158,13 @@ export default function UserDashboard() {
                 <div className="mt-auto flex items-center justify-between">
                   <span className="font-mono font-bold text-emerald-400 text-xs">{task.price}</span>
                   <button 
-                    onClick={() => router.push(`/dashboard/errands/new?category=${task.category}`)}
+                    onClick={() => {
+                      if (user?.verificationStatus !== 'verified') {
+                        router.push('/dashboard/verify');
+                      } else {
+                        router.push(`/dashboard/errands/new?category=${task.category}`);
+                      }
+                    }}
                     className={`w-7 h-7 rounded-full ${task.color} flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform shadow-lg shadow-black/20`}
                   >
                     <Plus className="w-4 h-4" />

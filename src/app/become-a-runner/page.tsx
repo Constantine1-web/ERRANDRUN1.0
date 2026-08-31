@@ -19,7 +19,7 @@ export default function BecomeARunnerPage() {
             <Link href="/login" className="text-sm font-semibold text-white/70 hover:text-white hidden sm:block">
               Sign In
             </Link>
-            <Link href="/signup?role=runner" className="btn-success text-sm py-2 px-5">
+            <Link href="/dashboard/runner/apply" className="btn-success text-sm py-2 px-5">
               Apply Now
             </Link>
           </div>
@@ -39,7 +39,7 @@ export default function BecomeARunnerPage() {
             Join the ErrandRun verified network. Help your peers get things done, set your own schedule, and keep 80% of every task fee.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/signup?role=runner" className="w-full sm:w-auto btn-success py-4 px-8 text-base font-bold flex items-center justify-center gap-2">
+            <Link href="/dashboard/runner/apply" className="w-full sm:w-auto btn-success py-4 px-8 text-base font-bold flex items-center justify-center gap-2">
               Start Application <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -91,8 +91,11 @@ export default function BecomeARunnerPage() {
           </div>
           
           <div className="mt-10 text-center">
-            <Link href="/signup?role=runner" className="w-full sm:w-auto btn-success py-4 px-10 text-base font-bold inline-flex items-center justify-center">
-              Apply to be a Runner
+            <Link
+              href="/dashboard/runner/apply"
+              className="bg-brand-blue text-dark-base px-8 py-4 rounded-full font-bold text-lg hover:scale-105 active:scale-95 transition-all shadow-xl shadow-brand-blue/20"
+            >
+              Start Earning Today
             </Link>
           </div>
         </div>

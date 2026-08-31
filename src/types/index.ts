@@ -40,6 +40,7 @@ export interface RunnerApp {
   transport_method: TransportMethod;
   availability_schedule: Record<string, string[]>;
   document_proof_url: string;
+  face_verification_url: string;
   status: RunnerAppStatus;
   admin_notes?: string;
   created_at: string;
