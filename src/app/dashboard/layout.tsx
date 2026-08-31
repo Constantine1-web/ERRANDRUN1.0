@@ -31,6 +31,32 @@ export default function DashboardLayout({
 
   useSessionTracker();
 
+  // Enforce session
+  useEffect(() => {
+    if (!user) {
+      router.push('/login');
+    }
+  }, [user, router]);
+
+  // Check verification expiration (Yearly Renewal)
+  useEffect(() => {
+    if (user && user.verificationStatus === 'verified' && user.verificationExpiresAt) {
+      const expirationDate = new Date(user.verificationExpiresAt);
+      if (new Date() > expirationDate) {
+        // Demote user to unverified
+        useAppStore.getState().setUser({
+          ...user,
+          verificationStatus: 'unverified'
+        });
+        
+        // Show notification once
+        if (pathname !== '/dashboard/verify') {
+          router.push('/dashboard/verify');
+        }
+      }
+    }
+  }, [user, router, pathname]);
+
   // Check auth & load user profile
   useEffect(() => {
     const checkAuth = async () => {
@@ -58,11 +84,12 @@ export default function DashboardLayout({
               id: profile.id,
               email: session.user.email || '',
               fullName: profile.full_name,
-              studentId: profile.studentId,
-              phoneNumber: profile.phoneNumber,
+              studentId: profile.student_id,
+              phoneNumber: profile.phone_number,
               role: profile.role,
               avatarUrl: profile.avatar_url || undefined,
-              verificationStatus: profile.verificationStatus,
+              verificationStatus: profile.verification_status,
+              verificationExpiresAt: profile.verification_expires_at || undefined,
               rating: profile.rating || undefined,
               insurancePlanId: profile.insurance_plan_id || undefined,
             });

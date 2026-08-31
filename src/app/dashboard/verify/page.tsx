@@ -44,11 +44,16 @@ export default function VerificationPage() {
     try {
       // In a real app, this updates Supabase. We simulate the store update.
       if (user) {
+        // Set expiration for exactly 1 year (365 days) from now
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
         setUser({
           ...user,
           phoneNumber: phone,
           studentId: studentId,
           verificationStatus: 'verified',
+          verificationExpiresAt: oneYearFromNow.toISOString(),
         });
       }
       

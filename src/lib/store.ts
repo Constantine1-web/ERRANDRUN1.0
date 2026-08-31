@@ -10,6 +10,7 @@ interface User {
   role: 'user' | 'runner' | 'admin';
   avatarUrl?: string;
   verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected';
+  verificationExpiresAt?: string;
   rating?: number;
   insurancePlanId?: string;
 }
