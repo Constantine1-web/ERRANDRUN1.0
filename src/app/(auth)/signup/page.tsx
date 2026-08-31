@@ -42,8 +42,30 @@ function SignupForm() {
       return;
     }
 
+    const formattedRegNo = formData.studentId.trim().toUpperCase();
+    // Supports 21/ENG/012 or 21/MS/CO/1234
+    const uniuyoRegRegex = /^\d{2}\/([A-Z]{2,5}\/)+\d{3,4}$/;
+    
+    if (!uniuyoRegRegex.test(formattedRegNo)) {
+      toast.error('Invalid Registration Number format. Expected: YY/DEPT/NUM (e.g. 21/ENG/012 or 21/MS/CO/123)');
+      return;
+    }
+
     try {
       setLoading(true);
+
+      // Check for duplicate Registration Number first
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('student_id')
+        .eq('student_id', formattedRegNo)
+        .maybeSingle();
+
+      if (existingUser) {
+        toast.error('This Registration Number is already registered to another account.');
+        setLoading(false);
+        return;
+      }
 
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -62,7 +84,7 @@ function SignupForm() {
           {
             id: authData.user.id,
             full_name: formData.fullName,
-            student_id: formData.studentId,
+            student_id: formattedRegNo,
             phone_number: formData.phoneNumber,
             role: userRole,
             verification_status: 'pending',
