@@ -14,9 +14,10 @@ function SignupForm() {
   const [userRole, setUserRole] = useState<'user' | 'runner'>(initialRole);
 
   const [formData, setFormData] = useState({
+    fullName: '',
     email: '',
     password: '',
-    fullName: '',
+    confirmPassword: '',
     studentId: '',
     phoneNumber: '',
   });
@@ -26,8 +27,13 @@ function SignupForm() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.email || !formData.password || !formData.fullName || !formData.studentId || !formData.phoneNumber) {
+    if (!formData.email || !formData.password || !formData.confirmPassword || !formData.fullName || !formData.studentId || !formData.phoneNumber) {
       toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -175,16 +181,30 @@ function SignupForm() {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-white/80">Password</label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              placeholder="••••••••"
-              className="input w-full"
-              disabled={loading}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-white/80">Password</label>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                placeholder="••••••••"
+                className="input w-full"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-white/80">Confirm Password</label>
+              <input
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                placeholder="••••••••"
+                className="input w-full"
+                disabled={loading}
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
