@@ -25,6 +25,7 @@ export default function NewErrandPage() {
   const [priority, setPriority] = useState<ErrandPriority>('normal');
   const [hasQueue, setHasQueue] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isBulkyItem, setIsBulkyItem] = useState(false);
   
   const [mapModalOpen, setMapModalOpen] = useState<'pickup' | 'delivery' | null>(null);
   const [allowNegotiation, setAllowNegotiation] = useState(true);
@@ -33,12 +34,12 @@ export default function NewErrandPage() {
     if (pickupLat && pickupLng && deliveryLat && deliveryLng) {
       return calculateDistance(pickupLat, pickupLng, deliveryLat, deliveryLng);
     }
-    return 2;
+    return 0; // default to 0 if not set, distance calculation has Math.max(1, distance) inside
   }, [pickupLat, pickupLng, deliveryLat, deliveryLng]);
 
   const pricing = useMemo(() => {
-    return calculatePricing(category, priority, distanceKm, hasQueue, false);
-  }, [category, priority, distanceKm, hasQueue]);
+    return calculatePricing(category, priority, distanceKm, hasQueue, false, isBulkyItem);
+  }, [category, priority, distanceKm, hasQueue, isBulkyItem]);
 
   useEffect(() => {
     setHasQueue(estimateQueueComplexity(pickupLocation));
@@ -76,6 +77,7 @@ export default function NewErrandPage() {
         runner_amount: pricing.runnerAmount,
         priority,
         status: 'payment_pending',
+        min_runner_rating: (priority === 'high' || priority === 'urgent') ? 4.5 : 0,
       };
 
       const { data, error } = await supabase
@@ -223,9 +225,15 @@ export default function NewErrandPage() {
             </select>
           </label>
 
-          <div className="flex items-center gap-3 pt-2">
-            <input id="queue" type="checkbox" checked={hasQueue} onChange={(e) => setHasQueue(e.target.checked)} className="w-5 h-5 rounded border-white/20 bg-dark-base text-primary-500 focus:ring-primary-500/50" />
-            <label htmlFor="queue" className="text-sm font-medium text-white/80">Pickup may have queue / complex process</label>
+          <div className="flex flex-col gap-3 pt-2">
+            <div className="flex items-center gap-3">
+              <input id="queue" type="checkbox" checked={hasQueue} onChange={(e) => setHasQueue(e.target.checked)} className="w-5 h-5 rounded border-white/20 bg-dark-base text-primary-500 focus:ring-primary-500/50" />
+              <label htmlFor="queue" className="text-sm font-medium text-white/80">Pickup may have queue / complex process</label>
+            </div>
+            <div className="flex items-center gap-3">
+              <input id="bulky" type="checkbox" checked={isBulkyItem} onChange={(e) => setIsBulkyItem(e.target.checked)} className="w-5 h-5 rounded border-white/20 bg-dark-base text-primary-500 focus:ring-primary-500/50" />
+              <label htmlFor="bulky" className="text-sm font-medium text-white/80">Item is heavy or bulky (e.g. mattress, gas cylinder)</label>
+            </div>
           </div>
         </div>
 
@@ -243,7 +251,10 @@ export default function NewErrandPage() {
                   <span>{formatCurrency(pricing.baseFee)}</span>
                 </div>
                 {pricing.queueComplexityFee > 0 && <div className="flex justify-between"><span>Queue</span><span>{formatCurrency(pricing.queueComplexityFee)}</span></div>}
+                {pricing.bulkyItemSurcharge > 0 && <div className="flex justify-between text-brand-yellow"><span>Bulky Item</span><span>{formatCurrency(pricing.bulkyItemSurcharge)}</span></div>}
                 {pricing.weatherSurge > 0 && <div className="flex justify-between"><span>Weather</span><span>{formatCurrency(pricing.weatherSurge)}</span></div>}
+                {pricing.rushHourSurge > 0 && <div className="flex justify-between text-rose-400"><span>Campus Rush Hour Surge (1.5x)</span><span>{formatCurrency(pricing.rushHourSurge)}</span></div>}
+                {pricing.urgencyMultiplier > 1 && <div className="flex justify-between text-brand-blue"><span>High Priority</span><span>{(pricing.urgencyMultiplier - 1) * 100}%</span></div>}
                 <div className="flex justify-between pt-3 mt-3 border-t border-white/10 text-white/80"><span>Platform fee (20%)</span><span>{formatCurrency(pricing.platformFee)}</span></div>
               </div>
             </div>

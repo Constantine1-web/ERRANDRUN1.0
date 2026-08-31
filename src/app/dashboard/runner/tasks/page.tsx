@@ -17,6 +17,7 @@ interface ErrandTask {
   runner_id?: string | null;
   priority?: string;
   eta_minutes?: number | null;
+  min_runner_rating?: number;
 }
 
 export default function RunnerTasksPage() {
@@ -42,7 +43,7 @@ export default function RunnerTasksPage() {
 
         const { data: availData, error: availErr } = await supabase
           .from('errands')
-          .select('id, title, pickup_location, delivery_location, total_fee, status, priority')
+          .select('id, title, pickup_location, delivery_location, total_fee, status, priority, min_runner_rating')
           .eq('status', 'unassigned')
           .order('created_at', { ascending: false });
 
@@ -149,6 +150,16 @@ export default function RunnerTasksPage() {
 
   const accept = async (id: string) => {
     if (!user?.id) return;
+    
+    // Check runner rating requirement
+    const taskToAccept = available.find(t => t.id === id);
+    if (taskToAccept && taskToAccept.min_runner_rating && taskToAccept.min_runner_rating > 0) {
+      if ((user.rating || 0) < taskToAccept.min_runner_rating) {
+        setMessage(`This High Priority task requires a runner rating of ${taskToAccept.min_runner_rating}★ or higher.`);
+        return;
+      }
+    }
+
     setActionLoading(id);
     setMessage(null);
     try {
@@ -246,6 +257,11 @@ export default function RunnerTasksPage() {
                   <div className="flex flex-col">
                     <h3 className="text-lg text-white font-semibold">{t.title}</h3>
                     <p className="text-sm text-white/60">{t.pickup_location} → {t.delivery_location}</p>
+                    {t.min_runner_rating && t.min_runner_rating > 0 && (
+                      <div className="mt-2 inline-flex items-center px-2 py-1 bg-brand-yellow/10 text-brand-yellow text-xs font-bold rounded">
+                        ★ {t.min_runner_rating}+ Rating Required
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto">
                     <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto text-sm">

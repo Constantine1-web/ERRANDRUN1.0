@@ -16,8 +16,14 @@ const MAX_DISTANCE_KM = 15;
 // Queue complexity fee
 const QUEUE_COMPLEXITY_FEE = 500;
 
+// Bulky item surcharge
+const BULKY_ITEM_SURCHARGE = 1000;
+
 // Weather surge multiplier
 const WEATHER_SURGE = 1.1;
+
+// Rush hour surge multiplier
+const RUSH_HOUR_SURGE = 1.5;
 
 // Urgency multipliers
 const URGENCY_MULTIPLIERS: Record<ErrandPriority, number> = {
@@ -38,7 +44,8 @@ export function calculatePricing(
   priority: ErrandPriority = 'normal',
   distanceKm: number = 0,
   hasQueueComplexity: boolean = false,
-  weatherSurgeApplied: boolean = false
+  weatherSurgeApplied: boolean = false,
+  isBulkyItem: boolean = false
 ): PricingBreakdown {
   // Ensure minimum distance of 1km for calculation
   const effectiveDistance = Math.max(1, distanceKm);
@@ -51,15 +58,23 @@ export function calculatePricing(
 
   // Queue complexity fee (flat 500 Naira if applicable)
   const queueComplexityFee = hasQueueComplexity ? QUEUE_COMPLEXITY_FEE : 0;
+  
+  // Bulky item surcharge
+  const bulkyItemSurcharge = isBulkyItem ? BULKY_ITEM_SURCHARGE : 0;
 
   // Weather surge (10% on top of base fee)
   const weatherSurge = weatherSurgeApplied ? baseFee * (WEATHER_SURGE - 1) : 0;
+
+  // Check for Rush Hour (8am-10am and 4pm-6pm)
+  const hour = new Date().getHours();
+  const isRushHour = (hour >= 8 && hour < 10) || (hour >= 16 && hour < 18);
+  const rushHourSurge = isRushHour ? baseFee * (RUSH_HOUR_SURGE - 1) : 0;
 
   // Get urgency multiplier
   const urgencyMultiplier = URGENCY_MULTIPLIERS[priority];
 
   // Calculate subtotal before multiplier
-  const subtotal = baseFee + distanceSurcharge + queueComplexityFee + weatherSurge;
+  const subtotal = baseFee + distanceSurcharge + queueComplexityFee + bulkyItemSurcharge + weatherSurge + rushHourSurge;
 
   // Apply urgency multiplier
   const totalFeeBeforePlatformFee = subtotal * urgencyMultiplier;
@@ -78,6 +93,8 @@ export function calculatePricing(
     distanceSurcharge: Math.round(distanceSurcharge),
     queueComplexityFee: Math.round(queueComplexityFee),
     weatherSurge: Math.round(weatherSurge),
+    bulkyItemSurcharge: Math.round(bulkyItemSurcharge),
+    rushHourSurge: Math.round(rushHourSurge),
     urgencyMultiplier,
     totalFee: Math.round(totalFee),
     platformFee: Math.round(platformFee),

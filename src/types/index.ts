@@ -208,9 +208,11 @@ export interface TaskHistory {
 // Pricing Components
 export interface PricingBreakdown {
   baseFee: number;
-  distanceSurcharge: number;
+  distanceSurcharge: number; // Kept for backwards compatibility
   queueComplexityFee: number;
   weatherSurge: number;
+  bulkyItemSurcharge: number;
+  rushHourSurge: number;
   urgencyMultiplier: number;
   totalFee: number;
   platformFee: number;
