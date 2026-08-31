@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, Check } from 'lucide-react';
 
-// Fix for default marker icons in Leaflet when using Webpack/Next.js
+// Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -32,27 +31,61 @@ interface MapPickerInnerProps {
   title?: string;
 }
 
-// UniUyo Coordinates (Town Campus roughly)
+// UniUyo Coordinates
 const UNIUYO_CENTER = { lat: 5.038, lng: 7.915 };
 
-function LocationMarker({ position, setPosition }: { position: any, setPosition: any }) {
-  useMapEvents({
-    click(e) {
-      setPosition(e.latlng);
-    },
-  });
-
-  return position === null ? null : (
-    <Marker position={position} icon={brandIcon}></Marker>
-  );
-}
-
 export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCancel, title = "Select Location" }: MapPickerInnerProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(
-    initialLat && initialLng ? { lat: initialLat, lng: initialLng } : UNIUYO_CENTER
+    initialLat && initialLng ? { lat: initialLat, lng: initialLng } : null
   );
   const [address, setAddress] = useState('Selected on Map');
   const [isGeocoding, setIsGeocoding] = useState(false);
+
+  // Initialize Map
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (leafletMapRef.current) return; // already initialized
+
+    const center = position || UNIUYO_CENTER;
+    
+    // Create map
+    const map = L.map(mapRef.current, {
+      zoomControl: false
+    }).setView([center.lat, center.lng], 15);
+
+    // Add TileLayer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Add Marker if position exists
+    if (position) {
+      markerRef.current = L.marker([position.lat, position.lng], { icon: brandIcon }).addTo(map);
+    }
+
+    // Handle Map Clicks
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      const { lat, lng } = e.latlng;
+      setPosition({ lat, lng });
+      
+      if (!markerRef.current) {
+        markerRef.current = L.marker([lat, lng], { icon: brandIcon }).addTo(map);
+      } else {
+        markerRef.current.setLatLng([lat, lng]);
+      }
+    });
+
+    leafletMapRef.current = map;
+
+    return () => {
+      map.remove();
+      leafletMapRef.current = null;
+    };
+  }, []); // Run once on mount
 
   // Reverse geocode when position changes
   useEffect(() => {
@@ -61,11 +94,9 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
     const geocode = async () => {
       setIsGeocoding(true);
       try {
-        // Use Nominatim open-source reverse geocoding
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.lat}&lon=${position.lng}&zoom=18&addressdetails=1`);
         const data = await res.json();
         if (data && data.display_name) {
-          // Keep it short, just first two segments
           const shortName = data.display_name.split(',').slice(0, 2).join(',');
           setAddress(shortName);
         }
@@ -91,31 +122,19 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
           <MapPin className="w-5 h-5 text-brand-blue" />
           {title}
         </h2>
-        <button onClick={onCancel} className="text-white/60 hover:text-white font-bold p-2">
+        <button type="button" onClick={onCancel} className="text-white/60 hover:text-white font-bold p-2">
           Cancel
         </button>
       </div>
 
       {/* Map Container */}
       <div className="flex-1 relative w-full bg-dark-secondary">
-        <MapContainer 
-          center={position || UNIUYO_CENTER} 
-          zoom={15} 
-          scrollWheelZoom={true} 
-          className="w-full h-full"
-          zoomControl={false}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          />
-          <LocationMarker position={position} setPosition={setPosition} />
-        </MapContainer>
+        <div ref={mapRef} className="w-full h-full" />
 
         {/* Center Target Reticle overlay instruction */}
         {!position && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[400]">
-            <div className="bg-dark-base/80 text-white px-4 py-2 rounded-full font-bold text-sm backdrop-blur-md">
+            <div className="bg-dark-base/80 text-white px-4 py-2 rounded-full font-bold text-sm backdrop-blur-md shadow-xl border border-white/20">
               Tap anywhere on the map to drop a pin
             </div>
           </div>
@@ -142,6 +161,7 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
         </div>
 
         <button 
+          type="button"
           onClick={() => {
             if (position) {
               onConfirm(position.lat, position.lng, address);
