@@ -17,8 +17,8 @@ export default function VerificationPage() {
   const [studentId, setStudentId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendOTP = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (phone.length < 10) return toast.error('Enter a valid phone number');
     
     setIsLoading(true);
@@ -153,6 +153,16 @@ export default function VerificationPage() {
             <button type="submit" className="btn-primary w-full flex justify-center items-center gap-2">
               Verify Code
             </button>
+            <div className="mt-4 text-center">
+              <button 
+                type="button" 
+                onClick={handleSendOTP} 
+                disabled={isLoading}
+                className="text-xs text-white/50 hover:text-white font-medium transition-colors"
+              >
+                Didn't receive the code? <span className="text-brand-blue underline underline-offset-2">Send code again</span>
+              </button>
+            </div>
           </motion.form>
         )}
 
