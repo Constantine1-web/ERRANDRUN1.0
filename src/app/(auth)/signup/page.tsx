@@ -214,7 +214,7 @@ function SignupForm() {
                 type="text"
                 value={formData.studentId}
                 onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                placeholder="UI/2023/001"
+                placeholder="UNIUYO/2023/001"
                 className="input w-full font-mono text-sm"
                 disabled={loading}
               />

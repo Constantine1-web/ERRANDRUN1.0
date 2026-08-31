@@ -61,12 +61,12 @@ export default function UserDashboard() {
     <div className="max-w-[500px] mx-auto md:max-w-6xl px-4 py-4 md:py-8 space-y-6 md:space-y-8">
       
       {/* 1. Location Selector (App Style) */}
-      <div className="flex items-center gap-2 pt-2 md:pt-0">
-        <MapPin className="w-4 h-4 text-primary-400" />
-        <div className="flex flex-col">
-          <span className="text-[10px] text-white/50 font-medium uppercase tracking-wider">Current Campus</span>
-          <button className="text-sm font-bold text-white flex items-center gap-1 hover:text-primary-400 transition-colors">
-            University of Ibadan, Oyo <span className="text-[10px]">▼</span>
+      <div className="flex items-center gap-2 mb-6 md:mb-8">
+        <MapPin className="w-5 h-5 text-brand-blue" />
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-white/50 font-bold">Current Campus</p>
+          <button className="text-sm font-bold text-white flex items-center gap-1 hover:text-brand-blue transition-colors">
+            University of Uyo, Akwa Ibom <span className="text-xs">▼</span>
           </button>
         </div>
       </div>
