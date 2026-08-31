@@ -3,11 +3,11 @@ import { RunnerLogo } from '@/components/RunnerLogo';
 
 export default function Loading() {
   return (
-    <div className="fixed inset-0 bg-dark-base z-[100] flex flex-col items-center justify-center">
-      <div className="w-32 h-32 mb-6">
-        <RunnerLogo animate={true} className="w-full h-full drop-shadow-[0_0_15px_rgba(56,189,248,0.5)]" />
+    <div className="fixed inset-0 bg-dark-base z-[100] flex flex-col items-center justify-center p-4">
+      <div className="mb-6 w-32 h-32 flex items-center justify-center" style={{ width: '128px', height: '128px', maxWidth: '128px', maxHeight: '128px' }}>
+        <RunnerLogo animate={true} className="w-full h-full max-w-[128px] max-h-[128px] drop-shadow-[0_0_15px_rgba(56,189,248,0.5)]" />
       </div>
-      <h1 className="text-2xl font-black tracking-widest uppercase">
+      <h1 className="text-2xl font-black tracking-widest uppercase mt-4">
         <span className="text-primary-400">Errand</span>
         <span className="text-white">Run</span>
       </h1>
