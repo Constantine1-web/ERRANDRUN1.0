@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+import { RunnerLogo } from '@/components/RunnerLogo';
+
 export default function DashboardLayout({
   children,
 }: {
@@ -156,18 +158,16 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-[100dvh] bg-dark-base text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-dark-base text-white flex flex-col md:flex-row">
       
       {/* ═══ MOBILE TOP HEADER ═══ */}
-      <header className="md:hidden sticky top-0 z-40 bg-dark-base/80 backdrop-blur-xl pt-2 pb-2 px-4">
+      <header className="md:hidden sticky top-0 z-40 bg-dark-base/80 backdrop-blur-xl pt-2 pb-2 px-4 border-b border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary-500/20">
-              ⚡
-            </div>
+            <RunnerLogo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]" animate={false} />
             <div>
               <h1 className="font-bold text-white leading-none tracking-tight">ErrandRun</h1>
-              <span className="text-[10px] text-white/50 font-medium">Campus Network</span>
+              <span className="text-[10px] text-brand-blue font-medium uppercase tracking-wider">Campus Network</span>
             </div>
           </div>
 
@@ -183,16 +183,17 @@ export default function DashboardLayout({
       </header>
 
       {/* ═══ DESKTOP SIDEBAR ═══ */}
-      <aside className="hidden md:flex md:flex-col md:w-64 md:h-[100dvh] md:sticky md:top-0 md:border-r md:border-white/10 md:bg-dark-base/80 md:backdrop-blur-xl z-20">
-        <div className="h-20 flex items-center px-6 border-b border-white/10 shrink-0">
-          <Link href="/" className="text-2xl font-black text-gradient">
-            ⚡ ErrandRun
-          </Link>
+      <aside className="hidden md:flex md:flex-col md:w-64 md:h-screen md:sticky md:top-0 md:border-r md:border-white/10 md:bg-dark-base/80 md:backdrop-blur-xl z-20 shrink-0">
+        <div className="h-20 flex items-center px-6 border-b border-white/10 shrink-0 gap-3">
+          <RunnerLogo className="w-10 h-10 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]" animate={false} />
+          <h1 className="text-xl font-black text-white tracking-tight">
+            Errand<span className="text-primary-400">Run</span>
+          </h1>
         </div>
         
         {/* User Card Desktop */}
         {user && (
-          <div className="p-6 border-b border-white/5">
+          <div className="p-6 border-b border-white/5 shrink-0">
             <div className="flex items-center gap-3 mb-4">
               <UserAvatar size="md" />
               <div className="flex-1 min-w-0">
@@ -248,13 +249,13 @@ export default function DashboardLayout({
       </aside>
 
       {/* ═══ MAIN CONTENT ═══ */}
-      <main className="flex-1 w-full min-h-[calc(100dvh-57px)] md:min-h-[100dvh] pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-0 relative">
+      <main className="flex-1 w-full pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-0">
         {children}
       </main>
 
       {/* ═══ FLOATING PILL BOTTOM NAVIGATION BAR (MOBILE) ═══ */}
-      <div className="md:hidden fixed bottom-4 left-4 right-4 z-50 pb-[env(safe-area-inset-bottom)]">
-        <nav className="flex items-center justify-between px-2 h-[72px] bg-[#121826]/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl shadow-black/50">
+      <div className="md:hidden fixed bottom-4 left-4 right-4 z-50 pb-[env(safe-area-inset-bottom)] pointer-events-none">
+        <nav className="flex items-center justify-between px-2 h-[72px] bg-[#121826]/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl shadow-black/50 pointer-events-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname.startsWith(item.href);

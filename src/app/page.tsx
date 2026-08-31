@@ -20,9 +20,10 @@ import {
   TrendingUp,
   Layers,
 } from 'lucide-react';
+import { RunnerLogo } from '@/components/RunnerLogo';
 import { formatCurrency, calculatePricing } from '@/utils/pricing';
 
-export default function Home() {
+export default function LandingPage() {
   const [calcCategory, setCalcCategory] = useState<'academic' | 'food_delivery' | 'campus_errand'>('food_delivery');
   const [calcDistance, setCalcDistance] = useState(1.5);
   const [calcQueue, setCalcQueue] = useState(false);
@@ -86,9 +87,11 @@ export default function Home() {
       {/* Top Header Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-4 glass-card border-b border-white/10 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-2xl font-black text-gradient">
-            <span>⚡</span>
-            <span>ErrandRun</span>
+          <Link href="/" className="flex items-center gap-3">
+            <RunnerLogo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]" animate={true} />
+            <span className="text-2xl font-black text-white tracking-tight">
+              Errand<span className="text-primary-400">Run</span>
+            </span>
           </Link>
 
           <div className="flex items-center gap-3 sm:gap-6">

@@ -14,20 +14,25 @@ const config = {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: '#38BDF8',
+          DEFAULT: '#38BDF8', // Light Blue
           50: '#F0F9FF',
           100: '#E0F2FE',
           200: '#BAE6FD',
           300: '#7DD3FC',
           400: '#38BDF8',
-          500: '#38BDF8',
+          500: '#0EA5E9',
           600: '#0284C7',
           700: '#0369A1',
           800: '#075985',
           900: '#0C4A6E',
         },
+        brand: {
+          blue: '#38BDF8',
+          yellow: '#FBBF24',
+          green: '#10B981',
+        },
         accent: {
-          purple: '#A855F7',
+          purple: '#A855F7', // Keep for legacy elements until migrated
           neon: '#00FF41',
         },
         dark: {

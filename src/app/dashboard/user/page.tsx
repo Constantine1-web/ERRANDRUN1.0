@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { 
   Plus, 
@@ -20,38 +19,6 @@ import { useRouter } from 'next/navigation';
 export default function UserDashboard() {
   const { user } = useAppStore();
   const router = useRouter();
-  const [stats, setStats] = useState({ totalErrands: 0, completed: 0, pending: 0 });
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!user?.id) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('errands')
-          .select('id, status')
-          .eq('requester_id', user.id);
-
-        if (error) throw error;
-
-        const completed = data?.filter((e) => e.status === 'completed').length || 0;
-        const pending = data?.filter((e) => e.status !== 'completed' && e.status !== 'cancelled').length || 0;
-
-        setStats({
-          totalErrands: data?.length || 0,
-          completed,
-          pending,
-        });
-      } catch (error) {
-        console.error('Failed to fetch stats:', error);
-      } finally {
-        setIsLoadingStats(false);
-      }
-    };
-
-    fetchStats();
-  }, [user]);
 
   const categories = [
     { id: 'food', label: 'Food', icon: Utensils, color: 'text-orange-400', bg: 'bg-orange-500/10' },
