@@ -88,7 +88,7 @@ interface DisputeRecord {
   created_at: string;
   initiator?: { id: string; full_name: string; phone_number: string };
   respondent?: { id: string; full_name: string; phone_number: string };
-  errand?: { id: string; title: string; total_fee: number; status: string };
+  errand?: { id: string; title: string; total_fee: number; status: string; delivery_pin?: string; pickup_photo_url?: string; dropoff_photo_url?: string; };
 }
 
 interface PlatformStats {
@@ -129,6 +129,10 @@ export default function AdminDashboard() {
   const [disputes, setDisputes] = useState<DisputeRecord[]>([]);
   const [loadingDisputes, setLoadingDisputes] = useState(false);
   const [disputeNotes, setDisputeNotes] = useState<Record<string, string>>({});
+  const [disputeRunnerPayouts, setDisputeRunnerPayouts] = useState<Record<string, number>>({});
+  const [disputeCustomerRefunds, setDisputeCustomerRefunds] = useState<Record<string, number>>({});
+  const [runnerStrikes, setRunnerStrikes] = useState<Record<string, boolean>>({});
+  const [customerStrikes, setCustomerStrikes] = useState<Record<string, boolean>>({});
 
   // Stats State
   const [stats, setStats] = useState<PlatformStats | null>(null);
@@ -308,27 +312,39 @@ export default function AdminDashboard() {
   };
 
   // Handle Dispute Resolution
-  const handleResolveDispute = async (disputeId: string, resolutionType: string) => {
+    const handleResolveDispute = async (d: DisputeRecord) => {
     try {
-      const notes = disputeNotes[disputeId] || '';
-      const res = await fetch('/api/admin/disputes', {
+      setProcessingId(d.id);
+      const notes = disputeNotes[d.id] || '';
+      
+      const runnerPayout = disputeRunnerPayouts[d.id] ?? 0;
+      const customerRefund = disputeCustomerRefunds[d.id] ?? 0;
+      const addRunnerStrike = runnerStrikes[d.id] ?? false;
+      const addCustomerStrike = customerStrikes[d.id] ?? false;
+
+      const res = await fetch('/api/admin/disputes/resolve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          disputeId,
-          resolutionType,
+          errandId: d.errand_id,
+          runnerPayout,
+          customerRefund,
+          addRunnerStrike,
+          addCustomerStrike,
           adminNotes: notes,
-          status: 'resolved',
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to resolve dispute');
 
-      toast.success(`Dispute marked as resolved (${resolutionType})`);
-      await fetchDisputes();
+      const result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.error || 'Failed to resolve dispute');
+
+      toast.success('Dispute resolved successfully');
+      await Promise.all([fetchDisputes(), fetchStats()]);
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Failed to update dispute');
+      toast.error(err.message || 'Failed to resolve dispute');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -944,39 +960,68 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Resolution Input */}
-                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                    <input
-                      type="text"
-                      placeholder="Admin arbitration notes..."
-                      value={disputeNotes[d.id] || ''}
-                      onChange={(e) => setDisputeNotes((prev) => ({ ...prev, [d.id]: e.target.value }))}
-                      className="input w-full text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleResolveDispute(d.id, 'refund')}
-                      className="btn-primary py-2 px-4 text-xs whitespace-nowrap bg-rose-600 hover:bg-rose-500 border-rose-500"
-                    >
-                      Refund Requester
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleResolveDispute(d.id, 'compensation')}
-                      className="btn-secondary py-2 px-4 text-xs whitespace-nowrap"
-                    >
-                      Compensate Runner
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleResolveDispute(d.id, 'no_action')}
-                      className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs whitespace-nowrap"
-                    >
-                      Dismiss Claim
-                    </button>
+                                      {/* Evidence & Logs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-white/5 rounded-2xl text-xs">
+                      <div>
+                        <span className="text-white/40 block mb-1">Photo Evidence</span>
+                        <div className="flex gap-2">
+                          {d.errand?.pickup_photo_url ? (
+                            <a href={d.errand.pickup_photo_url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded block">View Pickup</a>
+                          ) : <span className="text-white/30">No Pickup Photo</span>}
+                          {d.errand?.dropoff_photo_url ? (
+                            <a href={d.errand.dropoff_photo_url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded block">View Dropoff</a>
+                          ) : <span className="text-white/30">No Dropoff Photo</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-white/40 block mb-1">Delivery PIN</span>
+                        <span className="font-mono font-bold text-white tracking-widest">{d.errand?.delivery_pin || 'NONE'}</span>
+                      </div>
+                    </div>
+
+                    {/* Financial Resolution */}
+                    <div className="p-4 border border-white/10 rounded-2xl bg-slate-900/50 space-y-4">
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">Resolution Controls (Total Value: {formatCurrency(d.errand?.total_fee || 0)})</h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-white/60 block mb-1">Runner Payout (?)</label>
+                          <input type="number" className="input w-full text-xs" placeholder="0" value={disputeRunnerPayouts[d.id] ?? ''} onChange={(e) => setDisputeRunnerPayouts(prev => ({...prev, [d.id]: Number(e.target.value)}))} />
+                          <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                            <input type="checkbox" checked={runnerStrikes[d.id] || false} onChange={(e) => setRunnerStrikes(prev => ({...prev, [d.id]: e.target.checked}))} className="rounded bg-dark-base border-white/20" />
+                            <span className="text-xs text-rose-300">Issue Warning Strike to Runner</span>
+                          </label>
+                        </div>
+                        <div>
+                          <label className="text-xs text-white/60 block mb-1">Customer Refund (?)</label>
+                          <input type="number" className="input w-full text-xs" placeholder="0" value={disputeCustomerRefunds[d.id] ?? ''} onChange={(e) => setDisputeCustomerRefunds(prev => ({...prev, [d.id]: Number(e.target.value)}))} />
+                          <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                            <input type="checkbox" checked={customerStrikes[d.id] || false} onChange={(e) => setCustomerStrikes(prev => ({...prev, [d.id]: e.target.checked}))} className="rounded bg-dark-base border-white/20" />
+                            <span className="text-xs text-rose-300">Issue Warning Strike to Customer</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                        <input
+                          type="text"
+                          placeholder="Admin arbitration notes (Internal)..."
+                          value={disputeNotes[d.id] || ''}
+                          onChange={(e) => setDisputeNotes((prev) => ({ ...prev, [d.id]: e.target.value }))}
+                          className="input w-full text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleResolveDispute(d)}
+                          disabled={processingId === d.id}
+                          className="btn-primary py-2 px-6 text-xs whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 border-emerald-500 disabled:opacity-50"
+                        >
+                          {processingId === d.id ? 'Resolving...' : 'Resolve Dispute'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
@@ -1244,3 +1289,7 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+
+
+

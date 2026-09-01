@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
         *,
         initiator:initiator_id (id, full_name, phone_number, student_id),
         respondent:respondent_id (id, full_name, phone_number, student_id),
-        errand:errand_id (id, title, total_fee, runner_amount, platform_fee, status)
+        errand:errand_id (id, title, total_fee, runner_amount, platform_fee, status, delivery_pin, pickup_photo_url, dropoff_photo_url)
       `)
       .order('created_at', { ascending: false });
 
@@ -69,3 +69,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+
