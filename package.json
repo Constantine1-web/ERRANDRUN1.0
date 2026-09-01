@@ -39,6 +39,7 @@
     "react-hook-form": "^7.47.0",
     "react-hot-toast": "^2.4.1",
     "react-leaflet": "^4.2.1",
+    "react-paystack": "^6.0.0",
     "recharts": "^2.10.1",
     "shadcn-ui": "^0.8.0",
     "tailwind-merge": "^2.2.0",

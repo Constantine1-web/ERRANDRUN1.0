@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Zap, MapPin, DollarSign, Trophy } from 'lucide-react';
+import { Zap, MapPin, DollarSign, Trophy, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { RunnerGuard } from '@/components/guards/RunnerGuard';
 import { formatCurrency } from '@/utils/pricing';
+import toast from 'react-hot-toast';
 
 interface ErrandTask {
   id: string;
@@ -37,6 +38,9 @@ export default function RunnerDashboard() {
   const [toggleLoading, setToggleLoading] = useState(false);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -75,12 +79,17 @@ export default function RunnerDashboard() {
         .eq('status', 'completed')
         .order('updated_at', { ascending: false });
 
-      const [profileResult, availableResult, activeResult, historyResult] = await Promise.all([
+            const walletPromise = supabase.from('wallets').select('balance').eq('user_id', user.id).single();
+
+      const [profileResult, availableResult, activeResult, historyResult, walletResult] = await Promise.all([
         profilePromise,
         availablePromise,
         activePromise,
         historyPromise,
+        walletPromise
       ]);
+
+      if (walletResult.data) setWalletBalance(Number(walletResult.data.balance));
 
       if (!profileResult.error && profileResult.data) {
         setRunnerStatus(profileResult.data.runner_status === 'online' ? 'online' : 'offline');
@@ -176,6 +185,29 @@ export default function RunnerDashboard() {
 
     return { runnerEarnings, companyCut, completedCount };
   }, [historyErrands]);
+
+  const handleWithdraw = async () => {
+    if (withdrawAmount < 2000) return toast.error('Minimum withdrawal is N2,000');
+    if (withdrawAmount > walletBalance) return toast.error('Insufficient funds');
+    
+    try {
+      toast.loading('Processing withdrawal...', { id: 'withdraw' });
+      const res = await fetch('/api/wallet/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id, amount: withdrawAmount })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error);
+      
+      setWalletBalance(data.balance);
+      setIsWithdrawing(false);
+      setWithdrawAmount(0);
+      toast.success('Withdrawal requested successfully! Processing...', { id: 'withdraw' });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to withdraw', { id: 'withdraw' });
+    }
+  };
 
   return (
     <RunnerGuard>
@@ -434,4 +466,5 @@ export default function RunnerDashboard() {
     </RunnerGuard>
   );
 }
+
 

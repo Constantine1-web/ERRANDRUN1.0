@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     // Verify PIN
     const { data: errand, error: fetchError } = await supabase
       .from('errands')
-      .select('delivery_pin, status')
+      .select('delivery_pin, status, runner_amount')
       .eq('id', errandId)
       .eq('runner_id', runnerId)
       .single();
@@ -33,15 +33,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Delivery PIN' }, { status: 400 });
     }
 
-    // PIN matched, update status to completed
-    const { error: updateError } = await supabase
+        // PIN matched, update status to completed
+    const { data: updatedErrand, error: updateError } = await supabase
       .from('errands')
       .update({ status: 'completed', actual_completion_time: new Date().toISOString() })
-      .eq('id', errandId);
+      .eq('id', errandId)
+      .select('runner_amount, platform_fee, total_fee')
+      .single();
 
-    if (updateError) {
+    if (updateError || !updatedErrand) {
       return NextResponse.json({ error: 'Failed to complete errand' }, { status: 500 });
     }
+
+    // 1. Get runner's wallet
+    const { data: runnerWallet } = await supabase.from('wallets').select('balance').eq('user_id', runnerId).single();
+    const runnerBalance = runnerWallet ? Number(runnerWallet.balance) : 0;
+    
+    // 2. Credit runner's wallet
+    await supabase.from('wallets').upsert({
+      user_id: runnerId,
+      balance: runnerBalance + Number(updatedErrand.runner_amount),
+      updated_at: new Date().toISOString()
+    });
+
+    // 3. Record Payout Transaction
+    await supabase.from('transactions').insert([
+      {
+        user_id: runnerId,
+        amount: updatedErrand.runner_amount,
+        type: 'payout',
+        status: 'success',
+        reference: errandId,
+        description: \Payout for completing errand #\\
+      },
+      {
+        user_id: '00000000-0000-0000-0000-000000000000', // Platform/Admin
+        amount: updatedErrand.platform_fee,
+        type: 'platform_fee',
+        status: 'success',
+        reference: errandId,
+        description: \Platform fee for errand #\\
+      }
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -49,3 +82,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+

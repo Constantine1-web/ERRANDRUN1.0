@@ -49,81 +49,52 @@ export default function NewErrandPage() {
     e.preventDefault();
     setSubmitting(true);
 
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData?.user;
-      if (!user) {
-        toast.error('Please sign in to create an errand');
-        router.push('/login');
+          try {
+        const { data: userData } = await supabase.auth.getUser();
+        const user = userData?.user;
+        if (!user) {
+          toast.error('Please sign in to create an errand');
+          router.push('/login');
+          return;
+        }
+
+        const payload = {
+          requester_id: user.id,
+          category,
+          title,
+          description,
+          pickup_location: pickupLocation,
+          delivery_location: deliveryLocation,
+          pickup_coordinates: pickupLat && pickupLng ? { lat: pickupLat, lng: pickupLng } : null,
+          delivery_coordinates: deliveryLat && deliveryLng ? { lat: deliveryLat, lng: deliveryLng } : null,
+          base_fee: pricing.baseFee,
+          distance_surcharge: pricing.distanceSurcharge,
+          queue_complexity_fee: pricing.queueComplexityFee,
+          weather_surge: pricing.weatherSurge,
+          urgency_multiplier: pricing.urgencyMultiplier,
+          total_fee: pricing.totalFee,
+          platform_fee: pricing.platformFee,
+          runner_amount: pricing.runnerAmount,
+          priority,
+          min_runner_rating: (priority === 'high' || priority === 'urgent') ? 4.5 : 0,
+        };
+
+        const res = await fetch('/api/errands/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          toast.error(data.error || 'Failed to create errand');
+          setSubmitting(false);
+          return;
+        }
+
+        toast.success('Errand created and fee secured in escrow!');
+        router.push(/dashboard/user/errand/ + data.errandId);
         return;
-      }
-
-      const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
-
-      const payload: any = {
-        requester_id: user.id,
-        category,
-        title,
-        description,
-        pickup_location: pickupLocation,
-        delivery_location: deliveryLocation,
-        pickup_coordinates: pickupLat && pickupLng ? { lat: pickupLat, lng: pickupLng } : null,
-        delivery_coordinates: deliveryLat && deliveryLng ? { lat: deliveryLat, lng: deliveryLng } : null,
-        base_fee: pricing.baseFee,
-        distance_surcharge: pricing.distanceSurcharge,
-        queue_complexity_fee: pricing.queueComplexityFee,
-        weather_surge: pricing.weatherSurge,
-        urgency_multiplier: pricing.urgencyMultiplier,
-        total_fee: pricing.totalFee,
-        platform_fee: pricing.platformFee,
-        runner_amount: pricing.runnerAmount,
-        priority,
-        status: 'payment_pending',
-        delivery_pin: deliveryPin,
-        min_runner_rating: (priority === 'high' || priority === 'urgent') ? 4.5 : 0,
-      };
-
-      const { data, error } = await supabase
-        .from('errands')
-        .insert([payload])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const email = user.email;
-      if (!email) {
-        toast.error('Your account needs an email to process payment.');
-        return;
-      }
-
-      const paymentResponse = await fetch('/api/payments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          email,
-          amount: pricing.totalFee,
-          errandId: data.id,
-          metadata: {
-            errandTitle: title,
-          },
-        }),
-      });
-
-      const paymentResult = await paymentResponse.json();
-      if (!paymentResponse.ok || !paymentResult.success) {
-        console.warn('Payment init failed', paymentResult);
-        toast.error(paymentResult.error || 'Could not initialize payment.');
-        router.push(`/dashboard/user/errand/${data.id}`);
-        return;
-      }
-
-      toast.success('Redirecting to Paystack for payment');
-      window.location.href = paymentResult.data.authorization_url;
-      return;
     } catch (err: any) {
       console.warn(err);
       toast.error(err.message || 'Failed to create errand');
@@ -284,3 +255,4 @@ export default function NewErrandPage() {
     </div>
   );
 }
+

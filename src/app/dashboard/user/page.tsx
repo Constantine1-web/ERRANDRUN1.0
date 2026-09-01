@@ -1,8 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { supabase } from '@/lib/supabaseClient';
+import { usePaystackPayment } from 'react-paystack';
+import toast from 'react-hot-toast';
+import { formatCurrency } from '@/utils/pricing';
 import { 
   Plus, 
   MapPin, 
@@ -19,6 +23,48 @@ import { useRouter } from 'next/navigation';
 export default function UserDashboard() {
   const { user } = useAppStore();
   const router = useRouter();
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [isToppingUp, setIsToppingUp] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState<number>(1000);
+
+  useEffect(() => {
+    if (user?.id) {
+      supabase.from('wallets').select('balance').eq('user_id', user.id).single()
+        .then(({data}) => {
+          if (data) setWalletBalance(Number(data.balance));
+        });
+    }
+  }, [user]);
+
+  const config = {
+    reference: (new Date()).getTime().toString(),
+    email: user?.email || 'user@example.com',
+    amount: topUpAmount * 100, // in kobo
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+  };
+
+  const initializePayment = usePaystackPayment(config);
+
+  const onSuccess = (reference: any) => {
+    toast.loading('Verifying payment...', { id: 'verify' });
+    fetch('/api/wallet/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference: reference.reference, userId: user?.id })
+    }).then(res => res.json()).then(data => {
+      if (data.success) {
+        setWalletBalance(data.balance);
+        toast.success('Wallet credited successfully!', { id: 'verify' });
+        setIsToppingUp(false);
+      } else {
+        toast.error(data.error || 'Verification failed', { id: 'verify' });
+      }
+    }).catch(err => toast.error('Error verifying payment', { id: 'verify' }));
+  };
+
+  const onClose = () => {
+    toast.error('Payment cancelled');
+  };
 
   const categories = [
     { id: 'food', label: 'Food', icon: Utensils, color: 'text-orange-400', bg: 'bg-orange-500/10' },
@@ -70,6 +116,45 @@ export default function UserDashboard() {
           </button>
         </div>
       </div>
+
+            {/* Wallet Summary Card */}
+      <div className="w-full rounded-3xl p-6 bg-slate-900/60 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <p className="text-xs text-white/50 uppercase tracking-wider font-bold mb-1">Wallet Balance</p>
+          <h2 className="text-3xl font-black text-emerald-400 font-mono">{formatCurrency(walletBalance)}</h2>
+        </div>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {isToppingUp ? (
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <input 
+                type="number" 
+                min="1000" 
+                value={topUpAmount} 
+                onChange={(e) => setTopUpAmount(Number(e.target.value))} 
+                className="input w-full md:w-32 py-2.5 text-sm"
+                placeholder="Min 1000"
+              />
+              <button 
+                onClick={() => {
+                  if (topUpAmount < 1000) return toast.error('Minimum top-up is N1000');
+                  initializePayment(onSuccess as any, onClose as any);
+                }} 
+                className="btn-primary py-2.5 px-6 whitespace-nowrap"
+              >
+                Pay via Paystack
+              </button>
+              <button onClick={() => setIsToppingUp(false)} className="p-2.5 rounded-xl bg-white/10 text-white/50 hover:text-white">
+                ?
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setIsToppingUp(true)} className="btn-primary py-2.5 px-8 w-full md:w-auto">
+              Top Up Wallet
+            </button>
+          )}
+        </div>
+      </div>
+
 
       {/* 2. Vibrant Hero Card */}
       <motion.div
@@ -205,3 +290,4 @@ export default function UserDashboard() {
     </div>
   );
 }
+
