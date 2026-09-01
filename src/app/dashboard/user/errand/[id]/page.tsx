@@ -420,20 +420,15 @@ export default function ErrandDetailPage() {
                 </div>
               ) : errand.status === 'assigned' || errand.status === 'in_progress' ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-white/60">
-                    Confirm delivery once your runner has completed the drop-off.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleComplete}
-                    disabled={isCompleting}
-                    className="btn-primary w-full"
-                  >
-                    {isCompleting ? 'Confirming…' : 'Mark as Completed'}
-                  </button>
-                  {completionMessage ? (
-                    <p className="text-sm text-white/70">{completionMessage}</p>
-                  ) : null}
+                  <div className="p-4 bg-brand-green/10 border border-brand-green/30 rounded-2xl text-center">
+                    <p className="text-xs text-brand-green font-semibold mb-2">DELIVERY PIN</p>
+                    <div className="text-3xl font-mono font-bold tracking-widest text-white mb-2 filter blur-sm hover:blur-none cursor-pointer transition-all">
+                      {errand.delivery_pin || '----'}
+                    </div>
+                    <p className="text-[10px] text-white/60">
+                      Hover/tap to reveal. Give this PIN to your runner ONLY when they hand over the item.
+                    </p>
+                  </div>
 
                   {!existingDispute && (
                     <button

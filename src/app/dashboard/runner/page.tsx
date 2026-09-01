@@ -29,6 +29,9 @@ export default function RunnerDashboard() {
   const [activeErrands, setActiveErrands] = useState<ErrandTask[]>([]);
   const [historyErrands, setHistoryErrands] = useState<ErrandTask[]>([]);
   const [runnerStatus, setRunnerStatus] = useState<'online' | 'offline'>('offline');
+  const [runnerLevel, setRunnerLevel] = useState<number>(1);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'available' | 'history'>('available');
   const [loading, setLoading] = useState(true);
   const [toggleLoading, setToggleLoading] = useState(false);
@@ -43,11 +46,12 @@ export default function RunnerDashboard() {
       }
 
       setLoading(true);
+      fetch('/api/errands/auto-release', { method: 'POST' }).catch(console.error);
       setStatusMessage(null);
 
       const profilePromise = supabase
         .from('profiles')
-        .select('runner_status')
+        .select('runner_status, total_errands, rating')
         .eq('id', user.id)
         .single();
 
@@ -80,6 +84,12 @@ export default function RunnerDashboard() {
 
       if (!profileResult.error && profileResult.data) {
         setRunnerStatus(profileResult.data.runner_status === 'online' ? 'online' : 'offline');
+        const rStats = profileResult.data;
+        if (rStats.total_errands >= 10 && rStats.rating >= 4.0) {
+          setRunnerLevel(2);
+        } else {
+          setRunnerLevel(1);
+        }
       }
 
       if (availableResult.error) {
@@ -337,7 +347,7 @@ export default function RunnerDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {availableErrands.map((errand) => (
+                    {filteredAvailableErrands.map((errand) => (
                       <article key={errand.id} className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex flex-col">
@@ -350,14 +360,30 @@ export default function RunnerDashboard() {
                               <span className="text-white/60">Payout</span>
                               <strong className="font-mono text-emerald-400 font-bold text-lg">{formatCurrency(Number(errand.total_fee) * 0.8)}</strong>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleAccept(errand.id)}
-                              disabled={accepting === errand.id}
-                              className="btn-primary w-full sm:w-auto"
-                            >
-                              {accepting === errand.id ? 'Accepting…' : 'Accept Contract'}
-                            </button>
+                            {Number(errand.total_fee) > 10000 && runnerLevel < 2 ? (
+                              <button
+                                disabled
+                                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 cursor-not-allowed"
+                              >
+                                🔒 Level 2 Required (High Value)
+                              </button>
+                            ) : activeErrands.length >= 2 ? (
+                              <button
+                                disabled
+                                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 cursor-not-allowed"
+                              >
+                                Max Active Tasks Reached
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleAccept(errand.id)}
+                                disabled={accepting === errand.id}
+                                className="btn-primary w-full sm:w-auto"
+                              >
+                                {accepting === errand.id ? 'Accepting...' : 'Accept Contract'}
+                              </button>
+                            )}
                           </div>
                         </div>
                       </article>
@@ -408,3 +434,4 @@ export default function RunnerDashboard() {
     </RunnerGuard>
   );
 }
+

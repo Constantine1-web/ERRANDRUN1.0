@@ -15,6 +15,18 @@ interface RunnerWizardProps {
 export function RunnerWizard({ userId, onComplete }: RunnerWizardProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [isAtCapacity, setIsAtCapacity] = useState(false);
+
+  React.useEffect(() => {
+    fetch('/api/runners/capacity')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.isAtCapacity) {
+          setIsAtCapacity(true);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // Step 1: Academic Verification
   const [studentId, setStudentId] = useState('');
@@ -128,6 +140,17 @@ export function RunnerWizard({ userId, onComplete }: RunnerWizardProps) {
           <h1 className="text-4xl font-bold text-white mb-2">Become a Runner</h1>
           <p className="text-white/60">Complete these steps to join our network of campus runners</p>
         </div>
+
+        {isAtCapacity && (
+          <div className="mb-8 p-4 rounded-xl bg-amber-500/20 border border-amber-500/30">
+            <h3 className="font-bold text-amber-300 mb-1 flex items-center gap-2">
+              <span className="text-xl">⚠️</span> High Runner Volume
+            </h3>
+            <p className="text-sm text-amber-200/80">
+              We currently have reached our active runner capacity to ensure fair earnings for everyone. You may still apply, but your application will be placed on a waitlist until more spots open up as user demand increases.
+            </p>
+          </div>
+        )}
 
         {/* Progress Indicator */}
         <div className="mb-8 flex gap-2">

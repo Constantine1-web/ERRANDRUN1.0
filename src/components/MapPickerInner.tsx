@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Check } from 'lucide-react';
+import { MapPin, Check, Search } from 'lucide-react';
 
-// Fix for default marker icons and Custom Brand Icon
+// Fix for default marker icons
 let brandIcon: any;
 
 if (typeof window !== 'undefined') {
@@ -34,88 +35,96 @@ interface MapPickerInnerProps {
   title?: string;
 }
 
-// UniUyo Coordinates
+// UniUyo Coordinates as fallback
 const UNIUYO_CENTER = { lat: 5.038, lng: 7.915 };
 
+function LocationMarker({ position, setPosition }: { position: any, setPosition: any }) {
+  useMapEvents({
+    click(e) {
+      setPosition({ lat: e.latlng.lat, lng: e.latlng.lng });
+    },
+  });
+
+  return position === null ? null : (
+    <Marker position={position} icon={brandIcon} />
+  );
+}
+
+function MapUpdater({ center }: { center: any }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center);
+  }, [center, map]);
+  return null;
+}
+
 export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCancel, title = "Select Location" }: MapPickerInnerProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const leafletMapRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
-  
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(
     initialLat && initialLng ? { lat: initialLat, lng: initialLng } : null
   );
-  const [address, setAddress] = useState('Selected on Map');
+  
+  const [address, setAddress] = useState(position ? 'Loading address...' : '');
   const [isGeocoding, setIsGeocoding] = useState(false);
-
-  // Initialize Map
-  useEffect(() => {
-    if (!mapRef.current) return;
-    if (leafletMapRef.current) return; // already initialized
-
-    const center = position || UNIUYO_CENTER;
-    
-    // Create map
-    const map = L.map(mapRef.current, {
-      zoomControl: false
-    }).setView([center.lat, center.lng], 15);
-
-    // Add TileLayer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
-
-    // Add Marker if position exists
-    if (position) {
-      markerRef.current = L.marker([position.lat, position.lng], { icon: brandIcon }).addTo(map);
-    }
-
-    // Handle Map Clicks
-    map.on('click', (e: L.LeafletMouseEvent) => {
-      const { lat, lng } = e.latlng;
-      setPosition({ lat, lng });
-      
-      if (!markerRef.current) {
-        markerRef.current = L.marker([lat, lng], { icon: brandIcon }).addTo(map);
-      } else {
-        markerRef.current.setLatLng([lat, lng]);
-      }
-    });
-
-    leafletMapRef.current = map;
-
-    return () => {
-      map.remove();
-      leafletMapRef.current = null;
-    };
-  }, []); // Run once on mount
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Reverse geocode when position changes
   useEffect(() => {
     if (!position) return;
     
+    let isMounted = true;
     const geocode = async () => {
       setIsGeocoding(true);
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.lat}&lon=${position.lng}&zoom=18&addressdetails=1`);
+        // Appended email to avoid 403 Access Denied from Nominatim
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.lat}&lon=${position.lng}&zoom=18&addressdetails=1&email=hello@errandrun.com`);
         const data = await res.json();
-        if (data && data.display_name) {
-          const shortName = data.display_name.split(',').slice(0, 2).join(',');
+        if (data && data.display_name && isMounted) {
+          const shortName = data.display_name.split(',').slice(0, 3).join(',');
           setAddress(shortName);
+        } else if (isMounted) {
+          setAddress('Selected Location');
         }
       } catch (error) {
         console.error("Geocoding failed", error);
+        if (isMounted) setAddress('Selected Location (Reverse Geocode Failed)');
       } finally {
-        setIsGeocoding(false);
+        if (isMounted) setIsGeocoding(false);
       }
     };
 
     const timer = setTimeout(() => {
       geocode();
-    }, 1000); // Debounce API calls
+    }, 800); // Debounce API calls
 
-    return () => clearTimeout(timer);
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [position]);
+
+  // Handle Search Forward Geocoding
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&email=hello@errandrun.com`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        setPosition({ lat, lng });
+        setAddress(data[0].display_name.split(',').slice(0, 3).join(','));
+      } else {
+        alert('Location not found. Try a different search term.');
+      }
+    } catch (err) {
+      console.error('Search failed', err);
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  const center = position || UNIUYO_CENTER;
 
   return (
     <div className="fixed inset-0 z-[100] bg-dark-base/90 flex flex-col backdrop-blur-md">
@@ -130,14 +139,48 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
         </button>
       </div>
 
-      {/* Map Container */}
-      <div className="flex-1 relative w-full bg-dark-secondary">
-        <div ref={mapRef} className="w-full h-full" />
+      {/* Search Bar */}
+      <div className="bg-dark-base p-4 border-b border-white/10 shrink-0 flex gap-2">
+        <div className="relative flex-1">
+           <input 
+             type="text" 
+             placeholder="Search for a campus landmark..." 
+             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/40 focus:outline-none focus:border-brand-blue"
+             value={searchQuery}
+             onChange={(e) => setSearchQuery(e.target.value)}
+             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+           />
+        </div>
+        <button 
+          onClick={handleSearch} 
+          disabled={isGeocoding}
+          className="bg-brand-blue/20 text-brand-blue px-4 py-2 rounded-xl border border-brand-blue/30 hover:bg-brand-blue/30 flex items-center gap-2 transition-all"
+        >
+          <Search className="w-4 h-4" />
+          Search
+        </button>
+      </div>
 
-        {/* Center Target Reticle overlay instruction */}
+      {/* Map Container */}
+      <div className="flex-1 relative w-full bg-dark-secondary overflow-hidden">
+        <MapContainer 
+          center={center} 
+          zoom={15} 
+          zoomControl={false}
+          style={{ height: '100%', width: '100%' }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          />
+          <LocationMarker position={position} setPosition={setPosition} />
+          {position && <MapUpdater center={position} />}
+        </MapContainer>
+
+        {/* Center Target overlay instruction */}
         {!position && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-[400]">
-            <div className="bg-dark-base/80 text-white px-4 py-2 rounded-full font-bold text-sm backdrop-blur-md shadow-xl border border-white/20">
+            <div className="bg-brand-blue/90 text-white px-5 py-2.5 rounded-full font-bold text-sm backdrop-blur-md shadow-xl border border-brand-blue/20 animate-pulse">
               Tap anywhere on the map to drop a pin
             </div>
           </div>
@@ -147,14 +190,19 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
       {/* Footer / Confirm */}
       <div className="bg-dark-base p-6 border-t border-white/10 shrink-0 flex flex-col gap-4 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-full bg-brand-blue/10 flex items-center justify-center shrink-0 mt-1">
             <MapPin className="w-5 h-5 text-brand-blue" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-xs text-brand-blue font-bold uppercase tracking-wider mb-1">Selected Location</p>
-            <p className="text-white font-medium text-sm">
-              {isGeocoding ? 'Finding address...' : address}
-            </p>
+            {/* Allow manual edit of the address if reverse geocoding fails or is inaccurate */}
+            <input 
+               type="text" 
+               className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-brand-blue mb-1"
+               value={isGeocoding ? 'Finding address...' : address}
+               onChange={(e) => setAddress(e.target.value)}
+               disabled={isGeocoding}
+            />
             {position && (
               <p className="text-white/40 text-[10px] font-mono mt-1">
                 {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
@@ -170,8 +218,8 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
               onConfirm(position.lat, position.lng, address);
             }
           }}
-          disabled={!position || isGeocoding}
-          className="btn-primary w-full flex items-center justify-center gap-2 bg-brand-green hover:bg-brand-green/80 disabled:opacity-50"
+          disabled={!position || isGeocoding || !address}
+          className="btn-primary w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 border-emerald-500 disabled:opacity-50 py-3.5 text-base"
         >
           <Check className="w-5 h-5" /> Confirm Location
         </button>

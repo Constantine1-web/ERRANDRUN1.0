@@ -113,7 +113,60 @@ export default function RunnerTrackPage() {
   };
 
   const handleComplete = async () => {
-    await submitTracking('Runner has completed delivery');
+    const pin = window.prompt("Enter the 4-digit Delivery PIN provided by the customer:");
+    if (!pin || pin.trim().length !== 4) {
+      toast.error("Valid 4-digit PIN required to complete delivery");
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      // Verify PIN against backend before submitting tracking
+      const response = await fetch('/api/tracking/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ errandId, runnerId: (await supabase.auth.getUser()).data.user?.id, pin })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      
+      await submitTracking('Runner has completed delivery');
+      toast.success("PIN verified. Errand completed successfully!");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to verify PIN");
+      setSubmitting(false);
+    }
+  };
+
+  const handleDispute = async () => {
+    const reason = window.prompt("Customer refused PIN? Enter a reason to initiate a dispute (Requires GPS lock):");
+    if (!reason) return;
+    if (!lat || !lng) {
+      toast.error("Please Auto-Detect GPS before initiating a dispute to prove your location.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/tracking/dispute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          errandId, 
+          runnerId: (await supabase.auth.getUser()).data.user?.id, 
+          reason,
+          lat: Number(lat),
+          lng: Number(lng)
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+      
+      await submitTracking(`Dispute initiated: ${reason}`);
+      toast.success("Dispute filed successfully.");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to file dispute");
+      setSubmitting(false);
+    }
   };
 
   const [detectingGps, setDetectingGps] = useState(false);
@@ -248,14 +301,24 @@ export default function RunnerTrackPage() {
                 >
                   {submitting ? 'Broadcasting...' : 'Broadcast Tracking Update'}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleComplete}
-                  disabled={submitting}
-                  className="btn-secondary w-full sm:flex-1 py-3 text-xs"
-                >
-                  {submitting ? 'Updating…' : 'Arrived / Completed'}
-                </button>
+                <div className="flex flex-col w-full sm:flex-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleComplete}
+                    disabled={submitting}
+                    className="btn-secondary w-full py-3 text-xs bg-brand-green/20 text-brand-green border-brand-green/30 hover:bg-brand-green/30"
+                  >
+                    {submitting ? 'Verifying…' : 'Arrived / Complete'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDispute}
+                    disabled={submitting}
+                    className="btn-secondary w-full py-2 text-[10px] bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"
+                  >
+                    ⚠️ Customer Refused PIN
+                  </button>
+                </div>
               </div>
             </div>
 

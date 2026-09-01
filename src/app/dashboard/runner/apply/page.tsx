@@ -16,6 +16,7 @@ export default function RunnerApplicationPage() {
   const [idPhoto, setIdPhoto] = useState<File | null>(null);
   const [selfiePhoto, setSelfiePhoto] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   // Fallback refs if user prefers standard file picker
   const idInputRef = useRef<HTMLInputElement>(null);
@@ -203,6 +204,20 @@ export default function RunnerApplicationPage() {
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             <h3 className="text-xl font-bold text-white mb-6">3. Submit Application</h3>
             
+            <div className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-6">
+              <input 
+                type="checkbox" 
+                id="agree_rules" 
+                required 
+                className="mt-1 bg-dark-base border-rose-500/50 rounded"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+              />
+              <label htmlFor="agree_rules" className="text-xs text-rose-200 leading-relaxed">
+                <strong>CRITICAL ACKNOWLEDGEMENT:</strong> I understand that stealing, intentionally abandoning packages, or defrauding students will result in an immediate report to the University Disciplinary Committee, potentially leading to expulsion and permanent platform ban.
+              </label>
+            </div>
+
             <div className="space-y-4 mb-8">
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
                 <div className="flex items-center gap-3">
@@ -231,8 +246,8 @@ export default function RunnerApplicationPage() {
               <button onClick={() => setStep(2)} className="btn-secondary flex-1">Back</button>
               <button 
                 onClick={handleSubmitApplication} 
-                className="btn-primary flex-1 flex justify-center items-center gap-2 bg-brand-green hover:bg-brand-green/80"
-                disabled={isLoading}
+                className="btn-primary flex-1 flex justify-center items-center gap-2 bg-brand-green hover:bg-brand-green/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !agreedToTerms}
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Application'}
               </button>

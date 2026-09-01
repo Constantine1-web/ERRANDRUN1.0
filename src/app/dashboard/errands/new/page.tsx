@@ -58,6 +58,8 @@ export default function NewErrandPage() {
         return;
       }
 
+      const deliveryPin = Math.floor(1000 + Math.random() * 9000).toString();
+
       const payload: any = {
         requester_id: user.id,
         category,
@@ -77,6 +79,7 @@ export default function NewErrandPage() {
         runner_amount: pricing.runnerAmount,
         priority,
         status: 'payment_pending',
+        delivery_pin: deliveryPin,
         min_runner_rating: (priority === 'high' || priority === 'urgent') ? 4.5 : 0,
       };
 

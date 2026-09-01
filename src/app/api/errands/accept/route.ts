@@ -14,6 +14,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'errandId and runnerId required' }, { status: 400 });
     }
 
+    // Check active errands limit (Max 2)
+    const { count: activeCount, error: countError } = await supabase
+      .from('errands')
+      .select('id', { count: 'exact', head: true })
+      .eq('runner_id', runnerId)
+      .in('status', ['assigned', 'in_progress']);
+
+    if (countError) {
+      console.error('Failed to check active errands count:', countError);
+      return NextResponse.json({ success: false, error: 'Failed to verify runner limits' }, { status: 500 });
+    }
+
+    if (activeCount && activeCount >= 2) {
+      return NextResponse.json({ success: false, error: 'You have reached the maximum limit of 2 active errands. Please complete an active task first.' }, { status: 403 });
+    }
+
     // Fetch errand to ensure it's unassigned and get fee
     const { data: errand, error: fetchError } = await supabase
       .from('errands')

@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { ShieldCheck, MapPin, FastForward, CheckCircle2, ArrowRight } from 'lucide-react';
+import { RunnerLogo } from '@/components/RunnerLogo';
 
 export default function RequestErrandPage() {
   return (
@@ -12,8 +13,11 @@ export default function RequestErrandPage() {
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-dark-base/80 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="text-2xl font-black text-gradient">
-            ⚡ ErrandRun
+          <Link href="/" className="flex items-center gap-3">
+            <RunnerLogo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]" animate={true} />
+            <span className="text-2xl font-black text-white tracking-tight">
+              Errand<span className="text-primary-400">Run</span>
+            </span>
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm font-semibold text-white/70 hover:text-white hidden sm:block">

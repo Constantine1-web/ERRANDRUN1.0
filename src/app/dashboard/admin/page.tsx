@@ -1043,6 +1043,53 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+
+          <div className="glass-card rounded-3xl p-6 border border-white/10 mt-6 space-y-4 max-w-xl">
+             <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Runner Capacity Limits</h3>
+                  <p className="text-xs text-white/60">Prevent oversaturation by limiting runners</p>
+                </div>
+             </div>
+             <form className="space-y-4" onSubmit={async (e) => {
+               e.preventDefault();
+               const form = e.target as HTMLFormElement;
+               const maxRunners = Number((form.elements.namedItem('maxRunners') as HTMLInputElement).value);
+               const dynamicEnabled = (form.elements.namedItem('dynamicEnabled') as HTMLInputElement).checked;
+               const usersPerRunner = Number((form.elements.namedItem('usersPerRunner') as HTMLInputElement).value);
+               
+               const loadingToast = toast.loading('Saving settings...');
+               try {
+                 const res = await fetch('/api/admin/settings', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ max_active_runners: maxRunners, dynamic_ratio_enabled: dynamicEnabled, users_per_runner: usersPerRunner })
+                 });
+                 if (!res.ok) throw new Error('Failed to update settings');
+                 toast.success('Settings updated', { id: loadingToast });
+               } catch (err: any) {
+                 toast.error(err.message, { id: loadingToast });
+               }
+             }}>
+               <div>
+                  <label className="text-xs font-medium text-white/80 block mb-1">Max Absolute Runners (Hard Limit)</label>
+                  <input name="maxRunners" type="number" defaultValue="50" className="input text-xs w-full max-w-xs" />
+               </div>
+               <div className="flex items-center gap-2">
+                  <input type="checkbox" name="dynamicEnabled" id="dynamicEnabled" defaultChecked className="rounded border-white/20 bg-dark-base text-primary-500" />
+                  <label htmlFor="dynamicEnabled" className="text-xs font-medium text-white/80">Enable Dynamic Ratio (Based on standard users count)</label>
+               </div>
+               <div>
+                  <label className="text-xs font-medium text-white/80 block mb-1">Ratio: 1 Runner per X Users</label>
+                  <input name="usersPerRunner" type="number" defaultValue="5" className="input text-xs w-full max-w-xs" />
+                  <p className="text-[10px] text-white/40 mt-1">If dynamic is enabled, we cap runners at (total users / ratio), or the absolute max, whichever is lower.</p>
+               </div>
+               <button type="submit" className="btn-primary py-2 px-6 text-xs mt-2">Save Limits</button>
+             </form>
+          </div>
         </div>
       )}
 

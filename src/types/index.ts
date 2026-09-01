@@ -69,6 +69,9 @@ export interface Errand {
   runner_amount: number;
   status: ErrandStatus;
   priority: ErrandPriority;
+  delivery_pin?: string;
+  dropoff_photo_url?: string;
+  pickup_photo_url?: string;
   estimated_completion_time?: string;
   actual_completion_time?: string;
   notes?: string;

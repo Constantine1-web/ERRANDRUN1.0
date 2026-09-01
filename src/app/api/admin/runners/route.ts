@@ -76,6 +76,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid action. Must be approve or reject' }, { status: 400 });
     }
 
+    if (action === 'approve') {
+      // Fetch capacity dynamically using the new route logic
+      // 1. Get current settings
+      const { data: settingData, error: settingError } = await supabase
+        .from('platform_settings')
+        .select('setting_value')
+        .eq('setting_key', 'runner_limit')
+        .single();
+
+      let settings = { max_active_runners: 50, dynamic_ratio_enabled: true, users_per_runner: 5 };
+      if (!settingError && settingData) {
+        settings = { ...settings, ...settingData.setting_value };
+      }
+
+      // 2. Count active verified runners
+      const { count: runnersCount, error: countError } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'runner')
+        .eq('verification_status', 'verified');
+
+      if (countError) throw countError;
+      
+      let currentLimit = settings.max_active_runners;
+      
+      // 3. If dynamic ratio is enabled, calculate limit
+      if (settings.dynamic_ratio_enabled) {
+        const { count: usersCount, error: usersCountError } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .eq('role', 'user');
+          
+        if (!usersCountError && usersCount !== null) {
+          const dynamicLimit = Math.max(10, Math.floor(usersCount / settings.users_per_runner));
+          currentLimit = Math.min(settings.max_active_runners, dynamicLimit);
+        }
+      }
+
+      if ((runnersCount || 0) >= currentLimit) {
+        return NextResponse.json(
+          { error: `Cannot approve runner: Platform has reached its current maximum runner capacity of ${currentLimit}.` },
+          { status: 403 }
+        );
+      }
+    }
+
     const newAppStatus = action === 'approve' ? 'approved' : 'denied';
     const newProfileStatus = action === 'approve' ? 'verified' : 'rejected';
     const newProfileRole = action === 'approve' ? 'runner' : 'user';
