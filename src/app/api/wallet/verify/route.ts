@@ -15,10 +15,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Verify with Paystack API
-    const response = await fetch(\https://api.paystack.co/transaction/verify/\\, {
+    const response = await fetch('https://api.paystack.co/transaction/verify/' + reference, {
       method: 'GET',
       headers: {
-        Authorization: \Bearer \\
+        Authorization: 'Bearer ' + paystackSecretKey
       }
     });
 

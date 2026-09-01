@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         type: 'payout',
         status: 'success',
         reference: errandId,
-        description: \Payout for completing errand #\\
+        description: 'Payout for completing errand #' + errandId
       },
       {
         user_id: '00000000-0000-0000-0000-000000000000', // Platform/Admin
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
         type: 'platform_fee',
         status: 'success',
         reference: errandId,
-        description: \Platform fee for errand #\\
+        description: 'Platform fee for errand #' + errandId
       }
     ]);
 

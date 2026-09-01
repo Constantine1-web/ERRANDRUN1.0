@@ -93,7 +93,7 @@ export default function NewErrandPage() {
         }
 
         toast.success('Errand created and fee secured in escrow!');
-        router.push(/dashboard/user/errand/ + data.errandId);
+        router.push('/dashboard/user/errand/' + data.errandId);
         return;
     } catch (err: any) {
       console.warn(err);

@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       type: 'escrow_hold',
       status: 'success',
       reference: errand.id,
-      description: \Escrow hold for errand #\\
+      description: 'Escrow hold for errand #' + errand.id
     });
 
     return NextResponse.json({ success: true, errandId: errand.id });
