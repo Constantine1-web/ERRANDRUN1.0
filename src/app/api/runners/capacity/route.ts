@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient'; // Service role client
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     // 1. Get current settings
     const { data: settingData, error: settingError } = await supabase

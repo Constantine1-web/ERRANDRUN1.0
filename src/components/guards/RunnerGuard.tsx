@@ -16,7 +16,7 @@ export function RunnerGuard({ children }: RunnerGuardProps) {
 
   useEffect(() => {
     if (!user) {
-      router.replace('/login');
+      // Still loading auth state from layout.tsx
       return;
     }
 

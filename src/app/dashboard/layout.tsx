@@ -31,12 +31,7 @@ export default function DashboardLayout({
 
   useSessionTracker();
 
-  // Enforce session
-  useEffect(() => {
-    if (!user) {
-      router.push('/login');
-    }
-  }, [user, router]);
+  
 
   // Check verification expiration (Yearly Renewal)
   useEffect(() => {
@@ -324,3 +319,4 @@ export default function DashboardLayout({
     </div>
   );
 }
+
