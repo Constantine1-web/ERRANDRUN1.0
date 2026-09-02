@@ -31,8 +31,6 @@ export default function DashboardLayout({
 
   useSessionTracker();
 
-  
-
   // Check verification expiration (Yearly Renewal)
   useEffect(() => {
     if (user && user.verificationStatus === 'verified' && user.verificationExpiresAt) {
@@ -126,16 +124,16 @@ export default function DashboardLayout({
   };
 
   const navItems = [
-    { icon: Home, label: 'Home', href: '/dashboard/user' },
-    { icon: Zap, label: 'Errands', href: '/dashboard/errands' },
+    { icon: Home, label: 'Overview', href: '/dashboard/user' },
+    { icon: Zap, label: 'My Errands', href: '/dashboard/errands' },
     ...(user?.role === 'runner' || user?.role === 'admin'
-      ? [{ icon: Bike, label: 'Runner', href: '/dashboard/runner' }]
+      ? [{ icon: Bike, label: 'Run Errands', href: '/dashboard/runner' }]
       : []),
     { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet' },
+    { icon: User, label: 'Profile', href: '/dashboard/profile' },
     ...(user?.role === 'admin'
       ? [{ icon: ShieldCheck, label: 'Admin', href: '/dashboard/admin' }]
       : []),
-    { icon: User, label: 'Profile', href: '/dashboard/profile' },
   ];
 
   const formatBalance = (val: number | null) => {
@@ -179,11 +177,16 @@ export default function DashboardLayout({
     );
   };
 
+  // Group nav items for desktop sidebar
+  const customerNav = navItems.filter(item => ['Overview', 'My Errands', 'Wallet', 'Profile'].includes(item.label));
+  const runnerNav = navItems.filter(item => item.label === 'Run Errands');
+  const adminNav = navItems.filter(item => item.label === 'Admin');
+
   return (
-    <div className="min-h-screen bg-dark-base text-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-[#121824] text-white flex flex-col md:flex-row">
       
       {/* ═══ MOBILE TOP HEADER ═══ */}
-      <header className="md:hidden sticky top-0 z-40 bg-dark-base/80 backdrop-blur-xl pt-2 pb-2 px-4 border-b border-white/10">
+      <header className="md:hidden sticky top-0 z-40 bg-[#121824]/80 backdrop-blur-xl pt-2 pb-2 px-4 border-b border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <RunnerLogo className="w-8 h-8 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]" animate={false} />
@@ -205,7 +208,7 @@ export default function DashboardLayout({
       </header>
 
       {/* ═══ DESKTOP SIDEBAR ═══ */}
-      <aside className="hidden md:flex md:flex-col md:w-64 md:h-screen md:sticky md:top-0 md:border-r md:border-white/10 md:bg-dark-base/80 md:backdrop-blur-xl z-20 shrink-0">
+      <aside className="hidden md:flex md:flex-col md:w-64 md:h-screen md:sticky md:top-0 md:border-r md:border-white/10 bg-[#121824] z-20 shrink-0">
         <div className="h-20 flex items-center px-6 border-b border-white/10 shrink-0 gap-3">
           <RunnerLogo className="w-10 h-10 drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]" animate={false} />
           <h1 className="text-xl font-black text-white tracking-tight">
@@ -237,25 +240,79 @@ export default function DashboardLayout({
         )}
 
         {/* Desktop Nav */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-none">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                  isActive
-                    ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium text-sm">{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-none">
+          {/* Customer Modes */}
+          <div className="space-y-1">
+            <p className="px-4 text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">Menu</p>
+            {customerNav.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                    isActive
+                      ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium text-sm">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Runner Mode */}
+          {runnerNav.length > 0 && (
+            <div className="space-y-1 pt-4 border-t border-white/5">
+              <p className="px-4 text-[10px] font-bold text-emerald-400/50 uppercase tracking-wider mb-2">Runner Mode</p>
+              {runnerNav.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                      isActive
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'text-emerald-400/70 hover:text-emerald-300 hover:bg-emerald-500/5'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <span className="font-medium text-sm">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Admin Mode */}
+          {adminNav.length > 0 && (
+            <div className="space-y-1 pt-4 border-t border-white/5">
+              <p className="px-4 text-[10px] font-bold text-purple-400/50 uppercase tracking-wider mb-2">Admin Mode</p>
+              {adminNav.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                      isActive
+                        ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                        : 'text-purple-400/70 hover:text-purple-300 hover:bg-purple-500/5'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <span className="font-medium text-sm">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </nav>
 
         {/* Desktop Footer */}
@@ -271,7 +328,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* ═══ MAIN CONTENT ═══ */}
-      <main className="flex-1 w-full pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-0 flex flex-col">
+      <main className="flex-1 w-full pb-[calc(100px+env(safe-area-inset-bottom))] md:pb-0 flex flex-col bg-[#121824]">
         {user && user.verificationStatus !== 'verified' && (
           <div className="bg-brand-yellow/10 border-b border-brand-yellow/20 px-4 py-3 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
@@ -292,7 +349,7 @@ export default function DashboardLayout({
 
       {/* ═══ FLOATING PILL BOTTOM NAVIGATION BAR (MOBILE) ═══ */}
       <div className="md:hidden fixed bottom-4 left-4 right-4 z-50 pb-[env(safe-area-inset-bottom)] pointer-events-none">
-        <nav className="flex items-center justify-between px-2 h-[72px] bg-[#121826]/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl shadow-black/50 pointer-events-auto">
+        <nav className="flex items-center justify-between px-2 h-[72px] bg-[#121824]/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl shadow-black/50 pointer-events-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname.startsWith(item.href);
@@ -300,14 +357,14 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center w-[60px] h-[60px] gap-1 transition-all duration-300 touch-manipulation rounded-full ${
+                className={`flex flex-col items-center justify-center min-w-[50px] h-[60px] gap-1 transition-all duration-300 touch-manipulation rounded-full flex-1 ${
                   isActive 
                   ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25 -translate-y-2' 
                   : 'text-white/50 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <Icon className={`w-[22px] h-[22px] transition-transform ${isActive ? 'scale-110' : ''}`} />
-                <span className={`text-[9px] font-bold leading-none ${isActive ? 'text-white' : 'text-white/50'}`}>
+                <Icon className={`w-[20px] h-[20px] transition-transform ${isActive ? 'scale-110' : ''}`} />
+                <span className={`text-[9px] font-bold leading-none ${isActive ? 'text-white' : 'text-white/50'} max-w-[50px] text-center whitespace-nowrap overflow-hidden text-ellipsis px-1`}>
                   {item.label}
                 </span>
               </Link>
@@ -319,4 +376,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
