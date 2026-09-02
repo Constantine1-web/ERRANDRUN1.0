@@ -8,7 +8,7 @@ import {
   XCircle,
   Clock,
   UserCheck,
-  TrendingUp,
+  TrendingUp, Wallet,
   PackageCheck,
   FileText,
   ExternalLink,
@@ -22,6 +22,7 @@ import {
   Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabaseClient';
 import { formatCurrency } from '@/utils/pricing';
 
 interface RunnerApp {
@@ -104,7 +105,7 @@ interface PlatformStats {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'applications' | 'errands' | 'users' | 'disputes' | 'stats'>('applications');
+  const [activeTab, setActiveTab] = useState<'applications' | 'errands' | 'users' | 'disputes' | 'stats' | 'payouts'>('applications');
   
   // Runner Apps State
   const [appStatusFilter, setAppStatusFilter] = useState<'pending' | 'approved' | 'denied' | 'all'>('pending');
@@ -136,12 +137,33 @@ export default function AdminDashboard() {
 
   // Stats State
   const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [loadingPayouts, setLoadingPayouts] = useState(false);
+  const [processingPayoutId, setProcessingPayoutId] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
 
   // 1. Fetch Stats
+    const fetchPayouts = useCallback(async () => {
+    setLoadingPayouts(true);
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*, profiles(full_name, bank_name, account_number, account_name)')
+        .eq('type', 'withdrawal')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setPayouts(data || []);
+    } catch (err: any) {
+      toast.error('Failed to load pending payouts');
+    } finally {
+      setLoadingPayouts(false);
+    }
+  }, []);
+
   const fetchStats = useCallback(async () => {
     try {
       setLoadingStats(true);
@@ -233,7 +255,8 @@ export default function AdminDashboard() {
     if (activeTab === 'errands') fetchErrands();
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'disputes') fetchDisputes();
-  }, [activeTab, fetchApplications, fetchErrands, fetchUsers, fetchDisputes]);
+    if (activeTab === 'payouts') fetchPayouts();
+  }, [activeTab, fetchApplications, fetchErrands, fetchUsers, fetchDisputes, fetchPayouts]);
 
   // Handle Review Runner
   const handleReview = async (app: RunnerApp, action: 'approve' | 'reject') => {
@@ -312,7 +335,27 @@ export default function AdminDashboard() {
   };
 
   // Handle Dispute Resolution
-    const handleResolveDispute = async (d: DisputeRecord) => {
+    const handleProcessPayout = async (transactionId: string) => {
+    setProcessingPayoutId(transactionId);
+    try {
+      const res = await fetch('/api/admin/payouts/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      
+      toast.success('Payout processed successfully!');
+      fetchPayouts(); // Refresh list
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to process payout');
+    } finally {
+      setProcessingPayoutId(null);
+    }
+  };
+
+  const handleResolveDispute = async (d: DisputeRecord) => {
     try {
       setProcessingId(d.id);
       const notes = disputeNotes[d.id] || '';
@@ -407,6 +450,7 @@ export default function AdminDashboard() {
               if (activeTab === 'errands') fetchErrands();
               if (activeTab === 'users') fetchUsers();
               if (activeTab === 'disputes') fetchDisputes();
+    if (activeTab === 'payouts') fetchPayouts();
               toast.success('Data refreshed');
             }}
             className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white/80 hover:text-white flex items-center gap-2 transition-all"
@@ -479,6 +523,7 @@ export default function AdminDashboard() {
           { id: 'users', label: 'User Directory', icon: Users },
           { id: 'disputes', label: 'Disputes & Claims', icon: AlertTriangle },
           { id: 'stats', label: 'Financial Analytics', icon: TrendingUp },
+          { id: 'payouts', label: 'Runner Payouts', icon: Wallet },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1028,7 +1073,47 @@ export default function AdminDashboard() {
       )}
 
       {/* TAB 5: FINANCIAL & PLATFORM ANALYTICS */}
-      {activeTab === 'stats' && stats && (
+              {/* TAB 6: PAYOUTS */}
+        {activeTab === 'payouts' && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-white">Pending Runner Withdrawals</h2>
+            {loadingPayouts ? (
+              <div className="animate-pulse h-32 bg-white/5 rounded-2xl" />
+            ) : payouts.length === 0 ? (
+              <div className="text-center py-12 text-white/50">
+                No pending withdrawals.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {payouts.map((tx) => (
+                  <div key={tx.id} className="glass-card rounded-2xl p-6 border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                    <div>
+                      <h3 className="font-bold text-lg text-white mb-1">{tx.profiles?.full_name}</h3>
+                      <div className="text-sm text-white/60 space-y-1">
+                        <p>Requested: {new Date(tx.created_at).toLocaleString()}</p>
+                        <div className="bg-dark-bg p-3 rounded-lg border border-white/5 mt-3">
+                          <p className="font-mono text-emerald-400 font-bold mb-1">₦{tx.amount.toLocaleString()}</p>
+                          <p>Bank: <span className="text-white">{tx.profiles?.bank_name || 'NOT PROVIDED'}</span></p>
+                          <p>Account: <span className="text-white">{tx.profiles?.account_number || 'NOT PROVIDED'}</span></p>
+                          <p>Name: <span className="text-white">{tx.profiles?.account_name || 'NOT PROVIDED'}</span></p>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleProcessPayout(tx.id)}
+                      disabled={processingPayoutId === tx.id || !tx.profiles?.bank_name}
+                      className="btn-primary whitespace-nowrap"
+                    >
+                      {processingPayoutId === tx.id ? 'Processing...' : 'Process via Paystack API'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'stats' && stats && (
         <div className="space-y-6">
           <div className="grid md:grid-cols-3 gap-6">
             <div className="glass-card rounded-3xl p-6 border border-white/10 space-y-4">

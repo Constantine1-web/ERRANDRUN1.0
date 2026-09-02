@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Zap, MapPin, DollarSign, Trophy, ArrowUpRight } from 'lucide-react';
+import { Zap, MapPin, DollarSign, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
@@ -31,16 +31,16 @@ export default function RunnerDashboard() {
   const [historyErrands, setHistoryErrands] = useState<ErrandTask[]>([]);
   const [runnerStatus, setRunnerStatus] = useState<'online' | 'offline'>('offline');
   const [runnerLevel, setRunnerLevel] = useState<number>(1);
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+
+
   const [viewMode, setViewMode] = useState<'available' | 'history'>('available');
   const [loading, setLoading] = useState(true);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
+  const [_isWithdrawing, setIsWithdrawing] = useState(false);
+  const [_withdrawAmount, setWithdrawAmount] = useState<number>(0);
 
   useEffect(() => {
     const loadDashboard = async () => {
