@@ -5,6 +5,8 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-lea
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, Check, Search } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 
 // Fix for default marker icons
 let brandIcon: any;
@@ -53,7 +55,7 @@ function LocationMarker({ position, setPosition }: { position: any, setPosition:
 function MapUpdater({ center }: { center: any }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center);
+    map.flyTo(center, 15);
   }, [center, map]);
   return null;
 }
@@ -61,6 +63,10 @@ function MapUpdater({ center }: { center: any }) {
 export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCancel, title = "Select Location" }: MapPickerInnerProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(
     initialLat && initialLng ? { lat: initialLat, lng: initialLng } : null
+  );
+  
+  const [center, setCenter] = useState<{ lat: number; lng: number }>(
+    position || UNIUYO_CENTER
   );
   
   const [address, setAddress] = useState(position ? 'Loading address...' : '');
@@ -113,6 +119,7 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
         const lat = parseFloat(data[0].lat);
         const lng = parseFloat(data[0].lon);
         setPosition({ lat, lng });
+        setCenter({ lat, lng });
         setAddress(data[0].display_name.split(',').slice(0, 3).join(','));
       } else {
         alert('Location not found. Try a different search term.');
@@ -123,8 +130,6 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
       setIsGeocoding(false);
     }
   };
-
-  const center = position || UNIUYO_CENTER;
 
   return (
     <div className="fixed inset-0 z-[100] bg-dark-base/90 flex flex-col backdrop-blur-md">
@@ -140,25 +145,25 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
       </div>
 
       {/* Search Bar */}
-      <div className="bg-dark-base p-4 border-b border-white/10 shrink-0 flex gap-2">
-        <div className="relative flex-1">
-           <input 
-             type="text" 
-             placeholder="Search for a campus landmark..." 
-             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white placeholder-white/40 focus:outline-none focus:border-brand-blue"
-             value={searchQuery}
-             onChange={(e) => setSearchQuery(e.target.value)}
-             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-           />
+      <div className="bg-dark-base p-4 border-b border-white/10 shrink-0 flex gap-2 items-center">
+        <div className="flex-1">
+          <Input 
+            type="text" 
+            placeholder="Search for a campus landmark..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          />
         </div>
-        <button 
+        <Button 
           onClick={handleSearch} 
           disabled={isGeocoding}
-          className="bg-brand-blue/20 text-brand-blue px-4 py-2 rounded-xl border border-brand-blue/30 hover:bg-brand-blue/30 flex items-center gap-2 transition-all"
+          variant="secondary"
+          className="flex items-center gap-2"
         >
           <Search className="w-4 h-4" />
           Search
-        </button>
+        </Button>
       </div>
 
       {/* Map Container */}
@@ -174,7 +179,7 @@ export default function MapPickerInner({ initialLat, initialLng, onConfirm, onCa
             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
           />
           <LocationMarker position={position} setPosition={setPosition} />
-          {position && <MapUpdater center={position} />}
+          {center && <MapUpdater center={center} />}
         </MapContainer>
 
         {/* Center Target overlay instruction */}
