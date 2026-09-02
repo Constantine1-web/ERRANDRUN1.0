@@ -1,13 +1,17 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Zap, MapPin, DollarSign, Trophy } from 'lucide-react';
+import { Zap, MapPin, DollarSign, Trophy, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { RunnerGuard } from '@/components/guards/RunnerGuard';
 import { formatCurrency } from '@/utils/pricing';
 import toast from 'react-hot-toast';
+
+import { Button } from '@/components/ui/Button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 
 interface ErrandTask {
   id: string;
@@ -32,7 +36,6 @@ export default function RunnerDashboard() {
   const [runnerStatus, setRunnerStatus] = useState<'online' | 'offline'>('offline');
   const [runnerLevel, setRunnerLevel] = useState<number>(1);
 
-
   const [viewMode, setViewMode] = useState<'available' | 'history'>('available');
   const [loading, setLoading] = useState(true);
   const [toggleLoading, setToggleLoading] = useState(false);
@@ -40,7 +43,7 @@ export default function RunnerDashboard() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [_isWithdrawing, setIsWithdrawing] = useState(false);
-  const [_withdrawAmount, setWithdrawAmount] = useState<number>(0);
+  const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -79,7 +82,7 @@ export default function RunnerDashboard() {
         .eq('status', 'completed')
         .order('updated_at', { ascending: false });
 
-            const walletPromise = supabase.from('wallets').select('balance').eq('user_id', user.id).single();
+      const walletPromise = supabase.from('wallets').select('balance').eq('user_id', user.id).single();
 
       const [profileResult, availableResult, activeResult, historyResult, walletResult] = await Promise.all([
         profilePromise,
@@ -101,15 +104,9 @@ export default function RunnerDashboard() {
         }
       }
 
-      if (availableResult.error) {
-        console.error('Failed to fetch available errands:', availableResult.error);
-      }
-      if (activeResult.error) {
-        console.error('Failed to fetch active errands:', activeResult.error);
-      }
-      if (historyResult.error) {
-        console.error('Failed to fetch history errands:', historyResult.error);
-      }
+      if (availableResult.error) console.error('Failed to fetch available errands:', availableResult.error);
+      if (activeResult.error) console.error('Failed to fetch active errands:', activeResult.error);
+      if (historyResult.error) console.error('Failed to fetch history errands:', historyResult.error);
 
       setAvailableErrands((availableResult.data as ErrandTask[]) || []);
       setActiveErrands((activeResult.data as ErrandTask[]) || []);
@@ -212,259 +209,216 @@ export default function RunnerDashboard() {
   return (
     <RunnerGuard>
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid gap-6 lg:grid-cols-[1.8fr_1fr] mb-8">
-          <div className="glass-card rounded-3xl border border-white/10 bg-slate-950/70 p-8 shadow-2xl shadow-emerald-500/5 backdrop-blur-md">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/80">Runner command center</p>
-                <h1 className="mt-3 heading-page font-semibold text-white">Duty state & performance</h1>
-                <p className="mt-3 max-w-2xl text-white/60">Toggle your availability, review active assignments, and monitor your on-platform earnings split in one place.</p>
-              </div>
-              <button
-                type="button"
-                onClick={toggleDuty}
-                disabled={toggleLoading}
-                className={`inline-flex items-center justify-center rounded-3xl px-6 py-3 min-h-[44px] text-sm font-semibold transition ${runnerStatus === 'online' ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/20 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]' : 'bg-slate-800/80 text-slate-200 border border-white/10'}`}
-              >
-                <span className={`mr-2 h-2.5 w-2.5 rounded-full ${runnerStatus === 'online' ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                {toggleLoading ? 'Updating…' : runnerStatus === 'online' ? 'Duty Online' : 'Offline'}
-              </button>
+        
+        {/* Earnings Summary Header using Card */}
+        <Card className="mb-8">
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <Wallet className="h-6 w-6 text-emerald-400" />
+                Earnings Summary
+              </CardTitle>
+              <p className="text-white/60 mt-1">Monitor your payouts and statistics.</p>
             </div>
-
-            <div className="mt-8 grid gap-4 grid-cols-1 sm:grid-cols-3">
-              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
-                <div className="flex items-center gap-3 text-emerald-300">
-                  <DollarSign className="h-5 w-5" />
-                  <p className="text-sm uppercase tracking-[0.2em] text-white/60">Net payout balance</p>
-                </div>
-                <p className="mt-4 text-3xl font-mono text-emerald-400 font-bold">{formatCurrency(financialMetrics.runnerEarnings)}</p>
-                <p className="mt-2 text-sm text-white/60">Your 80% runner earnings from completed deliveries.</p>
+            <Button
+              variant={runnerStatus === 'online' ? 'primary' : 'secondary'}
+              onClick={toggleDuty}
+              isLoading={toggleLoading}
+              className={runnerStatus === 'online' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+            >
+              <span className={`mr-2 h-2.5 w-2.5 rounded-full ${runnerStatus === 'online' ? 'bg-white' : 'bg-slate-500'}`} />
+              {runnerStatus === 'online' ? 'Duty Online' : 'Duty Offline'}
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-4">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm text-white/60 uppercase tracking-wider mb-2">Wallet Balance</p>
+                <p className="text-2xl font-mono font-bold text-emerald-400">{formatCurrency(walletBalance)}</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
-                <div className="flex items-center gap-3 text-slate-200">
-                  <Zap className="h-5 w-5" />
-                  <p className="text-sm uppercase tracking-[0.2em] text-white/60">Platform processing cut</p>
-                </div>
-                <p className="mt-4 text-3xl font-semibold text-white">{formatCurrency(financialMetrics.companyCut)}</p>
-                <p className="mt-2 text-sm text-white/60">20% company split from completed run fees.</p>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm text-white/60 uppercase tracking-wider mb-2">Net Earnings</p>
+                <p className="text-2xl font-mono font-bold text-white">{formatCurrency(financialMetrics.runnerEarnings)}</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
-                <div className="flex items-center gap-3 text-emerald-300">
-                  <Trophy className="h-5 w-5" />
-                  <p className="text-sm uppercase tracking-[0.2em] text-white/60">Completed deliveries</p>
-                </div>
-                <p className="mt-4 text-3xl font-semibold text-white">{financialMetrics.completedCount}</p>
-                <p className="mt-2 text-sm text-white/60">Total successful run history.</p>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm text-white/60 uppercase tracking-wider mb-2">Platform Cut</p>
+                <p className="text-2xl font-mono font-bold text-white">{formatCurrency(financialMetrics.companyCut)}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-sm text-white/60 uppercase tracking-wider mb-2">Completed Runs</p>
+                <p className="text-2xl font-mono font-bold text-white">{financialMetrics.completedCount}</p>
               </div>
             </div>
-
-            {statusMessage ? (
-              <div className="mt-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+            {statusMessage && (
+              <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 text-emerald-200 text-sm border border-emerald-500/20">
                 {statusMessage}
               </div>
-            ) : null}
-          </div>
-
-          <div className="glass-card rounded-3xl border border-white/10 bg-slate-950/70 p-8 shadow-2xl shadow-slate-900/50 backdrop-blur-md">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-white/60">Task history</p>
-                <h2 className="mt-2 text-2xl font-semibold text-white">Run history controls</h2>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setViewMode('available')}
-                  className={`rounded-3xl px-4 py-2 text-sm font-semibold transition ${viewMode === 'available' ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/20' : 'bg-slate-900/80 text-white/70 hover:text-white'}`}
-                >
-                  Available Errands
-                </button>
-                <button
-                  onClick={() => setViewMode('history')}
-                  className={`rounded-3xl px-4 py-2 text-sm font-semibold transition ${viewMode === 'history' ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/20' : 'bg-slate-900/80 text-white/70 hover:text-white'}`}
-                >
-                  Run History
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-8 rounded-3xl border border-white/10 bg-slate-950/60 p-6">
-              {viewMode === 'available' ? (
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Open contracts</h3>
-                  <p className="mt-2 text-sm text-white/60">Accept a job and lock in your 80% take-home payout.</p>
-                </div>
-              ) : (
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Completed archive</h3>
-                  <p className="mt-2 text-sm text-white/60">Review completed runs with exact financial breakdowns.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <section className="glass-card rounded-3xl border border-white/10 bg-slate-950/70 p-8 shadow-lg shadow-slate-950/20">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-emerald-300/80">Active Assignment Inbox</p>
-                <h2 className="mt-3 text-3xl font-semibold text-white">Current allocations</h2>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-4 py-2 text-sm text-white/60">
-                <span className={`h-2.5 w-2.5 rounded-full ${activeErrands.length > 0 ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                {activeErrands.length > 0 ? 'Active' : 'Idle'}
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold text-white">Run Errands & Earn</h2>
+              <div className="flex gap-2">
+                <Button variant={viewMode === 'available' ? 'primary' : 'ghost'} size="sm" onClick={() => setViewMode('available')}>
+                  Available
+                </Button>
+                <Button variant={viewMode === 'history' ? 'primary' : 'ghost'} size="sm" onClick={() => setViewMode('history')}>
+                  History
+                </Button>
               </div>
             </div>
 
-            {activeErrands.length === 0 ? (
-              <div className="mt-8 rounded-3xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-white/60">
-                <p className="text-lg">No assigned errands right now.</p>
-                <p className="mt-2 text-sm">Accept an available system errand to see it appear here with tracking controls.</p>
-              </div>
-            ) : (
-              <div className="mt-8 space-y-4">
-                {currentActiveTask ? (
-                  <article className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm uppercase tracking-[0.2em] text-emerald-200">Current active task</p>
-                        <h3 className="mt-2 text-xl font-semibold text-white">{currentActiveTask.title}</h3>
-                        <p className="mt-1 text-sm text-white/60">{currentActiveTask.pickup_location} → {currentActiveTask.delivery_location}</p>
-                        <p className="mt-3 text-sm text-white/60">{currentActiveTask.priority} priority — status: {currentActiveTask.status.replace('_', ' ')}</p>
-                      </div>
-                      <div className="flex flex-col gap-3 sm:items-end">
-                        <Link href={`/dashboard/runner/track/${currentActiveTask.id}`} className="btn-primary inline-flex items-center gap-2 text-sm">
-                          <MapPin className="w-4 h-4" /> View active route
-                        </Link>
-                        <span className="rounded-full bg-slate-900/80 px-3 py-1 text-xs uppercase text-white/60">Fast access</span>
-                      </div>
-                    </div>
-                  </article>
-                ) : null}
-
-                <div className="space-y-4">
-                  {activeErrands.map((errand) => (
-                    <article key={errand.id} className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-sm uppercase tracking-[0.2em] text-white/60">{errand.priority}</p>
-                          <h3 className="mt-2 text-xl font-semibold text-white">{errand.title}</h3>
-                          <p className="mt-1 text-sm text-white/60">{errand.pickup_location} → {errand.delivery_location}</p>
-                        </div>
-                        <div className="flex flex-col items-start gap-3 sm:items-end w-full sm:w-auto mt-2 sm:mt-0">
-                          <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs uppercase text-emerald-200">{errand.status.replace('_', ' ')}</span>
-                          <Link href={`/dashboard/runner/track/${errand.id}`} className="btn-primary w-full sm:w-auto inline-flex justify-center items-center gap-2 text-sm">
-                            <MapPin className="w-4 h-4" /> View tracking
-                          </Link>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            )}
-          </section>
-
-          <aside className="glass-card rounded-3xl border border-white/10 bg-slate-950/70 p-8 shadow-lg shadow-slate-950/10">
             {loading ? (
-              <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 text-white/60">
-                Loading errands…
-              </div>
+              <div className="text-white/60 py-8">Loading tasks...</div>
             ) : viewMode === 'available' ? (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {availableErrands.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-6 text-white/60">
-                    <p>No tasks nearby.</p>
-                    <p className="mt-2 text-sm">Check back soon for new pickup contracts.</p>
-                  </div>
+                  <Card>
+                    <CardContent className="p-8 text-center text-white/60">
+                      <p>No tasks nearby.</p>
+                      <p className="text-sm mt-1">Check back soon for new pickup contracts.</p>
+                    </CardContent>
+                  </Card>
                 ) : (
-                  <div className="space-y-4">
-                    {filteredAvailableErrands.map((errand) => (
-                      <article key={errand.id} className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex flex-col">
-                            <p className="text-sm uppercase tracking-[0.2em] text-white/60">{errand.category}</p>
-                            <h3 className="mt-1 text-lg font-semibold text-white">{errand.title}</h3>
-                            <p className="mt-1 text-sm text-white/60">{errand.pickup_location} → {errand.delivery_location}</p>
-                          </div>
-                          <div className="flex flex-col gap-3 w-full sm:w-auto sm:items-end">
-                            <div className="flex items-center justify-between sm:justify-end gap-3 text-sm">
-                              <span className="text-white/60">Payout</span>
-                              <strong className="font-mono text-emerald-400 font-bold text-lg">{formatCurrency(Number(errand.total_fee) * 0.8)}</strong>
+                  availableErrands.map((errand) => (
+                    <Card key={errand.id} className="hover:border-emerald-500/30 transition-colors">
+                      <CardContent className="p-5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="info">{errand.category}</Badge>
+                              <Badge variant={errand.priority === 'high' ? 'danger' : 'outline'}>
+                                {errand.priority} priority
+                              </Badge>
                             </div>
+                            <h3 className="text-xl font-semibold text-white">{errand.title}</h3>
+                            
+                            <div className="space-y-1.5 mt-2">
+                              <div className="flex flex-col">
+                                <span className="text-xs text-white/40 uppercase font-semibold">Pickup</span>
+                                <span className="text-sm text-white/80">{errand.pickup_location}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs text-white/40 uppercase font-semibold">Dropoff</span>
+                                <span className="text-sm text-white/80">{errand.delivery_location}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-3 sm:items-end min-w-[140px]">
+                            <div className="text-left sm:text-right">
+                              <span className="block text-xs text-white/50 uppercase font-semibold">Payout</span>
+                              <strong className="text-2xl font-mono text-emerald-400">
+                                {formatCurrency(Number(errand.total_fee) * 0.8)}
+                              </strong>
+                            </div>
+                            
                             {Number(errand.total_fee) > 10000 && runnerLevel < 2 ? (
-                              <button
-                                disabled
-                                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 cursor-not-allowed"
-                              >
-                                🔒 Level 2 Required (High Value)
-                              </button>
+                              <Badge variant="warning" className="px-3 py-1.5">🔒 Level 2 Req</Badge>
                             ) : activeErrands.length >= 2 ? (
-                              <button
-                                disabled
-                                className="w-full sm:w-auto px-4 py-2 text-xs font-semibold rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 cursor-not-allowed"
-                              >
-                                Max Active Tasks Reached
-                              </button>
+                              <Badge variant="danger" className="px-3 py-1.5">Max Tasks Reached</Badge>
                             ) : (
-                              <button
-                                type="button"
+                              <Button
+                                variant="primary"
+                                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20 border-blue-500/50"
                                 onClick={() => handleAccept(errand.id)}
-                                disabled={accepting === errand.id}
-                                className="btn-primary w-full sm:w-auto"
+                                isLoading={accepting === errand.id}
                               >
-                                {accepting === errand.id ? 'Accepting...' : 'Accept Contract'}
-                              </button>
+                                {accepting === errand.id ? 'Accepting...' : 'Accept Errand'}
+                              </Button>
                             )}
                           </div>
                         </div>
-                      </article>
-                    ))}
-                  </div>
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
               </div>
             ) : (
               <div className="space-y-4">
                 {historyErrands.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-6 text-white/60">
-                    <p>No completed runs yet.</p>
-                    <p className="mt-2 text-sm">Finish a delivery to start building your history log.</p>
-                  </div>
+                  <Card>
+                    <CardContent className="p-8 text-center text-white/60">
+                      <p>No completed runs yet.</p>
+                      <p className="text-sm mt-1">Finish a delivery to start building your history log.</p>
+                    </CardContent>
+                  </Card>
                 ) : (
-                  <div className="space-y-3">
-                    {historyErrands.map((history) => (
-                      <article key={history.id} className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
-                        <div className="flex items-center justify-between gap-3">
+                  historyErrands.map((history) => (
+                    <Card key={history.id}>
+                      <CardContent className="p-5">
+                        <div className="flex justify-between items-start mb-3">
                           <div>
-                            <h3 className="text-lg font-semibold text-white">{history.title}</h3>
+                            <h3 className="font-semibold text-white">{history.title}</h3>
                             <p className="text-sm text-white/60">{new Date(history.updated_at ?? history.created_at).toLocaleDateString()}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm text-white/60">Runner fee</p>
-                            <p className="text-white">{formatCurrency(Number(history.runner_amount ?? history.total_fee * 0.8))}</p>
+                            <span className="text-xs text-white/50 uppercase">Runner Fee</span>
+                            <p className="text-lg font-mono text-emerald-400 font-semibold">{formatCurrency(Number(history.runner_amount ?? history.total_fee * 0.8))}</p>
                           </div>
                         </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-white/60">
-                          <div className="rounded-2xl bg-slate-900/80 p-3">
-                            <p className="text-[0.7rem] uppercase tracking-[0.25em] text-white/60">Platform cut</p>
-                            <p className="mt-2 text-white">{formatCurrency(Number(history.platform_fee ?? history.total_fee * 0.2))}</p>
+                        <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                          <div className="bg-white/5 p-2 rounded-lg">
+                            <span className="text-xs text-white/40 block">Platform Cut</span>
+                            <span className="text-white/80">{formatCurrency(Number(history.platform_fee ?? history.total_fee * 0.2))}</span>
                           </div>
-                          <div className="rounded-2xl bg-slate-900/80 p-3">
-                            <p className="text-[0.7rem] uppercase tracking-[0.25em] text-white/60">Delivery</p>
-                            <p className="mt-2 text-white">{history.pickup_location} → {history.delivery_location}</p>
+                          <div className="bg-white/5 p-2 rounded-lg">
+                            <span className="text-xs text-white/40 block">Route</span>
+                            <span className="text-white/80 truncate block">{history.pickup_location} &rarr; {history.delivery_location}</span>
                           </div>
                         </div>
-                      </article>
-                    ))}
-                  </div>
+                      </CardContent>
+                    </Card>
+                  ))
                 )}
               </div>
             )}
+          </section>
+
+          <aside className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl">Active Assignments</CardTitle>
+                  <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1 rounded-full text-xs">
+                    <span className={`h-2 w-2 rounded-full ${activeErrands.length > 0 ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+                    <span className="text-white/70">{activeErrands.length} Active</span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {activeErrands.length === 0 ? (
+                  <div className="text-center text-white/60 py-6 bg-white/5 rounded-xl border border-dashed border-white/10">
+                    <p>No active assignments.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {activeErrands.map((errand) => (
+                      <div key={errand.id} className="p-4 rounded-xl border border-white/10 bg-slate-950/50">
+                        <Badge variant="outline" className="mb-2">{errand.priority} priority</Badge>
+                        <h3 className="font-semibold text-white mb-1">{errand.title}</h3>
+                        <p className="text-xs text-white/60 mb-4">{errand.pickup_location} &rarr; {errand.delivery_location}</p>
+                        
+                        <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/10">
+                          <Badge variant="info">{errand.status.replace('_', ' ')}</Badge>
+                          <Link href={`/dashboard/runner/track/${errand.id}`}>
+                            <Button variant="secondary" size="sm" className="gap-2 text-xs">
+                              <MapPin className="w-3 h-3" /> Track
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </aside>
         </div>
       </div>
     </RunnerGuard>
   );
 }
-
-

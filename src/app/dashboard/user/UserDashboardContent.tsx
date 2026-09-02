@@ -19,6 +19,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
 
 export default function UserDashboard() {
   const { user } = useAppStore();
@@ -81,7 +85,8 @@ export default function UserDashboard() {
       price: '₦800',
       icon: Utensils,
       color: 'bg-orange-500',
-      category: 'food'
+      category: 'food',
+      status: 'pending'
     },
     {
       id: 2,
@@ -90,7 +95,8 @@ export default function UserDashboard() {
       price: '₦1500',
       icon: Users,
       color: 'bg-purple-500',
-      category: 'academic'
+      category: 'academic',
+      status: 'in-progress'
     },
     {
       id: 3,
@@ -99,9 +105,19 @@ export default function UserDashboard() {
       price: '₦600',
       icon: Printer,
       color: 'bg-blue-500',
-      category: 'academic'
+      category: 'academic',
+      status: 'completed'
     }
   ];
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'pending': return 'warning';
+      case 'in-progress': return 'info';
+      case 'completed': return 'success';
+      default: return 'default';
+    }
+  };
 
   return (
     <div className="max-w-[500px] mx-auto md:max-w-6xl px-4 py-4 md:py-8 space-y-6 md:space-y-8">
@@ -117,43 +133,46 @@ export default function UserDashboard() {
         </div>
       </div>
 
-            {/* Wallet Summary Card */}
-      <div className="w-full rounded-3xl p-6 bg-slate-900/60 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Wallet Summary Card */}
+      <Card className="w-full p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/10">
         <div>
           <p className="text-xs text-white/50 uppercase tracking-wider font-bold mb-1">Wallet Balance</p>
           <h2 className="text-3xl font-black text-emerald-400 font-mono">{formatCurrency(walletBalance)}</h2>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
           {isToppingUp ? (
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <input 
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+              <Input 
                 type="number" 
                 min="1000" 
                 value={topUpAmount} 
                 onChange={(e) => setTopUpAmount(Number(e.target.value))} 
-                className="input w-full md:w-32 py-2.5 text-sm"
+                className="w-full sm:w-32"
                 placeholder="Min 1000"
               />
-              <button 
-                onClick={() => {
-                  if (topUpAmount < 1000) return toast.error('Minimum top-up is N1000');
-                  initializePayment(onSuccess as any, onClose as any);
-                }} 
-                className="btn-primary py-2.5 px-6 whitespace-nowrap"
-              >
-                Pay via Paystack
-              </button>
-              <button onClick={() => setIsToppingUp(false)} className="p-2.5 rounded-xl bg-white/10 text-white/50 hover:text-white">
-                ?
-              </button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button 
+                  onClick={() => {
+                    if (topUpAmount < 1000) return toast.error('Minimum top-up is N1000');
+                    initializePayment(onSuccess as any, onClose as any);
+                  }} 
+                  variant="primary"
+                  className="whitespace-nowrap flex-1"
+                >
+                  Pay via Paystack
+                </Button>
+                <Button variant="ghost" onClick={() => setIsToppingUp(false)} className="text-white/50 hover:text-white shrink-0">
+                  ✕
+                </Button>
+              </div>
             </div>
           ) : (
-            <button onClick={() => setIsToppingUp(true)} className="btn-primary py-2.5 px-8 w-full md:w-auto">
+            <Button variant="primary" onClick={() => setIsToppingUp(true)} className="w-full md:w-auto">
               Top Up Wallet
-            </button>
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
 
 
       {/* 2. Vibrant Hero Card */}
@@ -166,17 +185,17 @@ export default function UserDashboard() {
         <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-black/20 rounded-full blur-xl" />
         
         <div className="relative z-10 flex flex-col items-start w-full">
-          <span className="px-3 py-1 bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider rounded-full backdrop-blur-md mb-4">
+          <Badge variant="outline" className="mb-4 text-[10px] uppercase tracking-wider backdrop-blur-md bg-white/20">
             Priority Errand
-          </span>
+          </Badge>
           <h2 className="text-3xl md:text-4xl font-black text-white mb-2 leading-tight">
-            DELEGATE <br/> YOUR TASKS
+            Good morning! What do you need done around campus?
           </h2>
           <p className="text-white/80 text-sm mb-6 max-w-[200px] md:max-w-xs">
             Verified student runners ready in minutes.
           </p>
           
-          <button
+          <Button
             onClick={() => {
               if (user?.verificationStatus !== 'verified') {
                 router.push('/dashboard/verify');
@@ -184,10 +203,11 @@ export default function UserDashboard() {
                 router.push('/dashboard/errands/new');
               }
             }}
-            className="bg-white text-primary-600 px-6 py-3 rounded-full font-bold text-sm flex items-center gap-2 hover:scale-105 transition-transform active:scale-95 shadow-lg"
+            variant="secondary"
+            className="flex items-center gap-2 hover:scale-105 transition-transform active:scale-95 shadow-lg font-bold text-sm"
           >
             Draft Errand <ArrowRight className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </motion.div>
 
@@ -220,7 +240,7 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* 4. Quick Tasks (Like "Popular Items") */}
+      {/* 4. Quick Tasks (Errands) */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">Quick Tasks</h3>
@@ -229,20 +249,25 @@ export default function UserDashboard() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {quickTasks.map((task) => {
             const Icon = task.icon;
             return (
-              <div key={task.id} className="glass-card rounded-2xl p-4 flex flex-col h-full border border-white/5 relative group hover:border-white/10 transition-colors">
-                <div className={`w-10 h-10 rounded-xl ${task.color} bg-opacity-20 flex items-center justify-center mb-3`}>
-                  <Icon className={`w-5 h-5 text-white`} />
+              <Card key={task.id} className="p-4 flex flex-col h-full group hover:border-white/10 transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`w-10 h-10 rounded-xl ${task.color} bg-opacity-20 flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 text-white`} />
+                  </div>
+                  <Badge variant={getStatusColor(task.status) as any}>{task.status}</Badge>
                 </div>
                 <h4 className="font-bold text-white text-sm leading-tight mb-1">{task.title}</h4>
                 <p className="text-[10px] text-white/50 mb-4">{task.desc}</p>
                 
                 <div className="mt-auto flex items-center justify-between">
                   <span className="font-mono font-bold text-emerald-400 text-xs">{task.price}</span>
-                  <button 
+                  <Button 
+                    size="icon"
+                    variant="ghost"
                     onClick={() => {
                       if (user?.verificationStatus !== 'verified') {
                         router.push('/dashboard/verify');
@@ -250,12 +275,12 @@ export default function UserDashboard() {
                         router.push(`/dashboard/errands/new?category=${task.category}`);
                       }
                     }}
-                    className={`w-7 h-7 rounded-full ${task.color} flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform shadow-lg shadow-black/20`}
+                    className={`w-8 h-8 rounded-full ${task.color} flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform shadow-lg shadow-black/20`}
                   >
                     <Plus className="w-4 h-4" />
-                  </button>
+                  </Button>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -263,14 +288,10 @@ export default function UserDashboard() {
 
       {/* 5. Rewards / Runner Banner */}
       {user?.role !== 'runner' && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-2xl p-4 flex items-center gap-4 border border-white/5 relative overflow-hidden mt-6 mb-8 md:mb-0"
-        >
+        <Card className="p-4 flex items-center gap-4 relative overflow-hidden mt-6 mb-8 md:mb-0 border-white/5">
           <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl" />
           
-          <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 bg-white/5 rounded-xl flex items-center justify-center shrink-0 z-10">
             <TrendingUp className="w-6 h-6 text-emerald-400" />
           </div>
           
@@ -279,10 +300,10 @@ export default function UserDashboard() {
             <p className="text-[10px] text-white/50 leading-tight">Apply to be a runner and earn up to 80% per task!</p>
           </div>
           
-          <Link href="/become-a-runner" className="shrink-0 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors z-10">
+          <Button variant="secondary" size="sm" className="z-10 shrink-0" onClick={() => router.push('/become-a-runner')}>
             Join Now
-          </Link>
-        </motion.div>
+          </Button>
+        </Card>
       )}
 
       {/* Bottom spacer for mobile scroll */}
@@ -290,4 +311,3 @@ export default function UserDashboard() {
     </div>
   );
 }
-
