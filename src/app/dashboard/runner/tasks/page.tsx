@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { MapPin } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { MapPin, Clock, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { formatCurrency } from '@/utils/pricing';
+import { Button } from '@/components/ui/Button';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 
 interface ErrandTask {
   id: string;
@@ -21,6 +24,7 @@ interface ErrandTask {
 }
 
 export default function RunnerTasksPage() {
+  const router = useRouter();
   const { user } = useAppStore();
   const [assigned, setAssigned] = useState<ErrandTask[]>([]);
   const [available, setAvailable] = useState<ErrandTask[]>([]);
@@ -203,82 +207,125 @@ export default function RunnerTasksPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-semibold text-white mb-4">My Runner Tasks</h1>
-      {message ? <div className="mb-4 text-sm text-emerald-300">{message}</div> : null}
-
-      <section className="mb-8">
-        <h2 className="text-xl font-semibold text-white mb-2">Assigned to you</h2>
-        {loading ? (
-          <div className="text-white/60">Loading…</div>
-        ) : assigned.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-6 text-white/60">
-            <p>No current assignments.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {assigned.map((t) => (
-              <div key={t.id} className="rounded-lg border border-white/10 p-4 bg-slate-950/70">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg text-white font-semibold">{t.title}</h3>
-                    <p className="text-sm text-white/60">{t.pickup_location} → {t.delivery_location}</p>
-                    <p className="text-sm text-white/60 mt-1">Status: {t.status.replace('_', ' ')}</p>
-                    <p className="text-sm text-white/60">ETA: {t.eta_minutes ? `${t.eta_minutes} min` : 'N/A'}</p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-                    <Link href={`/dashboard/runner/track/${t.id}`} className="btn-primary w-full sm:w-auto inline-flex justify-center items-center gap-2 text-sm">
-                      <MapPin className="w-4 h-4" /> View route
-                    </Link>
-                    <button onClick={() => decline(t.id)} disabled={actionLoading === t.id} className="btn-danger w-full sm:w-auto text-sm">
-                      {actionLoading === t.id ? 'Processing…' : 'Decline'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+    <div className="min-h-screen bg-[#121824] w-full">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-semibold text-white mb-6">My Runner Tasks</h1>
+        {message && (
+          <div className={`mb-6 flex items-center gap-2 text-sm p-4 rounded-xl ${message.toLowerCase().includes('fail') || message.toLowerCase().includes('require') ? 'text-rose-400 bg-rose-500/10 border border-rose-500/20' : 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'}`}>
+            <AlertCircle className="w-5 h-5" />
+            {message}
           </div>
         )}
-      </section>
 
-      <section>
-        <h2 className="text-xl font-semibold text-white mb-2">Available errands</h2>
-        {loading ? (
-          <div className="text-white/60">Loading…</div>
-        ) : available.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-6 text-white/60">
-            <p>No available errands.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {available.map((t) => (
-              <div key={t.id} className="rounded-lg border border-white/10 p-4 bg-slate-950/70">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex flex-col">
-                    <h3 className="text-lg text-white font-semibold">{t.title}</h3>
-                    <p className="text-sm text-white/60">{t.pickup_location} → {t.delivery_location}</p>
-                    {t.min_runner_rating && t.min_runner_rating > 0 && (
-                      <div className="mt-2 inline-flex items-center px-2 py-1 bg-brand-yellow/10 text-brand-yellow text-xs font-bold rounded">
-                        ★ {t.min_runner_rating}+ Rating Required
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto">
-                    <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto text-sm">
-                      <span className="text-white/60">Payout</span>
-                      <strong className="font-mono text-emerald-400 font-bold text-lg">{formatCurrency(Number(t.total_fee) * 0.8)}</strong>
+        <section className="mb-10">
+          <h2 className="text-xl font-semibold text-white mb-4">Assigned to you</h2>
+          {loading ? (
+            <div className="text-white/60">Loading…</div>
+          ) : assigned.length === 0 ? (
+            <Card className="bg-white/5 border-dashed border-white/10">
+              <CardContent className="p-8 text-center text-white/60">
+                <p>No current assignments.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {assigned.map((t) => (
+                <Card key={t.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                      <CardTitle className="text-lg">{t.title}</CardTitle>
+                      <Badge variant="info" className="w-fit whitespace-nowrap">{t.status.replace('_', ' ')}</Badge>
                     </div>
-                    <button onClick={() => accept(t.id)} disabled={actionLoading === t.id} className="btn-primary w-full sm:w-auto">
-                      {actionLoading === t.id ? 'Accepting…' : 'Accept'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <div className="space-y-2">
+                      <p className="text-sm text-white/70 flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-white/50 shrink-0" /> 
+                        <span>{t.pickup_location} <span className="mx-1 text-white/40">→</span> {t.delivery_location}</span>
+                      </p>
+                      <p className="text-sm text-white/70 flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-white/50 shrink-0" />
+                        <span>ETA: {t.eta_minutes ? `${t.eta_minutes} min` : 'N/A'}</span>
+                      </p>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex flex-col sm:flex-row gap-3 pt-0">
+                    <Button 
+                      variant="primary" 
+                      onClick={() => router.push(`/dashboard/runner/track/${t.id}`)}
+                      className="w-full sm:w-auto"
+                    >
+                      <MapPin className="w-4 h-4 mr-2" /> View route
+                    </Button>
+                    <Button 
+                      variant="danger" 
+                      onClick={() => decline(t.id)} 
+                      isLoading={actionLoading === t.id}
+                      className="w-full sm:w-auto"
+                    >
+                      Decline
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-white mb-4">Available errands</h2>
+          {loading ? (
+            <div className="text-white/60">Loading…</div>
+          ) : available.length === 0 ? (
+            <Card className="bg-white/5 border-dashed border-white/10">
+              <CardContent className="p-8 text-center text-white/60">
+                <p>No available errands.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {available.map((t) => (
+                <Card key={t.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                      <div>
+                        <CardTitle className="text-lg">{t.title}</CardTitle>
+                        {t.min_runner_rating && t.min_runner_rating > 0 && (
+                          <Badge variant="warning" className="mt-2 w-fit">
+                            ★ {t.min_runner_rating}+ Rating Required
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-col sm:items-end">
+                        <span className="text-xs text-white/50 uppercase tracking-wider font-semibold">Payout</span>
+                        <strong className="font-mono text-emerald-400 text-xl font-bold">
+                          {formatCurrency(Number(t.total_fee) * 0.8)}
+                        </strong>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <p className="text-sm text-white/70 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-white/50 shrink-0" /> 
+                      <span>{t.pickup_location} <span className="mx-1 text-white/40">→</span> {t.delivery_location}</span>
+                    </p>
+                  </CardContent>
+                  <CardFooter className="flex justify-end pt-0">
+                    <Button 
+                      variant="primary" 
+                      onClick={() => accept(t.id)} 
+                      isLoading={actionLoading === t.id}
+                      className="w-full sm:w-auto"
+                    >
+                      Accept Errand
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
-

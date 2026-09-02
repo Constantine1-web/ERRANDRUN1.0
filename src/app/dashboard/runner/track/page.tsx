@@ -2,6 +2,9 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 export default function RunnerTrackIndexPage() {
   const [errandId, setErrandId] = useState('');
@@ -15,28 +18,31 @@ export default function RunnerTrackIndexPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <div className="glass-card rounded-3xl border border-white/10 p-8">
-        <h1 className="text-3xl font-bold text-white mb-4">Runner Tracking Center</h1>
-        <p className="text-white/60 mb-6">Enter the errand ID to send live status and location updates.</p>
-        <form onSubmit={handleGoToTracker} className="space-y-4">
-          <label className="block">
-            <span className="text-sm text-white/60">Errand ID</span>
-            <input
-              value={errandId}
-              onChange={(event) => setErrandId(event.target.value)}
-              placeholder="Enter assigned errand ID"
-              className="mt-2 input w-full"
-            />
-          </label>
-          <button type="submit" className="btn-primary w-full">
-            Go to Tracking Page
-          </button>
-        </form>
-        <div className="mt-6 text-sm text-white/60">
-          <p>If you were assigned an errand, use its ID here to update progress and location.</p>
-          <p className="mt-2">Once accepted, send updates from the dedicated tracking page.</p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-3xl font-bold mb-2">Runner Tracking Center</CardTitle>
+          <p className="text-white/60">Enter the errand ID to send live status and location updates.</p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleGoToTracker} className="space-y-4">
+            <div>
+              <label className="block text-sm text-white/60 mb-2">Errand ID</label>
+              <Input
+                value={errandId}
+                onChange={(event) => setErrandId(event.target.value)}
+                placeholder="Enter assigned errand ID"
+              />
+            </div>
+            <Button type="submit" className="w-full">
+              Go to Tracking Page
+            </Button>
+          </form>
+          <div className="mt-6 text-sm text-white/60">
+            <p>If you were assigned an errand, use its ID here to update progress and location.</p>
+            <p className="mt-2">Once accepted, send updates from the dedicated tracking page.</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

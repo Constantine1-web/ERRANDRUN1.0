@@ -5,8 +5,13 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
-import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, Plus, Loader } from 'lucide-react';
+import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, Plus, Loader, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 function WalletContent() {
   const router = useRouter();
@@ -135,107 +140,121 @@ function WalletContent() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="heading-page text-white mb-8">Wallet</h1>
+      <h1 className="text-3xl font-bold text-white mb-8">Wallet</h1>
 
       {verifying && (
-        <div className="glass-card rounded-2xl p-4 mb-6 border border-primary-500/30 flex items-center gap-3 text-primary-400">
-          <Loader className="w-5 h-5 animate-spin" />
-          <span>Verifying your Paystack deposit, please wait...</span>
-        </div>
+        <Card className="mb-6 border-primary-500/30">
+          <CardContent className="p-4 flex items-center gap-3 text-primary-400">
+            <Loader className="w-5 h-5 animate-spin" />
+            <span>Verifying your Paystack deposit, please wait...</span>
+          </CardContent>
+        </Card>
       )}
 
       {/* Wallet Balance Card */}
       <motion.div
-        className="glass-card rounded-3xl p-6 sm:p-8 mb-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex items-start sm:items-center justify-between mb-8">
-          <div>
-            <p className="text-white/60 text-sm mb-2">Available Balance</p>
-            <h2 className="text-4xl sm:text-5xl font-bold text-white font-mono">
-              ₦{wallet?.balance?.toLocaleString() || '0.00'}
-            </h2>
-          </div>
-          <WalletIcon className="w-12 h-12 sm:w-16 sm:h-16 text-primary-400/30 hidden sm:block" />
-        </div>
+        <Card className="mb-8 border-white/10 shadow-xl">
+          <CardContent className="p-6 sm:p-8">
+            <div className="flex items-start sm:items-center justify-between mb-8">
+              <div>
+                <p className="text-white/60 text-sm mb-2">Available Balance</p>
+                <h2 className="text-4xl sm:text-5xl font-bold text-white font-mono">
+                  ₦{wallet?.balance?.toLocaleString() || '0.00'}
+                </h2>
+              </div>
+              <WalletIcon className="w-12 h-12 sm:w-16 sm:h-16 text-primary-400/30 hidden sm:block" />
+            </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/10">
-          <div className="bg-white/5 p-4 rounded-xl">
-            <p className="text-white/60 text-xs mb-1">Total Earned</p>
-            <p className="text-2xl font-bold text-green-400 font-mono">
-              ₦{wallet?.total_earned?.toLocaleString() || '0'}
-            </p>
-          </div>
-          <div className="bg-white/5 p-4 rounded-xl">
-            <p className="text-white/60 text-xs mb-1">Total Spent</p>
-            <p className="text-2xl font-bold text-red-400 font-mono">
-              ₦{wallet?.total_spent?.toLocaleString() || '0'}
-            </p>
-          </div>
-        </div>
+            {/* Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/10">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                <p className="text-white/60 text-xs mb-1">Total Earned</p>
+                <p className="text-2xl font-bold text-emerald-400 font-mono">
+                  ₦{wallet?.total_earned?.toLocaleString() || '0'}
+                </p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                <p className="text-white/60 text-xs mb-1">Total Spent</p>
+                <p className="text-2xl font-bold text-rose-400 font-mono">
+                  ₦{wallet?.total_spent?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
 
-        {/* Actions */}
-        <div className="flex justify-end">
-          <button 
-            onClick={() => setIsAddFundsOpen(true)}
-            className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Add Funds
-          </button>
-        </div>
+            {/* Actions */}
+            <div className="flex justify-end">
+              <Button 
+                onClick={() => setIsAddFundsOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Add Funds
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Transaction History */}
       <motion.div
-        className="glass-card rounded-3xl p-6 sm:p-8"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <h3 className="text-2xl font-bold text-white mb-6">Transaction History</h3>
-
-        {transactions.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-white/60">No transactions yet</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {transactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all gap-4"
-              >
-                <div className="flex items-start sm:items-center gap-4">
-                  {tx.transaction_type === 'credit' ? (
-                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                      <ArrowDownLeft className="w-5 h-5 text-green-400" />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
-                      <ArrowUpRight className="w-5 h-5 text-red-400" />
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-white font-medium break-words">{tx.description || 'Transaction'}</p>
-                    <p className="text-xs text-white/40 mt-1">
-                      {new Date(tx.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex sm:block justify-end w-full sm:w-auto border-t border-white/5 pt-3 sm:border-0 sm:pt-0 mt-1 sm:mt-0">
-                  <span
-                    className={`text-xl sm:text-base font-bold font-mono ${tx.transaction_type === 'credit' ? 'text-green-400' : 'text-red-400'}`}
-                  >
-                    {tx.transaction_type === 'credit' ? '+' : '-'}₦{Math.abs(tx.amount).toLocaleString()}
-                  </span>
-                </div>
+        <Card className="border-white/10 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-2xl">Transaction History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {transactions.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-white/60">No transactions yet</p>
               </div>
-            ))}
-          </div>
-        )}
+            ) : (
+              <div className="space-y-4">
+                {transactions.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all gap-4 border border-white/5"
+                  >
+                    <div className="flex items-start sm:items-center gap-4">
+                      {tx.transaction_type === 'credit' ? (
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                          <ArrowDownLeft className="w-5 h-5 text-emerald-400" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center flex-shrink-0">
+                          <ArrowUpRight className="w-5 h-5 text-rose-400" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-white font-medium break-words">{tx.description || 'Transaction'}</p>
+                        <p className="text-xs text-white/40 mt-1">
+                          {new Date(tx.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex sm:block justify-end w-full sm:w-auto border-t border-white/5 pt-3 sm:border-0 sm:pt-0 mt-1 sm:mt-0 flex-col sm:items-end gap-2 sm:gap-1">
+                      <span
+                        className={`text-xl sm:text-base font-bold font-mono text-right ${tx.transaction_type === 'credit' ? 'text-emerald-400' : 'text-rose-400'}`}
+                      >
+                        {tx.transaction_type === 'credit' ? '+' : '-'}₦{Math.abs(tx.amount).toLocaleString()}
+                      </span>
+                      <div className="text-right sm:mt-1">
+                        <Badge variant={tx.status === 'completed' || tx.status === 'success' ? 'success' : tx.status === 'pending' ? 'warning' : 'danger'}>
+                          {tx.status || 'completed'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Add Funds Modal */}
@@ -244,42 +263,48 @@ function WalletContent() {
           <motion.div 
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-card rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 w-full max-w-md relative max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-md relative max-h-[90vh]"
           >
-            <button 
-              onClick={() => setIsAddFundsOpen(false)}
-              className="absolute top-6 right-6 text-white/40 hover:text-white"
-            >
-              ✕
-            </button>
-            <h3 className="text-2xl font-bold text-white mb-2">Add Funds</h3>
-            <p className="text-white/60 text-sm mb-6">Top up your wallet balance.</p>
-            
-            <form onSubmit={handleDeposit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-white/80 mb-2">
-                  Amount (₦)
-                </label>
-                <input
-                  type="number"
-                  min="100"
-                  step="100"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  placeholder="Enter amount (e.g. 5000)"
-                  className="input-field w-full text-lg font-mono"
-                  required
-                />
-              </div>
-              
+            <Card className="rounded-t-3xl sm:rounded-3xl border-white/10 shadow-2xl">
               <button 
-                type="submit" 
-                disabled={loading || !depositAmount}
-                className="btn-primary w-full disabled:opacity-50"
+                onClick={() => setIsAddFundsOpen(false)}
+                className="absolute top-6 right-6 text-white/40 hover:text-white z-10 transition-colors"
               >
-                {loading ? 'Processing...' : 'Proceed to Payment'}
+                <X className="w-6 h-6" />
               </button>
-            </form>
+              <CardHeader className="pt-8">
+                <CardTitle className="text-2xl">Add Funds</CardTitle>
+                <p className="text-white/60 text-sm mt-1">Top up your wallet balance.</p>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleDeposit} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">
+                      Amount (₦)
+                    </label>
+                    <Input
+                      type="number"
+                      min="100"
+                      step="100"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                      placeholder="Enter amount (e.g. 5000)"
+                      className="text-lg font-mono"
+                      required
+                    />
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    disabled={loading || !depositAmount}
+                    isLoading={loading}
+                    className="w-full"
+                  >
+                    Proceed to Payment
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
           </motion.div>
         </div>
       )}

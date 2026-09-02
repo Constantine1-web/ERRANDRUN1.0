@@ -1,4 +1,7 @@
-'use client';
+const fs = require('fs');
+const path = require('path');
+
+const code = `'use client';
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -166,7 +169,7 @@ export default function ErrandsPage() {
                     <Button 
                       variant="ghost" 
                       className="w-full sm:w-auto gap-2 pl-0 hover:pl-2 transition-all text-primary-400 hover:text-primary-300"
-                      onClick={() => router.push(`/dashboard/user/errand/${errand.id}`)}
+                      onClick={() => router.push(\`/dashboard/user/errand/\${errand.id}\`)}
                     >
                       View details <ArrowRight className="w-4 h-4" />
                     </Button>
@@ -212,3 +215,7 @@ export default function ErrandsPage() {
     </div>
   );
 }
+\`;
+
+fs.writeFileSync(path.join(__dirname, 'src/app/dashboard/errands/page.tsx'), code);
+console.log('Successfully refactored src/app/dashboard/errands/page.tsx');
