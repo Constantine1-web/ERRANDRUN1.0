@@ -2,14 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Plus, Clock, CheckCircle, ArrowRight, Search } from 'lucide-react';
+import { Zap, Plus, Clock, ArrowRight, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { formatCurrency } from '@/utils/pricing';
 
 interface ErrandSummary {
   id: string;
@@ -59,156 +60,97 @@ export default function ErrandsPage() {
   const getStatusVariant = (status: string) => {
     switch(status.toLowerCase()) {
       case 'completed': return 'success';
-      case 'pending': return 'warning';
-      case 'cancelled': return 'danger';
-      default: return 'info';
+      case 'in_progress': return 'info';
+      case 'assigned': return 'info';
+      case 'pending': 
+      case 'unassigned': return 'warning';
+      case 'cancelled': 
+      case 'disputed': return 'danger';
+      default: return 'default';
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#121824] text-white">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Errands</h1>
-            <p className="text-white/60 mt-2">Track the status of your requests and open details for live runner updates.</p>
-          </div>
-          <Button onClick={() => router.push('/dashboard/errands/new')} className="w-full sm:w-auto gap-2">
-            <Plus className="w-5 h-5" />
-            Post Errand
-          </Button>
+    <div className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Errands</h1>
+          <p className="text-slate-500 text-sm mt-1">Track the status of your requests and live updates.</p>
         </div>
-
-        {/* Filters */}
-        <div className="mb-8">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/40 z-10" />
-            <Input 
-              placeholder="Search errands..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 relative z-0"
-            />
-          </div>
-        </div>
-
-        {loading ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card className="p-12 flex flex-col items-center justify-center text-center gap-4">
-              <div className="w-12 h-12 rounded-full mx-auto bg-white/5 animate-pulse" />
-              <div className="w-32 h-4 mx-auto bg-white/5 animate-pulse rounded" />
-              <p className="text-white/60">Loading your errands…</p>
-            </Card>
-          </motion.div>
-        ) : errands.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card className="p-12 text-center">
-              <Zap className="w-16 h-16 text-white/20 mx-auto mb-6" />
-              <h2 className="text-3xl font-bold text-white mb-3">No errands yet</h2>
-              <p className="text-white/60 mb-8 max-w-sm mx-auto">
-                Create your first errand and get matched with a verified runner.
-              </p>
-              <Button onClick={() => router.push('/dashboard/errands/new')} className="w-full sm:w-auto gap-2">
-                <Plus className="w-5 h-5" />
-                Post Your First Errand
-              </Button>
-            </Card>
-          </motion.div>
-        ) : filteredErrands.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card className="p-12 text-center">
-              <Search className="w-16 h-16 text-white/20 mx-auto mb-6" />
-              <h2 className="text-2xl font-bold text-white mb-3">No matching errands</h2>
-              <p className="text-white/60">
-                Try adjusting your search query.
-              </p>
-            </Card>
-          </motion.div>
-        ) : (
-          <div className="grid gap-4">
-            {filteredErrands.map((errand) => (
-              <motion.div
-                key={errand.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <Card>
-                  <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4">
-                    <div className="min-w-0">
-                      <CardTitle className="text-xl sm:text-2xl truncate">{errand.title}</CardTitle>
-                      <p className="text-white/50 mt-1 text-sm">{new Date(errand.created_at).toLocaleString()}</p>
-                    </div>
-                    <div className="flex flex-row flex-wrap items-center gap-2 mt-3 sm:mt-0">
-                      <Badge variant="outline">{errand.priority}</Badge>
-                      <Badge variant={getStatusVariant(errand.status)}>
-                        {errand.status}
-                      </Badge>
-                      <Badge variant="outline" className="font-mono">
-                        ₦{Number(errand.total_fee).toLocaleString()}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-4">
-                    <div className="text-sm text-white/60 line-clamp-2 sm:line-clamp-1">
-                      View live tracking, payment status, and runner updates.
-                    </div>
-                  </CardContent>
-                  <CardFooter className="pt-0">
-                    <Button 
-                      variant="ghost" 
-                      className="w-full sm:w-auto gap-2 pl-0 hover:pl-2 transition-all text-primary-400 hover:text-primary-300"
-                      onClick={() => router.push(`/dashboard/user/errand/${errand.id}`)}
-                    >
-                      View details <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
-        <div className="grid gap-6 mt-10 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CheckCircle className="w-8 h-8 text-primary-400 mb-2" />
-              <CardTitle className="text-xl mb-1">Live updates</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/60 text-sm">Every errand refreshes automatically through our Supabase realtime channel.</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <Clock className="w-8 h-8 text-primary-400 mb-2" />
-              <CardTitle className="text-xl mb-1">Payment control</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/60 text-sm">Errands stay pending until Paystack payment is completed.</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <Zap className="w-8 h-8 text-primary-400 mb-2" />
-              <CardTitle className="text-xl mb-1">Smart routing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-white/60 text-sm">Verified campus runners can claim errands as soon as they are available.</p>
-            </CardContent>
-          </Card>
-        </div>
+        <Button onClick={() => router.push('/dashboard/errands/new')} className="w-full sm:w-auto gap-2">
+          <Plus className="w-4 h-4" />
+          Request New Errand
+        </Button>
       </div>
+
+      {/* Search Input */}
+      <div className="max-w-md">
+        <Input 
+          placeholder="Search errands by title..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          icon={<Search className="w-4 h-4 text-slate-400" />}
+        />
+      </div>
+
+      {loading ? (
+        <Card className="p-12 text-center">
+          <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin mx-auto mb-3" />
+          <p className="text-slate-500 text-sm">Loading your errands…</p>
+        </Card>
+      ) : errands.length === 0 ? (
+        <Card className="p-12 text-center">
+          <Zap className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-slate-900 mb-1">No errands posted yet</h2>
+          <p className="text-slate-500 text-sm mb-6 max-w-sm mx-auto">
+            Create your first errand and get matched with a verified student runner.
+          </p>
+          <Button onClick={() => router.push('/dashboard/errands/new')} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Request Your First Errand
+          </Button>
+        </Card>
+      ) : filteredErrands.length === 0 ? (
+        <Card className="p-10 text-center">
+          <p className="text-slate-500 text-sm">No matching errands found for "{searchQuery}".</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filteredErrands.map((errand) => (
+            <Card 
+              key={errand.id} 
+              className="hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
+              onClick={() => router.push(`/dashboard/user/errand/${errand.id}`)}
+            >
+              <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <Badge variant={getStatusVariant(errand.status) as any}>
+                      {errand.status}
+                    </Badge>
+                    {errand.priority === 'urgent' && (
+                      <Badge variant="warning">Urgent</Badge>
+                    )}
+                    <span className="text-xs text-slate-400">
+                      {new Date(errand.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-base leading-snug truncate">{errand.title}</h3>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
+                  <span className="text-lg font-bold font-mono text-slate-900">
+                    {formatCurrency(errand.total_fee)}
+                  </span>
+                  <Button size="sm" variant="outline" className="text-xs">
+                    Track <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

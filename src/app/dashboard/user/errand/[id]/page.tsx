@@ -15,7 +15,7 @@ import { formatCurrency } from '@/utils/pricing';
 import toast from 'react-hot-toast';
 
 import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Timeline } from '@/components/ui/Timeline';
 
@@ -43,8 +43,8 @@ export default function ErrandDetailPage() {
   const { tracking, loading: trackingLoading } = useErrandTracking(id);
   const [errand, setErrand] = useState<Errand | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isCompleting, setIsCompleting] = useState(false);
-  const [completionMessage, setCompletionMessage] = useState<string | null>(null);
+  const [_isCompleting, setIsCompleting] = useState(false);
+  const [_completionMessage, setCompletionMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -93,7 +93,6 @@ export default function ErrandDetailPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [cancellingErrand, setCancellingErrand] = useState(false);
 
-  // Fetch runner profile, existing rating, and existing dispute when errand loads
   useEffect(() => {
     if (!errand) return;
 
@@ -117,7 +116,6 @@ export default function ErrandDetailPage() {
         .catch(console.error);
     }
 
-    // Fetch dispute if any
     fetch(`/api/disputes?errandId=${errand.id}`)
       .then((res) => res.json())
       .then((res) => {
@@ -227,7 +225,7 @@ export default function ErrandDetailPage() {
     }
   };
 
-  const handleComplete = async () => {
+  const _handleComplete = async () => {
     if (!id) return;
     setCompletionMessage(null);
     setIsCompleting(true);
@@ -326,76 +324,51 @@ export default function ErrandDetailPage() {
     if (errand?.pickup_coordinates) {
       return [errand.pickup_coordinates.lat, errand.pickup_coordinates.lng] as [number, number];
     }
-    return [6.5244, 3.3792] as [number, number];
+    return [5.0377, 7.9128] as [number, number]; // Uyo coords default
   }, [latestTracking, errand]);
 
   const getStatusBadge = (status: string) => {
-      switch (status) {
-          case 'completed': return <Badge variant="success">Completed</Badge>;
-          case 'in_progress': return <Badge variant="info">In Progress</Badge>;
-          case 'assigned': return <Badge variant="info">Assigned</Badge>;
-          case 'unassigned': return <Badge variant="warning">Looking for Runner</Badge>;
-          case 'cancelled': return <Badge variant="danger">Cancelled</Badge>;
-          case 'disputed': return <Badge variant="danger">Disputed</Badge>;
-          default: return <Badge variant="outline">{status}</Badge>;
-      }
+    switch (status) {
+      case 'completed': return <Badge variant="success">Completed</Badge>;
+      case 'in_progress': return <Badge variant="info">In Progress</Badge>;
+      case 'assigned': return <Badge variant="info">Assigned</Badge>;
+      case 'unassigned': return <Badge variant="warning">Looking for Runner</Badge>;
+      case 'cancelled': return <Badge variant="danger">Cancelled</Badge>;
+      case 'disputed': return <Badge variant="danger">Disputed</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
+    }
   };
 
   const getTimelineSteps = (status: string) => {
     const statuses = ['unassigned', 'assigned', 'in_progress', 'completed'];
-    
     let currentIndex = statuses.indexOf(status);
-    if (status === 'payment_pending') currentIndex = -1;
-    if (status === 'cancelled' || status === 'disputed') {
-       return [
-         {
-           id: 'unassigned',
-           label: 'Searching for Runner',
-           status: 'completed'
-         },
-         {
-           id: 'cancelled_disputed',
-           label: status === 'cancelled' ? 'Cancelled' : 'Disputed',
-           description: status === 'cancelled' ? 'Errand was cancelled.' : 'Errand is under dispute.',
-           status: 'error'
-         }
-       ] as any;
-    }
 
     return [
       {
-        id: 'unassigned',
-        label: 'Searching for Runner',
-        description: 'Publishing errand to campus runners.',
-        status: status === 'unassigned' ? 'current' : currentIndex > 0 ? 'completed' : 'upcoming'
+        label: 'Searching',
+        status: status === 'unassigned' ? 'active' : currentIndex > 0 ? 'done' : 'pending'
       },
       {
-        id: 'assigned',
-        label: 'Runner Assigned',
-        description: 'A runner has accepted your errand.',
-        status: status === 'assigned' ? 'current' : currentIndex > 1 ? 'completed' : 'upcoming'
+        label: 'Assigned',
+        status: status === 'assigned' ? 'active' : currentIndex > 1 ? 'done' : 'pending'
       },
       {
-        id: 'in_progress',
         label: 'In Progress',
-        description: 'The runner is actively completing the errand.',
-        status: status === 'in_progress' ? 'current' : currentIndex > 2 ? 'completed' : 'upcoming'
+        status: status === 'in_progress' ? 'active' : currentIndex > 2 ? 'done' : 'pending'
       },
       {
-        id: 'completed',
-        label: 'Completed',
-        description: 'Errand delivered successfully.',
-        status: status === 'completed' ? 'completed' : 'upcoming'
+        label: 'Delivered',
+        status: status === 'completed' ? 'done' : 'pending'
       }
     ] as any;
-  }
+  };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-8">
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-white mb-2">Mission Control</h2>
-          <p className="text-white/60">Live tracking and details for your errand.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Live Delivery Tracking</h2>
+          <p className="text-slate-500 text-sm mt-0.5">Real-time status updates and delivery verification.</p>
         </div>
         <div>
           {errand && getStatusBadge(errand.status)}
@@ -403,105 +376,114 @@ export default function ErrandDetailPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center p-12">
-          <p className="text-white/60">Loading mission data…</p>
-        </div>
+        <Card className="p-12 text-center">
+          <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin mx-auto mb-2" />
+          <p className="text-slate-500 text-sm">Loading tracking details…</p>
+        </Card>
       ) : !errand ? (
-        <div className="flex items-center justify-center p-12">
-          <p className="text-white/60">Mission not found.</p>
-        </div>
+        <Card className="p-12 text-center">
+          <p className="text-slate-500 text-sm">Errand not found.</p>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Details & Timeline */}
           <div className="lg:col-span-1 space-y-6">
+            {/* Status Timeline */}
             <Card>
-              <CardHeader>
-                <CardTitle>Mission Brief</CardTitle>
+              <CardHeader className="pb-3 border-b border-slate-100">
+                <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Progress Timeline</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-lg text-white">{errand.title}</h3>
-                  <p className="text-sm text-white/60 mt-1">{errand.description}</p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 py-4 border-y border-white/10">
-                  <div>
-                    <p className="text-xs text-white/40 mb-1">Pickup</p>
-                    <p className="text-sm font-medium text-white">{errand.pickup_location}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-white/40 mb-1">Dropoff</p>
-                    <p className="text-sm font-medium text-white">{errand.delivery_location}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Total Fee</span>
-                    <span className="font-semibold text-white">{formatCurrency(Number(errand.total_fee))}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Priority</span>
-                    <span className="text-white capitalize">{errand.priority}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Status Timeline</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="pt-5">
                 <Timeline steps={getTimelineSteps(errand.status)} />
               </CardContent>
             </Card>
 
+            {/* Delivery PIN Card */}
+            {(errand.status === 'assigned' || errand.status === 'in_progress' || errand.status === 'unassigned') && (
+              <Card className="border-2 border-blue-200 bg-blue-50/60 shadow-sm text-center">
+                <CardContent className="p-5">
+                  <p className="text-xs text-blue-700 font-bold uppercase tracking-widest mb-1.5">Secure 4-Digit Delivery PIN</p>
+                  <div className="text-4xl font-mono font-black tracking-[0.3em] text-slate-900 bg-white py-3 px-6 rounded-xl border border-blue-200 inline-block shadow-sm">
+                    {errand.delivery_pin || '----'}
+                  </div>
+                  <p className="text-xs text-slate-600 mt-2.5 max-w-xs mx-auto">
+                    Provide this PIN to your runner <strong>only after</strong> you receive and inspect your items.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Errand Summary Card */}
+            <Card>
+              <CardHeader className="pb-3 border-b border-slate-100">
+                <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Errand Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-4 text-sm">
+                <div>
+                  <h3 className="font-bold text-slate-900">{errand.title}</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">{errand.description}</p>
+                </div>
+                
+                <div className="space-y-2 py-3 border-y border-slate-100 text-xs">
+                  <div>
+                    <span className="text-slate-400 block font-semibold uppercase">Pickup</span>
+                    <span className="text-slate-800 font-medium">{errand.pickup_location}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold uppercase">Dropoff</span>
+                    <span className="text-slate-800 font-medium">{errand.delivery_location}</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-medium">Total Escrow</span>
+                  <span className="font-bold text-slate-900 font-mono text-sm">{formatCurrency(Number(errand.total_fee))}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Runner Card */}
             {runnerProfile && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Operative Assigned</CardTitle>
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Assigned Runner</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-4">
-                     {runnerProfile.avatar_url ? (
-                       <img src={runnerProfile.avatar_url} alt="Runner" className="w-12 h-12 rounded-full bg-white/10 object-cover border-2 border-primary-500/30" />
-                     ) : (
-                       <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center text-primary-400 font-bold border-2 border-primary-500/30">
-                         {runnerProfile.full_name?.charAt(0) || 'R'}
-                       </div>
-                     )}
-                     <div>
-                       <p className="font-semibold text-white">{runnerProfile.full_name}</p>
-                       <p className="text-sm text-white/60">Rating: {runnerProfile.rating || 'N/A'} ⭐ ({runnerProfile.total_ratings || 0})</p>
-                     </div>
+                <CardContent className="pt-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                      {runnerProfile.full_name?.charAt(0) || 'R'}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">{runnerProfile.full_name}</p>
+                      <p className="text-xs text-slate-500">Rating: {runnerProfile.rating || '5.0'} ⭐</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             )}
           </div>
 
-          {/* Right Column: Map & Actions */}
+          {/* Right Column: Live Map & Actions */}
           <div className="lg:col-span-2 space-y-6">
-            <Card className="flex flex-col h-[500px]">
-              <CardHeader className="pb-4">
-                <CardTitle>Live Map</CardTitle>
+            <Card className="flex flex-col h-[400px] overflow-hidden">
+              <CardHeader className="py-3 px-5 border-b border-slate-100 bg-slate-50/50">
+                <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Live GPS Map</CardTitle>
               </CardHeader>
-              <div className="flex-1 w-full bg-dark-base relative z-0">
-                <MapContainer center={mapCenter} zoom={14} scrollWheelZoom={false} className="h-full w-full rounded-b-2xl">
+              <div className="flex-1 w-full relative z-0">
+                <MapContainer center={mapCenter} zoom={14} scrollWheelZoom={false} className="h-full w-full">
                   <RecenterMap center={mapCenter} />
                   <TileLayer
                     attribution='&copy; OpenStreetMap contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   />
                   {pathPositions.length > 1 && (
-                    <Polyline positions={pathPositions} pathOptions={{ color: '#38bdf8', weight: 4, opacity: 0.8 }} />
+                    <Polyline positions={pathPositions} pathOptions={{ color: '#2563EB', weight: 4, opacity: 0.8 }} />
                   )}
                   {latestTracking?.current_location && (
                     <Marker position={[latestTracking.current_location.lat, latestTracking.current_location.lng]}> 
                       <Popup>
-                        <span className="font-semibold">Operative Location</span><br />
-                        {new Date(latestTracking.timestamp).toLocaleString()}
+                        <span className="font-semibold text-sm">Runner Position</span><br />
+                        <span className="text-xs">{new Date(latestTracking.timestamp).toLocaleTimeString()}</span>
                       </Popup>
                     </Marker>
                   )}
@@ -509,123 +491,66 @@ export default function ErrandDetailPage() {
               </div>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Action Controls */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Action Center</CardTitle>
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Actions & Resolution</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {existingDispute && (
-                    <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">
-                          Dispute {existingDispute.status}
-                        </span>
-                        <span className="text-xs text-white/40">
-                          {new Date(existingDispute.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-white/90 font-medium">{existingDispute.reason}</p>
-                      <p className="text-xs text-white/60">{existingDispute.description}</p>
-                      {existingDispute.admin_notes && (
-                        <p className="text-xs text-primary-300 mt-2 pt-2 border-t border-white/10">
-                          Admin Note: {existingDispute.admin_notes}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
+                <CardContent className="pt-4 space-y-3">
                   {errand.status === 'unassigned' || errand.status === 'payment_pending' ? (
-                    <div className="space-y-4">
-                      <p className="text-sm text-white/60">
-                        Waiting for an operative to accept your mission. You can abort and get a full refund if it's taking too long.
+                    <div className="space-y-3">
+                      <p className="text-xs text-slate-500">
+                        Waiting for an available runner. You can cancel for an instant full wallet refund.
                       </p>
-                      <Button variant="danger" className="w-full" onClick={() => setShowCancelModal(true)}>
-                        Abort Mission (Refund)
+                      <Button variant="danger" className="w-full text-xs font-bold" onClick={() => setShowCancelModal(true)}>
+                        Cancel Errand (Instant Refund)
                       </Button>
                     </div>
                   ) : errand.status === 'assigned' || errand.status === 'in_progress' ? (
-                    <div className="space-y-4">
-                      <div className="p-6 bg-dark-base border-2 border-brand-green/30 rounded-xl text-center shadow-[0_0_20px_rgba(34,197,94,0.1)]">
-                        <p className="text-xs text-brand-green font-bold mb-3 uppercase tracking-widest">Secure Delivery PIN</p>
-                        <div className="text-4xl font-mono font-bold tracking-[0.25em] text-white filter blur-md hover:blur-none transition-all duration-300 cursor-help select-none bg-black/40 py-3 rounded-lg border border-white/5 inline-block px-8">
-                          {errand.delivery_pin || '----'}
-                        </div>
-                        <p className="text-xs text-white/40 mt-4 max-w-[250px] mx-auto">
-                          Hover to reveal. Provide this to your operative ONLY upon receiving your items.
-                        </p>
-                      </div>
-
+                    <div className="space-y-3">
+                      <p className="text-xs text-slate-500">
+                        Your runner is executing this task. Give them your 4-digit PIN when delivered.
+                      </p>
                       {!existingDispute && (
-                        <Button variant="ghost" className="w-full text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" onClick={() => setShowDisputeModal(true)}>
-                          Report Issue / Dispute
+                        <Button variant="outline" className="w-full text-xs text-rose-600 border-rose-200 hover:bg-rose-50" onClick={() => setShowDisputeModal(true)}>
+                          Report Issue / File Dispute
                         </Button>
                       )}
                     </div>
                   ) : errand.status === 'completed' ? (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
-                        <p className="text-emerald-400 font-semibold">Mission Accomplished</p>
-                        <p className="text-sm text-white/60 mt-1">Funds have been released.</p>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-green-50 text-green-700 rounded-lg text-xs font-medium text-center">
+                        ✓ Delivery completed & funds released.
                       </div>
-
-                      {existingRating ? (
-                        <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-white/60 font-medium">Your Rating</span>
-                            <div className="flex text-amber-400">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <span key={star}>
-                                  {star <= existingRating.rating ? '★' : '☆'}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          {existingRating.review && (
-                            <p className="text-sm text-white/80 italic bg-black/20 p-3 rounded-lg">
-                              "{existingRating.review}"
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <Button variant="primary" className="w-full" onClick={() => setShowRatingModal(true)}>
-                          Rate Operative
-                        </Button>
-                      )}
-
-                      {!existingDispute && (
-                        <Button variant="ghost" className="w-full text-white/40" onClick={() => setShowDisputeModal(true)}>
-                          Report a Problem
+                      {!existingRating && (
+                        <Button variant="primary" className="w-full text-xs font-bold" onClick={() => setShowRatingModal(true)}>
+                          Rate Runner
                         </Button>
                       )}
                     </div>
-                  ) : errand.status === 'cancelled' ? (
-                    <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-center">
-                      <p className="text-rose-400 font-medium">Mission Aborted</p>
-                      <p className="text-sm text-white/60 mt-1">Funds have been refunded.</p>
-                    </div>
-                  ) : null}
+                  ) : (
+                    <p className="text-xs text-slate-500">Errand is {errand.status}.</p>
+                  )}
                 </CardContent>
               </Card>
 
+              {/* Status Log */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Mission Log</CardTitle>
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Status Log</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                <CardContent className="pt-4">
+                  <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1 text-xs">
                     {trackingLoading ? (
-                      <p className="text-sm text-white/40">Syncing logs…</p>
+                      <p className="text-slate-400">Loading activity...</p>
                     ) : tracking.length === 0 ? (
-                      <p className="text-sm text-white/40">No logs recorded yet.</p>
+                      <p className="text-slate-400">No activity recorded yet.</p>
                     ) : (
                       tracking.map((t: any) => (
-                        <div key={t.id} className="relative pl-4 border-l-2 border-white/10 pb-4 last:pb-0">
-                          <div className="absolute -left-[5px] top-1.5 h-2 w-2 rounded-full bg-primary-500" />
-                          <p className="text-sm font-medium text-white/90">{t.status_update}</p>
-                          <p className="text-xs text-white/40 mt-1">
-                            {new Date(t.timestamp).toLocaleTimeString()}
-                          </p>
+                        <div key={t.id} className="border-l-2 border-blue-500 pl-2.5 py-0.5">
+                          <p className="font-semibold text-slate-800">{t.status_update}</p>
+                          <p className="text-[10px] text-slate-400">{new Date(t.timestamp).toLocaleTimeString()}</p>
                         </div>
                       ))
                     )}
@@ -639,28 +564,28 @@ export default function ErrandDetailPage() {
 
       {/* RATING MODAL */}
       {showRatingModal && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <Card className="max-w-md w-full relative">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <Card className="max-w-md w-full relative shadow-xl">
             <button
               type="button"
               onClick={() => setShowRatingModal(false)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white z-50"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
             >
               ✕
             </button>
-            <CardHeader>
-              <CardTitle>Rate Operative</CardTitle>
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-base font-bold text-slate-900">Rate Your Runner</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmitRating} className="space-y-6">
-                <div className="flex justify-center gap-2 py-4 bg-black/20 rounded-xl border border-white/5">
+            <CardContent className="pt-4">
+              <form onSubmit={handleSubmitRating} className="space-y-4">
+                <div className="flex justify-center gap-2 py-3 bg-slate-50 rounded-xl">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
                       onClick={() => setSelectedStars(star)}
-                      className={`text-4xl transition-transform hover:scale-110 ${
-                        star <= selectedStars ? 'text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]' : 'text-white/20'
+                      className={`text-3xl transition-transform hover:scale-110 ${
+                        star <= selectedStars ? 'text-amber-400' : 'text-slate-300'
                       }`}
                     >
                       ★
@@ -669,17 +594,17 @@ export default function ErrandDetailPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-white/80 block mb-2 font-medium">Commendations</label>
-                  <div className="flex flex-wrap gap-2">
+                  <label className="text-xs font-semibold text-slate-700 block mb-2">Feedback tags</label>
+                  <div className="flex flex-wrap gap-1.5">
                     {availableTags.map((tag) => (
                       <button
                         key={tag}
                         type="button"
                         onClick={() => toggleTag(tag)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
                           selectedTags.includes(tag)
-                            ? 'bg-primary-500/20 text-primary-300 border-primary-500/50'
-                            : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200 font-semibold'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                         }`}
                       >
                         {tag}
@@ -689,18 +614,18 @@ export default function ErrandDetailPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-white/80 block mb-2 font-medium">After Action Report (Optional)</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1.5">Review (Optional)</label>
                   <textarea
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Details about the mission execution..."
-                    className="w-full bg-dark-base border border-white/10 rounded-xl p-3 text-sm text-white placeholder-white/30 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all outline-none"
+                    placeholder="Tell other students about your experience..."
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows={3}
                   />
                 </div>
 
-                <Button type="submit" variant="primary" className="w-full" isLoading={submittingRating}>
-                  Submit Report
+                <Button type="submit" variant="primary" className="w-full font-bold" isLoading={submittingRating}>
+                  Submit Rating
                 </Button>
               </form>
             </CardContent>
@@ -710,26 +635,26 @@ export default function ErrandDetailPage() {
 
       {/* DISPUTE MODAL */}
       {showDisputeModal && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <Card className="max-w-md w-full relative border-rose-500/30">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <Card className="max-w-md w-full relative shadow-xl">
             <button
               type="button"
               onClick={() => setShowDisputeModal(false)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white z-50"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
             >
               ✕
             </button>
-            <CardHeader>
-              <CardTitle className="text-rose-400">File a Dispute</CardTitle>
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-base font-bold text-red-600">File a Dispute</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmitDispute} className="space-y-4">
+            <CardContent className="pt-4">
+              <form onSubmit={handleSubmitDispute} className="space-y-3">
                 <div>
-                  <label className="text-sm text-white/80 block mb-2 font-medium">Reason</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Reason</label>
                   <select
                     value={disputeReason}
                     onChange={(e) => setDisputeReason(e.target.value)}
-                    className="w-full bg-dark-base border border-white/10 rounded-xl p-3 text-sm text-white focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="Item not delivered / Missing">Item not delivered / Missing</option>
                     <option value="Damaged or incorrect item">Damaged or incorrect item</option>
@@ -741,19 +666,19 @@ export default function ErrandDetailPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm text-white/80 block mb-2 font-medium">Detailed Explanation</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Detailed Explanation</label>
                   <textarea
                     required
                     value={disputeDescription}
                     onChange={(e) => setDisputeDescription(e.target.value)}
-                    placeholder="Provide full details for command review..."
-                    className="w-full bg-dark-base border border-white/10 rounded-xl p-3 text-sm text-white placeholder-white/30 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
-                    rows={4}
+                    placeholder="Provide full details for admin review..."
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={3}
                   />
                 </div>
 
-                <Button type="submit" variant="danger" className="w-full" isLoading={submittingDispute} disabled={!disputeDescription}>
-                  Submit Dispute
+                <Button type="submit" variant="danger" className="w-full font-bold" isLoading={submittingDispute} disabled={!disputeDescription}>
+                  Submit Dispute to Admin
                 </Button>
               </form>
             </CardContent>
@@ -763,40 +688,40 @@ export default function ErrandDetailPage() {
 
       {/* CANCEL MODAL */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <Card className="max-w-md w-full relative">
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <Card className="max-w-md w-full relative shadow-xl">
             <button
               type="button"
               onClick={() => setShowCancelModal(false)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white z-50"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
             >
               ✕
             </button>
-            <CardHeader>
-              <CardTitle>Abort Mission</CardTitle>
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-base font-bold text-slate-900">Cancel Errand</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-white/60 mb-6">
-                Are you sure you want to abort? As no operative has accepted yet, your funds ({formatCurrency(errand?.total_fee || 0)}) will be instantly refunded to your wallet.
+            <CardContent className="pt-4">
+              <p className="text-xs text-slate-600 mb-4">
+                Are you sure you want to cancel? Since no runner has accepted yet, your funds ({formatCurrency(errand?.total_fee || 0)}) will be refunded immediately to your wallet.
               </p>
-              <form onSubmit={handleCancelErrand} className="space-y-6">
+              <form onSubmit={handleCancelErrand} className="space-y-4">
                 <div>
-                  <label className="text-sm text-white/80 block mb-2 font-medium">Reason (Optional)</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Reason (Optional)</label>
                   <input
                     type="text"
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
-                    placeholder="e.g. No longer needed"
-                    className="w-full bg-dark-base border border-white/10 rounded-xl p-3 text-sm text-white placeholder-white/30 focus:border-white/30 focus:ring-1 focus:ring-white/30 outline-none"
+                    placeholder="e.g. Changed my mind"
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
-                <div className="flex gap-3">
-                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowCancelModal(false)}>
-                    Hold
+                <div className="flex gap-2.5">
+                  <Button type="button" variant="secondary" className="flex-1 text-xs" onClick={() => setShowCancelModal(false)}>
+                    Keep Errand
                   </Button>
-                  <Button type="submit" variant="danger" className="flex-1" isLoading={cancellingErrand}>
-                    Confirm Abort
+                  <Button type="submit" variant="danger" className="flex-1 text-xs font-bold" isLoading={cancellingErrand}>
+                    Confirm Cancel
                   </Button>
                 </div>
               </form>

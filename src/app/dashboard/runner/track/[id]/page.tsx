@@ -66,7 +66,7 @@ export default function RunnerTrackPage() {
         return [parsedLat, parsedLng] as [number, number];
       }
     }
-    return [6.5244, 3.3792] as [number, number];
+    return [5.0377, 7.9128] as [number, number];
   }, [latestTracking, lat, lng]);
 
   const submitTracking = async (message: string) => {
@@ -102,7 +102,7 @@ export default function RunnerTrackPage() {
       if (!response.ok || !result.success) {
         toast.error(result.error || 'Failed to send tracking update');
       } else {
-        toast.success('Tracking update sent');
+        toast.success('Tracking update broadcasted');
       }
     } catch (error) {
       console.error(error);
@@ -118,9 +118,9 @@ export default function RunnerTrackPage() {
   };
 
   const handleComplete = async () => {
-    const pin = window.prompt("Enter the 4-digit Delivery PIN provided by the customer:");
+    const pin = window.prompt('Enter the 4-digit Delivery PIN provided by the customer:');
     if (!pin || pin.trim().length !== 4) {
-      toast.error("Valid 4-digit PIN required to complete delivery");
+      toast.error('Valid 4-digit PIN required to complete delivery');
       return;
     }
     
@@ -135,263 +135,177 @@ export default function RunnerTrackPage() {
       if (!response.ok) throw new Error(result.error);
       
       await submitTracking('Runner has completed delivery');
-      toast.success("PIN verified. Errand completed successfully!");
+      toast.success('PIN verified. Errand completed successfully!');
     } catch (e: any) {
-      toast.error(e.message || "Failed to verify PIN");
+      toast.error(e.message || 'Failed to verify PIN');
       setSubmitting(false);
     }
   };
 
   const handleDispute = async () => {
-    const reason = window.prompt("Customer refused PIN? Enter a reason to initiate a dispute (Requires GPS lock):");
+    const reason = window.prompt('Customer refused PIN? Enter a reason to initiate a dispute (Requires GPS lock):');
     if (!reason) return;
     if (!lat || !lng) {
-      toast.error("Please Auto-Detect GPS before initiating a dispute to prove your location.");
+      toast.error('Please detect GPS before initiating a dispute to verify location.');
       return;
     }
-    setSubmitting(true);
+
     try {
-      const response = await fetch('/api/tracking/dispute', {
+      setSubmitting(true);
+      const res = await fetch('/api/tracking/dispute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          errandId, 
-          runnerId: (await supabase.auth.getUser()).data.user?.id, 
+        body: JSON.stringify({
+          errandId,
+          runnerId: (await supabase.auth.getUser()).data.user?.id,
           reason,
-          lat: Number(lat),
-          lng: Number(lng)
+          location: { lat: Number(lat), lng: Number(lng) }
         })
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
-      
-      await submitTracking(`Dispute initiated: ${reason}`);
-      toast.success("Dispute filed successfully.");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to file dispute");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      toast.success('Dispute ticket raised. GPS lock logged.');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to raise dispute');
+    } finally {
       setSubmitting(false);
     }
   };
-
-  const [detectingGps, setDetectingGps] = useState(false);
-
-  const quickStatusPresets = [
-    '🏃 Runner is heading to pickup point',
-    '📍 Arrived at pickup location',
-    '📦 Item/Order picked up, en route to you',
-    '🏢 Arrived at delivery building/hostel',
-    '✅ Handed over to recipient',
-  ];
 
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
       toast.error('Geolocation is not supported by your browser');
       return;
     }
-
-    setDetectingGps(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLat(position.coords.latitude.toFixed(6));
-        setLng(position.coords.longitude.toFixed(6));
-        toast.success('GPS location captured!');
-        setDetectingGps(false);
+      (pos) => {
+        setLat(pos.coords.latitude.toFixed(6));
+        setLng(pos.coords.longitude.toFixed(6));
+        toast.success('GPS position detected');
       },
-      (error) => {
-        console.error('GPS error:', error);
-        toast.error('Could not access GPS location. Check browser permissions.');
-        setDetectingGps(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
+      () => toast.error('Unable to retrieve GPS coordinates')
     );
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="grid gap-6 grid-cols-1 xl:grid-cols-[2fr_1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-3xl mb-2">Runner Live Tracking</CardTitle>
-            <p className="text-white/60 text-sm">
-              Transmit live GPS position and step-by-step progress updates for errand #{errandId?.substring(0, 8)}.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
-              <div className="space-y-4">
-                {/* Quick Preset Badges */}
-                <div>
-                  <span className="text-xs text-white/60 block mb-2 font-medium">Quick Status Presets:</span>
-                  <div className="flex overflow-x-auto scrollbar-none gap-2 pb-2">
-                    {quickStatusPresets.map((preset) => (
-                      <Badge
-                        key={preset}
-                        variant={statusUpdate === preset ? 'info' : 'outline'}
-                        onClick={() => setStatusUpdate(preset)}
-                        className="cursor-pointer whitespace-nowrap"
-                      >
-                        {preset}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
+    <div className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Runner GPS & Status Broadcast</h1>
+          <p className="text-slate-500 text-xs mt-0.5">Transmitting live location for errand {errandId}</p>
+        </div>
+        <Badge variant="info">Live Transmitter Active</Badge>
+      </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Broadcast Form */}
+        <div className="lg:col-span-1 space-y-4">
+          <Card>
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Transmit Update</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <span className="text-xs text-white/60 font-medium block mb-1.5">Custom Status Message</span>
-                  <Input
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">Status Message</label>
+                  <select
                     value={statusUpdate}
                     onChange={(e) => setStatusUpdate(e.target.value)}
-                    placeholder="e.g. Standing in cafeteria queue, 3 mins away"
-                  />
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Runner en route to pickup">En route to pickup</option>
+                    <option value="Arrived at pickup location / in queue">Arrived at pickup / in queue</option>
+                    <option value="Item secured, heading to dropoff">Item secured, heading to dropoff</option>
+                    <option value="Arrived at delivery location">Arrived at delivery destination</option>
+                  </select>
                 </div>
 
-                {/* GPS Auto-Detect Bar */}
-                <Card className="bg-white/5 border-white/10 shadow-none">
-                  <div className="p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-white">Current GPS Coordinates</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDetectLocation}
-                        disabled={detectingGps}
-                        className="text-primary-300 bg-primary-500/20 hover:bg-primary-500/30 border border-primary-500/40 text-xs py-1 h-auto"
-                      >
-                        <span className="mr-1.5">📍</span>
-                        <span>{detectingGps ? 'Locating...' : 'Auto-Detect GPS'}</span>
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <span className="text-[10px] text-white/40 block mb-0.5">Latitude</span>
-                        <Input
-                          value={lat}
-                          onChange={(e) => setLat(e.target.value)}
-                          placeholder="6.5244"
-                          className="font-mono h-9 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-white/40 block mb-0.5">Longitude</span>
-                        <Input
-                          value={lng}
-                          onChange={(e) => setLng(e.target.value)}
-                          placeholder="3.3792"
-                          className="font-mono h-9 text-xs"
-                        />
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Latitude</label>
+                    <Input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="e.g. 5.0377" className="text-xs" />
                   </div>
-                </Card>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Longitude</label>
+                    <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="e.g. 7.9128" className="text-xs" />
+                  </div>
+                </div>
+
+                <Button type="button" variant="outline" size="sm" onClick={handleDetectLocation} className="w-full text-xs">
+                  📍 Auto-Detect GPS
+                </Button>
 
                 <div>
-                  <span className="text-xs text-white/60 font-medium block mb-1.5">Runner Notes (Optional)</span>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="flex w-full rounded-xl border bg-dark-base px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all border-white/10"
-                    rows={3}
-                    placeholder="e.g. Packed in insulated bag, at Faculty gate"
-                  />
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Notes (Optional)</label>
+                  <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. In red shirt at main gate" className="text-xs" />
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row pt-2">
-                  <Button
-                    type="button"
-                    onClick={handleSubmit}
-                    isLoading={submitting}
-                    className="w-full sm:flex-1 h-auto py-3 text-xs"
-                  >
-                    Broadcast Tracking Update
-                  </Button>
-                  <div className="flex flex-col w-full sm:flex-1 gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={handleComplete}
-                      disabled={submitting}
-                      className="w-full h-auto py-3 text-xs bg-brand-green/20 text-brand-green border-brand-green/30 hover:bg-brand-green/30 hover:text-brand-green"
-                    >
-                      {submitting ? 'Verifying…' : 'Arrived / Complete'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="danger"
-                      onClick={handleDispute}
-                      disabled={submitting}
-                      className="w-full h-auto py-2 text-[10px]"
-                    >
-                      ⚠️ Customer Refused PIN
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                <Button type="submit" variant="primary" size="md" className="w-full font-bold text-xs" isLoading={submitting}>
+                  Send Status Broadcast
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
-              <div>
-                <Card className="h-full border-white/10 bg-white/5 shadow-none">
-                  <CardHeader>
-                    <CardTitle className="text-xl">Live status</CardTitle>
-                    <p className="text-white/60 text-sm">Latest updates are streamed in real-time from Supabase.</p>
-                  </CardHeader>
-                  <CardContent>
-                    {trackingLoading ? (
-                      <p className="text-white/60">Connecting to live tracking…</p>
-                    ) : tracking.length === 0 ? (
-                      <p className="text-white/60">No tracking updates yet. Send the first update now.</p>
-                    ) : (
-                      <div className="space-y-4">
-                        {tracking.slice(0, 4).map((update) => (
-                          <Card key={update.id} className="bg-white/5 border-white/10 shadow-none">
-                            <div className="p-4">
-                              <div className="flex items-start justify-between mb-2">
-                                <Badge variant="info">{update.status_update}</Badge>
-                              </div>
-                              {update.current_location && (
-                                <div className="text-xs text-white/60">
-                                  {update.current_location.lat.toFixed(5)}, {update.current_location.lng.toFixed(5)}
-                                </div>
-                              )}
-                              <div className="text-xs text-white/40 mt-2">{new Date(update.timestamp).toLocaleString()}</div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Completion & Dispute Actions */}
+          <Card className="border-slate-200">
+            <CardContent className="p-4 space-y-2">
+              <Button onClick={handleComplete} variant="primary" size="md" className="w-full bg-green-600 hover:bg-green-700 font-bold text-xs">
+                Enter Delivery PIN & Complete
+              </Button>
+              <Button onClick={handleDispute} variant="outline" size="sm" className="w-full text-rose-600 border-rose-200 hover:bg-rose-50 text-xs">
+                Initiate Dispute with GPS Lock
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle className="text-xl">Live map preview</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 pb-6 relative min-h-[400px]">
-            <div className="absolute inset-0 mx-6 mb-6 rounded-3xl overflow-hidden border border-white/10">
+        {/* Right: Map & Log */}
+        <div className="lg:col-span-2 space-y-4">
+          <Card className="h-[350px] overflow-hidden flex flex-col">
+            <div className="flex-1 w-full relative z-0">
               <MapContainer center={mapCenter} zoom={14} scrollWheelZoom={false} className="h-full w-full">
                 <RecenterMap center={mapCenter} />
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  attribution='&copy; OpenStreetMap contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 {pathPositions.length > 1 && (
-                  <Polyline positions={pathPositions} pathOptions={{ color: '#38bdf8', weight: 4, opacity: 0.8 }} />
+                  <Polyline positions={pathPositions} pathOptions={{ color: '#2563EB', weight: 4 }} />
                 )}
                 {latestTracking?.current_location && (
                   <Marker position={[latestTracking.current_location.lat, latestTracking.current_location.lng]}>
-                    <Popup>
-                      Last known location<br />{new Date(latestTracking.timestamp).toLocaleString()}
-                    </Popup>
+                    <Popup>Current Broadcast Point</Popup>
                   </Marker>
                 )}
               </MapContainer>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+
+          {/* Live Activity Log */}
+          <Card>
+            <CardHeader className="pb-2 border-b border-slate-100">
+              <CardTitle className="text-xs uppercase tracking-wider text-slate-500 font-bold">Broadcasted Log</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-3">
+              <div className="space-y-2 max-h-[140px] overflow-y-auto text-xs">
+                {trackingLoading ? (
+                  <p className="text-slate-400">Loading...</p>
+                ) : tracking.length === 0 ? (
+                  <p className="text-slate-400">No broadcasts sent yet.</p>
+                ) : (
+                  tracking.map((t: any) => (
+                    <div key={t.id} className="flex justify-between items-center py-1 border-b border-slate-50 last:border-0">
+                      <span className="font-medium text-slate-800">{t.status_update}</span>
+                      <span className="text-[10px] text-slate-400">{new Date(t.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

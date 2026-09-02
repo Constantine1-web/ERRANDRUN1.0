@@ -1,29 +1,23 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShieldCheck,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  UserCheck,
-  TrendingUp, Wallet,
-  PackageCheck,
-  FileText,
   ExternalLink,
   Search,
-  Users,
-  DollarSign,
   Loader2,
-  Package,
-  AlertTriangle,
   RefreshCw,
-  Eye,
+  FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { formatCurrency } from '@/utils/pricing';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
+import { TabsList, TabsTrigger } from '@/components/ui/Tabs';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RunnerApp {
   id: string;
@@ -89,7 +83,15 @@ interface DisputeRecord {
   created_at: string;
   initiator?: { id: string; full_name: string; phone_number: string };
   respondent?: { id: string; full_name: string; phone_number: string };
-  errand?: { id: string; title: string; total_fee: number; status: string; delivery_pin?: string; pickup_photo_url?: string; dropoff_photo_url?: string; };
+  errand?: {
+    id: string;
+    title: string;
+    total_fee: number;
+    status: string;
+    delivery_pin?: string;
+    pickup_photo_url?: string;
+    dropoff_photo_url?: string;
+  };
 }
 
 interface PlatformStats {
@@ -104,9 +106,215 @@ interface PlatformStats {
   totalUsers: number;
 }
 
+// ─── Status Badge helpers ─────────────────────────────────────────────────────
+
+function errandStatusVariant(status: string): 'success' | 'danger' | 'info' | 'warning' {
+  if (status === 'completed') return 'success';
+  if (status === 'cancelled') return 'danger';
+  if (status === 'in_progress' || status === 'assigned') return 'info';
+  return 'warning';
+}
+
+function disputeStatusVariant(status: string): 'danger' | 'warning' | 'success' | 'default' {
+  if (status === 'open') return 'danger';
+  if (status === 'under_review') return 'warning';
+  if (status === 'resolved') return 'success';
+  return 'default';
+}
+
+// ─── Simple AdminGuard wrapper ────────────────────────────────────────────────
+// If a dedicated AdminGuard component is added later, replace this with an import.
+
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) { setAuthorized(false); return; }
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+      setAuthorized(data?.role === 'admin');
+    });
+  }, []);
+
+  if (authorized === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-slate-900">Access Denied</p>
+          <p className="text-slate-500 mt-2">You do not have admin privileges.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+// ─── Errand Inspect Modal ─────────────────────────────────────────────────────
+
+function ErrandModal({
+  errand,
+  onClose,
+  onAction,
+}: {
+  errand: ErrandRecord;
+  onClose: () => void;
+  onAction: (id: string, action: 'cancel' | 'complete' | 'unassign') => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <span className="text-xs font-mono text-blue-600 font-bold block">
+              Errand #{errand.id.substring(0, 8)}
+            </span>
+            <h3 className="text-base font-bold text-slate-900">{errand.title}</h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 text-sm">
+          <div>
+            <span className="text-xs text-slate-500 block mb-1">Description</span>
+            <p className="p-3 bg-slate-50 rounded-xl text-slate-700 border border-slate-100">
+              {errand.description}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div>
+              <span className="text-xs text-slate-500 block">Pickup</span>
+              <span className="font-semibold text-slate-900">{errand.pickup_location}</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block">Drop-off</span>
+              <span className="font-semibold text-slate-900">{errand.delivery_location}</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block">Requester</span>
+              <span className="font-semibold text-slate-900">{errand.requester?.full_name || '—'}</span>
+              <span className="text-xs text-slate-400">{errand.requester?.phone_number}</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block">Runner</span>
+              <span className="font-semibold text-slate-900">{errand.runner?.full_name || 'Unassigned'}</span>
+              <span className="text-xs text-slate-400">{errand.runner?.phone_number || '—'}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+            <div>
+              <span className="text-xs text-slate-500 block">Total Fee</span>
+              <span className="font-bold text-slate-900">{formatCurrency(errand.total_fee)}</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block">Runner Share</span>
+              <span className="font-bold text-green-600">{formatCurrency(errand.runner_amount)}</span>
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block">Platform (20%)</span>
+              <span className="font-bold text-blue-600">{formatCurrency(errand.platform_fee)}</span>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                if (window.confirm('Unassign the runner from this errand?')) {
+                  onAction(errand.id, 'unassign');
+                }
+              }}
+            >
+              Unassign Runner
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                if (window.confirm('Force-complete this errand?')) {
+                  onAction(errand.id, 'complete');
+                }
+              }}
+            >
+              Force Complete
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                if (window.confirm('Cancel this errand? This cannot be undone.')) {
+                  onAction(errand.id, 'cancel');
+                }
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Document Preview Modal ───────────────────────────────────────────────────
+
+function DocModal({ url, onClose }: { url: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h3 className="font-bold text-slate-900">Student Verification Document</h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-50">
+          {url.endsWith('.pdf') ? (
+            <iframe src={url} className="w-full h-[500px] rounded-xl border border-slate-200" title="Document PDF" />
+          ) : (
+            <img src={url} alt="Student ID Card" className="max-h-[500px] w-auto object-contain rounded-xl" />
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-slate-100 flex justify-between items-center">
+          <span className="text-xs text-slate-500">Verify student photo, matric number, and institution seal</span>
+          <Button variant="secondary" size="sm" onClick={onClose}>Close Preview</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
+
+type TabId = 'verification' | 'disputes' | 'errands' | 'payouts';
+
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'applications' | 'errands' | 'users' | 'disputes' | 'stats' | 'payouts'>('applications');
-  
+  const [activeTab, setActiveTab] = useState<TabId>('verification');
+
   // Runner Apps State
   const [appStatusFilter, setAppStatusFilter] = useState<'pending' | 'approved' | 'denied' | 'all'>('pending');
   const [applications, setApplications] = useState<RunnerApp[]>([]);
@@ -137,16 +345,19 @@ export default function AdminDashboard() {
 
   // Stats State
   const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // Payouts State
   const [payouts, setPayouts] = useState<any[]>([]);
   const [loadingPayouts, setLoadingPayouts] = useState(false);
   const [processingPayoutId, setProcessingPayoutId] = useState<string | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true);
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Fetch Stats
-    const fetchPayouts = useCallback(async () => {
+  // ── Fetchers ──────────────────────────────────────────────────────────────
+
+  const fetchPayouts = useCallback(async () => {
     setLoadingPayouts(true);
     try {
       const { data, error } = await supabase
@@ -157,7 +368,7 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false });
       if (error) throw error;
       setPayouts(data || []);
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to load pending payouts');
     } finally {
       setLoadingPayouts(false);
@@ -169,9 +380,7 @@ export default function AdminDashboard() {
       setLoadingStats(true);
       const res = await fetch('/api/admin/stats');
       const data = await res.json();
-      if (data.success) {
-        setStats(data.stats);
-      }
+      if (data.success) setStats(data.stats);
     } catch (err) {
       console.error('Failed to fetch admin stats', err);
     } finally {
@@ -179,15 +388,12 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // 2. Fetch Runner Applications
   const fetchApplications = useCallback(async () => {
     try {
       setLoadingApps(true);
       const res = await fetch(`/api/admin/runners?status=${appStatusFilter}`);
       const data = await res.json();
-      if (data.success) {
-        setApplications(data.data || []);
-      }
+      if (data.success) setApplications(data.data || []);
     } catch (err) {
       console.error('Failed to fetch runner applications', err);
       toast.error('Could not load runner applications');
@@ -196,15 +402,12 @@ export default function AdminDashboard() {
     }
   }, [appStatusFilter]);
 
-  // 3. Fetch Errands
   const fetchErrands = useCallback(async () => {
     try {
       setLoadingErrands(true);
       const res = await fetch(`/api/admin/errands?status=${errandStatusFilter}`);
       const data = await res.json();
-      if (data.success) {
-        setErrands(data.data || []);
-      }
+      if (data.success) setErrands(data.data || []);
     } catch (err) {
       console.error('Failed to fetch errands', err);
       toast.error('Could not load platform errands');
@@ -213,15 +416,12 @@ export default function AdminDashboard() {
     }
   }, [errandStatusFilter]);
 
-  // 4. Fetch Users
   const fetchUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
       const res = await fetch(`/api/admin/users?role=${userRoleFilter}`);
       const data = await res.json();
-      if (data.success) {
-        setUsersList(data.data || []);
-      }
+      if (data.success) setUsersList(data.data || []);
     } catch (err) {
       console.error('Failed to fetch users', err);
       toast.error('Could not load users directory');
@@ -230,15 +430,12 @@ export default function AdminDashboard() {
     }
   }, [userRoleFilter]);
 
-  // 5. Fetch Disputes
   const fetchDisputes = useCallback(async () => {
     try {
       setLoadingDisputes(true);
       const res = await fetch('/api/admin/disputes');
       const data = await res.json();
-      if (data.success) {
-        setDisputes(data.data || []);
-      }
+      if (data.success) setDisputes(data.data || []);
     } catch (err) {
       console.error('Failed to fetch disputes', err);
     } finally {
@@ -246,46 +443,29 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
   useEffect(() => {
-    if (activeTab === 'applications') fetchApplications();
+    if (activeTab === 'verification') fetchApplications();
     if (activeTab === 'errands') fetchErrands();
-    if (activeTab === 'users') fetchUsers();
     if (activeTab === 'disputes') fetchDisputes();
     if (activeTab === 'payouts') fetchPayouts();
-  }, [activeTab, fetchApplications, fetchErrands, fetchUsers, fetchDisputes, fetchPayouts]);
+  }, [activeTab, fetchApplications, fetchErrands, fetchDisputes, fetchPayouts]);
 
-  // Handle Review Runner
+  // ── Action Handlers ───────────────────────────────────────────────────────
+
   const handleReview = async (app: RunnerApp, action: 'approve' | 'reject') => {
     try {
       setProcessingId(app.id);
       const notes = adminNotes[app.id] || '';
-
       const res = await fetch('/api/admin/runners', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          appId: app.id,
-          userId: app.user_id,
-          action,
-          adminNotes: notes,
-        }),
+        body: JSON.stringify({ appId: app.id, userId: app.user_id, action, adminNotes: notes }),
       });
-
       const result = await res.json();
-      if (!res.ok || !result.success) {
-        throw new Error(result.error || 'Failed to review application');
-      }
-
-      toast.success(
-        action === 'approve'
-          ? `Runner verified & approved! Account upgraded to runner.`
-          : `Application rejected.`
-      );
-
+      if (!res.ok || !result.success) throw new Error(result.error || 'Failed to review application');
+      toast.success(action === 'approve' ? 'Runner verified & approved!' : 'Application rejected.');
       await Promise.all([fetchApplications(), fetchStats()]);
     } catch (error: any) {
       console.error(error);
@@ -295,7 +475,16 @@ export default function AdminDashboard() {
     }
   };
 
-  // Handle Errand Intervention
+  // Aliases used in the spec
+  const handleApproveRunner = (appId: string) => {
+    const app = applications.find((a) => a.id === appId);
+    if (app) handleReview(app, 'approve');
+  };
+  const handleDenyRunner = (appId: string) => {
+    const app = applications.find((a) => a.id === appId);
+    if (app) handleReview(app, 'reject');
+  };
+
   const handleErrandAction = async (errandId: string, action: 'cancel' | 'complete' | 'unassign') => {
     try {
       const res = await fetch('/api/admin/errands', {
@@ -305,7 +494,6 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Action failed');
-
       toast.success(data.message || 'Action executed successfully');
       setSelectedErrand(null);
       await Promise.all([fetchErrands(), fetchStats()]);
@@ -315,7 +503,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Handle User Role Change
   const handleUserRoleChange = async (userId: string, newRole: string) => {
     try {
       const res = await fetch('/api/admin/users', {
@@ -325,7 +512,6 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to update role');
-
       toast.success(`User role updated to ${newRole}`);
       await fetchUsers();
     } catch (err: any) {
@@ -334,20 +520,18 @@ export default function AdminDashboard() {
     }
   };
 
-  // Handle Dispute Resolution
-    const handleProcessPayout = async (transactionId: string) => {
+  const handleProcessPayout = async (transactionId: string) => {
     setProcessingPayoutId(transactionId);
     try {
       const res = await fetch('/api/admin/payouts/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionId })
+        body: JSON.stringify({ transactionId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      
       toast.success('Payout processed successfully!');
-      fetchPayouts(); // Refresh list
+      fetchPayouts();
     } catch (err: any) {
       toast.error(err.message || 'Failed to process payout');
     } finally {
@@ -355,11 +539,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleMarkPaid = async (transactionId: string) => {
+    try {
+      const res = await fetch('/api/admin/payouts/mark-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success('Marked as paid!');
+      fetchPayouts();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to mark as paid');
+    }
+  };
+
   const handleResolveDispute = async (d: DisputeRecord) => {
     try {
       setProcessingId(d.id);
       const notes = disputeNotes[d.id] || '';
-      
       const runnerPayout = disputeRunnerPayouts[d.id] ?? 0;
       const customerRefund = disputeCustomerRefunds[d.id] ?? 0;
       const addRunnerStrike = runnerStrikes[d.id] ?? false;
@@ -377,10 +576,8 @@ export default function AdminDashboard() {
           adminNotes: notes,
         }),
       });
-
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || 'Failed to resolve dispute');
-
       toast.success('Dispute resolved successfully');
       await Promise.all([fetchDisputes(), fetchStats()]);
     } catch (err: any) {
@@ -391,7 +588,8 @@ export default function AdminDashboard() {
     }
   };
 
-  // Search Filters
+  // ── Filters ───────────────────────────────────────────────────────────────
+
   const filteredApps = applications.filter((app) => {
     const q = searchQuery.toLowerCase();
     return (
@@ -423,958 +621,614 @@ export default function AdminDashboard() {
     );
   });
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      {/* Top Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-purple/20 border border-primary-500/30">
-              <ShieldCheck className="w-7 h-7 text-primary-400" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold text-white">Platform Administration</h1>
-              <p className="text-white/60 text-sm">
-                Runner identity verification, live errand management, disputes, and marketplace metrics
-              </p>
-            </div>
-          </div>
-        </div>
+  // ── Refresh all ───────────────────────────────────────────────────────────
 
-        {/* Global Action & Refresh */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              fetchStats();
-              if (activeTab === 'applications') fetchApplications();
-              if (activeTab === 'errands') fetchErrands();
-              if (activeTab === 'users') fetchUsers();
-              if (activeTab === 'disputes') fetchDisputes();
+  const refreshAll = () => {
+    fetchStats();
+    if (activeTab === 'verification') fetchApplications();
+    if (activeTab === 'errands') fetchErrands();
+    if (activeTab === 'disputes') fetchDisputes();
     if (activeTab === 'payouts') fetchPayouts();
-              toast.success('Data refreshed');
-            }}
-            className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white/80 hover:text-white flex items-center gap-2 transition-all"
-          >
+    toast.success('Data refreshed');
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <AdminGuard>
+      <div className="min-h-screen bg-slate-50 p-6 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+          <Button variant="secondary" size="sm" onClick={refreshAll} className="gap-2">
             <RefreshCw className="w-3.5 h-3.5" />
-            Refresh Data
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Metric Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="glass-card rounded-3xl p-5 border border-white/10">
-          <div className="flex items-center justify-between text-white/60 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Pending Vetting</span>
-            <Clock className="w-5 h-5 text-amber-400" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {loadingStats ? '…' : stats?.pendingApplications || 0}
-          </div>
-          <p className="text-xs text-amber-400/80 mt-1">Awaiting ID Card Inspection</p>
+            Refresh
+          </Button>
         </div>
 
-        <div className="glass-card rounded-3xl p-5 border border-white/10">
-          <div className="flex items-center justify-between text-white/60 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Verified Runners</span>
-            <UserCheck className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {loadingStats ? '…' : stats?.totalRunners || 0}
-          </div>
-          <p className="text-xs text-emerald-400/80 mt-1">Authorized campus runners</p>
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total Users */}
+          <Card>
+            <CardContent className="pt-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">Total Users</p>
+              <p className="text-3xl font-black text-slate-900 mt-1">
+                {loadingStats ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : (stats?.totalUsers ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Active Errands */}
+          <Card>
+            <CardContent className="pt-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">Active Errands</p>
+              <p className="text-3xl font-black text-blue-600 mt-1">
+                {loadingStats ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : (stats?.activeCount ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Platform Revenue */}
+          <Card>
+            <CardContent className="pt-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">Platform Revenue</p>
+              <p className="text-3xl font-black text-green-600 mt-1">
+                {loadingStats ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : formatCurrency(stats?.totalRevenue ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Pending Verification */}
+          <Card>
+            <CardContent className="pt-4">
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-medium">Pending Verification</p>
+              <p className="text-3xl font-black text-amber-500 mt-1">
+                {loadingStats ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : (stats?.pendingApplications ?? 0)}
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="glass-card rounded-3xl p-5 border border-white/10">
-          <div className="flex items-center justify-between text-white/60 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Completed Tasks</span>
-            <PackageCheck className="w-5 h-5 text-primary-400" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {loadingStats ? '…' : stats?.completedCount || 0}
-          </div>
-          <p className="text-xs text-white/60 mt-1">
-            of {stats?.totalErrands || 0} total placed
-          </p>
-        </div>
-
-        <div className="glass-card rounded-3xl p-5 border border-white/10">
-          <div className="flex items-center justify-between text-white/60 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Platform Revenue</span>
-            <DollarSign className="w-5 h-5 text-green-400" />
-          </div>
-          <div className="text-3xl font-black text-green-400">
-            {loadingStats ? '…' : formatCurrency(stats?.totalRevenue || 0)}
-          </div>
-          <p className="text-xs text-white/60 mt-1">20% commission earned</p>
-        </div>
-      </div>
-
-      {/* Main Tab Navigation Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 border-b border-white/10 scrollbar-none">
-        {[
-          {
-            id: 'applications',
-            label: 'Runner Applications',
-            icon: ShieldCheck,
-            badge: stats && stats.pendingApplications > 0 ? stats.pendingApplications : null,
-          },
-          { id: 'errands', label: 'All Campus Errands', icon: Package },
-          { id: 'users', label: 'User Directory', icon: Users },
-          { id: 'disputes', label: 'Disputes & Claims', icon: AlertTriangle },
-          { id: 'stats', label: 'Financial Analytics', icon: TrendingUp },
-          { id: 'payouts', label: 'Runner Payouts', icon: Wallet },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
+        {/* Tabs Navigation */}
+        <TabsList>
+          {(
+            [
+              { id: 'verification', label: 'Verification Queue' },
+              { id: 'disputes', label: 'Disputes' },
+              { id: 'errands', label: 'Errands' },
+              { id: 'payouts', label: 'Withdrawals' },
+            ] as { id: TabId; label: string }[]
+          ).map((tab) => (
+            <TabsTrigger
               key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id as any);
-                setSearchQuery('');
-              }}
-              className={`px-4 py-2.5 rounded-2xl text-sm font-semibold flex items-center gap-2 whitespace-nowrap transition-all ${
-                isActive
-                  ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/25'
-                  : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
-              }`}
+              active={activeTab === tab.id}
+              onClick={() => { setActiveTab(tab.id); setSearchQuery(''); }}
             >
-              <Icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-              {tab.badge && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-500 text-dark-base">
-                  {tab.badge}
+              {tab.label}
+              {tab.id === 'verification' && stats && stats.pendingApplications > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                  {stats.pendingApplications}
                 </span>
               )}
-            </button>
-          );
-        })}
-      </div>
+              {tab.id === 'disputes' && disputes.length > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black">
+                  {disputes.length}
+                </span>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {/* TAB 1: RUNNER APPLICATIONS (VETTING CENTER) */}
-      {activeTab === 'applications' && (
-        <div className="space-y-6">
-          {/* Filter & Search Bar */}
-          <div className="glass-card rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              {(['pending', 'approved', 'denied', 'all'] as const).map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setAppStatusFilter(status)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                    appStatusFilter === status
-                      ? 'bg-white text-dark-base'
-                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full sm:max-w-md">
-              <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search runner name, matric, phone..."
-                className="input pl-10 w-full text-xs"
-              />
-            </div>
-          </div>
-
-          {/* Applications Grid */}
-          {loadingApps ? (
-            <div className="glass-card rounded-3xl p-12 text-center">
-              <Loader2 className="w-8 h-8 text-primary-400 animate-spin mx-auto mb-3" />
-              <p className="text-white/60 text-sm">Loading applications...</p>
-            </div>
-          ) : filteredApps.length === 0 ? (
-            <div className="glass-card rounded-3xl p-12 text-center border border-white/10">
-              <CheckCircle2 className="w-12 h-12 text-white/20 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-white mb-1">No runner applications found</h3>
-              <p className="text-white/60 text-sm max-w-md mx-auto">
-                {appStatusFilter === 'pending'
-                  ? 'All caught up! No pending runner verification requests.'
-                  : `No applications match filter "${appStatusFilter}".`}
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredApps.map((app) => {
-                const profile = app.profiles;
-                const isProcessing = processingId === app.id;
-
-                return (
-                  <motion.div
-                    key={app.id}
-                    layout
-                    className="glass-card rounded-3xl p-6 border border-white/10 flex flex-col justify-between"
+        {/* ── TAB: VERIFICATION QUEUE ────────────────────────────────────── */}
+        {activeTab === 'verification' && (
+          <div className="space-y-4">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {(['pending', 'approved', 'denied', 'all'] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setAppStatusFilter(s)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all border ${
+                      appStatusFilter === s
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
                   >
-                    <div>
-                      {/* Top Header */}
-                      <div className="flex items-start justify-between gap-3 mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500/20 to-accent-purple/20 border border-primary-500/30 flex items-center justify-center text-primary-300 font-bold text-lg">
-                            {profile?.full_name?.charAt(0) || 'U'}
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <div className="w-full sm:w-72">
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search name, matric, phone…"
+                  icon={<Search className="w-4 h-4" />}
+                />
+              </div>
+            </div>
+
+            {/* Cards */}
+            {loadingApps ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : filteredApps.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-slate-500 text-sm">
+                    {appStatusFilter === 'pending'
+                      ? 'All caught up — no pending verification requests.'
+                      : `No applications with status "${appStatusFilter}".`}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {filteredApps.map((app) => {
+                  const profile = app.profiles;
+                  const isProcessing = processingId === app.id;
+                  return (
+                    <Card key={app.id}>
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                          {/* Left: info */}
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold text-base shrink-0">
+                                {profile?.full_name?.charAt(0) || 'U'}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-slate-900">{profile?.full_name || 'Unknown'}</p>
+                                <p className="text-sm text-slate-500">{profile?.phone_number || 'No phone'}</p>
+                              </div>
+                              <Badge
+                                variant={
+                                  app.status === 'approved' ? 'success'
+                                  : app.status === 'denied' ? 'danger'
+                                  : 'warning'
+                                }
+                                className="ml-1"
+                              >
+                                {app.status}
+                              </Badge>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-500 pl-1">
+                              <span>Reg #: <strong className="text-slate-800 font-mono">{app.reg_number}</strong></span>
+                              <span>Student ID: <strong className="text-slate-800 font-mono">{profile?.student_id || 'N/A'}</strong></span>
+                              <span>Transport: <strong className="text-slate-800 capitalize">{app.transport_method}</strong></span>
+                              <span>Applied: <strong className="text-slate-800">{new Date(app.created_at).toLocaleDateString()}</strong></span>
+                            </div>
+
+                            {/* Document links */}
+                            {app.document_proof_url ? (
+                              <div className="flex items-center gap-2 pt-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1.5"
+                                  onClick={() => setSelectedDocUrl(app.document_proof_url)}
+                                >
+                                  <FileText className="w-3.5 h-3.5" />
+                                  View ID Document
+                                </Button>
+                                <a
+                                  href={app.document_proof_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  Open
+                                </a>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-red-500 pt-1">No document attached</p>
+                            )}
+
+                            {/* Admin notes */}
+                            <Input
+                              value={adminNotes[app.id] ?? (app.admin_notes || '')}
+                              onChange={(e) =>
+                                setAdminNotes((prev) => ({ ...prev, [app.id]: e.target.value }))
+                              }
+                              placeholder="Admin review notes (e.g. Matric matches university list)"
+                              className="text-xs"
+                            />
                           </div>
-                          <div>
-                            <h3 className="font-bold text-white text-base">{profile?.full_name || 'Unknown Student'}</h3>
-                            <p className="text-xs text-white/60">{profile?.phone_number || 'No phone'}</p>
-                          </div>
-                        </div>
 
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
-                            app.status === 'approved'
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                              : app.status === 'denied'
-                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                              : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                          }`}
-                        >
-                          {app.status}
-                        </span>
-                      </div>
-
-                      {/* Meta Grid */}
-                      <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/5 rounded-2xl border border-white/5 mb-4 text-xs">
-                        <div>
-                          <span className="text-white/40 block mb-0.5">Student ID</span>
-                          <span className="font-semibold text-white font-mono">{profile?.student_id || 'N/A'}</span>
-                        </div>
-                        <div>
-                          <span className="text-white/40 block mb-0.5">Registration Number</span>
-                          <span className="font-semibold text-white font-mono">{app.reg_number}</span>
-                        </div>
-                        <div>
-                          <span className="text-white/40 block mb-0.5">Transport Mode</span>
-                          <span className="font-semibold text-primary-300 capitalize">{app.transport_method}</span>
-                        </div>
-                        <div>
-                          <span className="text-white/40 block mb-0.5">Submitted On</span>
-                          <span className="text-white/70">{new Date(app.created_at).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-
-                      {/* Document Viewer Button */}
-                      <div className="mb-4">
-                        <label className="text-xs text-white/60 font-medium block mb-2">
-                          Uploaded Student ID / Document Proof:
-                        </label>
-                        {app.document_proof_url ? (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedDocUrl(app.document_proof_url)}
-                              className="flex items-center gap-2 px-3.5 py-2 bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/30 rounded-xl text-primary-300 text-xs font-semibold transition-all"
+                          {/* Right: action buttons */}
+                          <div className="flex sm:flex-col gap-2 shrink-0">
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 gap-1.5"
+                              isLoading={isProcessing}
+                              onClick={() => handleApproveRunner(app.id)}
                             >
-                              <FileText className="w-4 h-4" />
-                              Inspect Uploaded Document
-                            </button>
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="danger"
+                              disabled={isProcessing}
+                              onClick={() => {
+                                if (window.confirm('Reject this runner application?')) {
+                                  handleDenyRunner(app.id);
+                                }
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB: DISPUTES ──────────────────────────────────────────────── */}
+        {activeTab === 'disputes' && (
+          <div className="space-y-4">
+            {loadingDisputes ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : disputes.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-slate-500 text-sm">Zero open disputes — platform is healthy.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              disputes.map((d) => (
+                <Card key={d.id} className="mb-4">
+                  <CardContent className="pt-4 space-y-4">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <span className="text-xs font-bold text-red-500 uppercase tracking-wider block mb-0.5">
+                          Dispute #{d.id.substring(0, 8)}
+                        </span>
+                        <h3 className="font-semibold text-slate-900">{d.reason}</h3>
+                        <p className="text-sm text-slate-500 mt-0.5">{d.description}</p>
+                      </div>
+                      <Badge variant={disputeStatusVariant(d.status)}>
+                        {d.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+
+                    {/* Parties + errand value */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Initiator (Customer)</span>
+                        <span className="font-semibold text-slate-800">{d.initiator?.full_name || 'N/A'}</span>
+                        <span className="text-slate-400 block">{d.initiator?.phone_number}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Respondent (Runner)</span>
+                        <span className="font-semibold text-slate-800">{d.respondent?.full_name || 'N/A'}</span>
+                        <span className="text-slate-400 block">{d.respondent?.phone_number}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Errand Value</span>
+                        <span className="font-semibold text-slate-800">{formatCurrency(d.errand?.total_fee || 0)}</span>
+                        <span className="text-slate-400 block">{d.errand?.title}</span>
+                      </div>
+                    </div>
+
+                    {/* Evidence images + PIN */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                      <div>
+                        <span className="text-slate-400 block mb-1.5">Photo Evidence</span>
+                        <div className="flex gap-2 flex-wrap">
+                          {d.errand?.pickup_photo_url ? (
                             <a
-                              href={app.document_proof_url}
+                              href={d.errand.pickup_photo_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-white/60 hover:text-white transition-all text-xs"
-                              title="Open in new window"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-50 border border-green-200 text-green-700 rounded-lg font-medium hover:bg-green-100 transition-colors"
                             >
-                              <ExternalLink className="w-3.5 h-3.5" />
+                              <ExternalLink className="w-3 h-3" /> Pickup Photo
                             </a>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-rose-400">No document attached</span>
-                        )}
-                      </div>
-
-                      {/* Admin Notes */}
-                      <div className="mb-4">
-                        <label className="text-xs text-white/60 font-medium block mb-1.5">
-                          Admin Review Notes:
-                        </label>
-                        <input
-                          type="text"
-                          value={adminNotes[app.id] ?? (app.admin_notes || '')}
-                          onChange={(e) =>
-                            setAdminNotes((prev) => ({ ...prev, [app.id]: e.target.value }))
-                          }
-                          placeholder="e.g. Matric matches university list"
-                          className="input w-full text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2 pt-4 border-t border-white/10">
-                      <button
-                        type="button"
-                        onClick={() => handleReview(app, 'approve')}
-                        disabled={isProcessing}
-                        className="flex-1 btn-primary py-2.5 text-xs flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 border-emerald-500 disabled:opacity-50"
-                      >
-                        {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                        Approve & Verify Runner
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleReview(app, 'reject')}
-                        disabled={isProcessing}
-                        className="px-4 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold transition-all flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                        Reject
-                      </button>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 2: ALL CAMPUS ERRANDS (LIVE FEED & INTERVENTIONS) */}
-      {activeTab === 'errands' && (
-        <div className="space-y-6">
-          <div className="glass-card rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-              {['all', 'unassigned', 'assigned', 'in_progress', 'completed', 'cancelled'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setErrandStatusFilter(status)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
-                    errandStatusFilter === status
-                      ? 'bg-white text-dark-base'
-                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {status.replace('_', ' ')}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full sm:max-w-md">
-              <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search errand title, ID, requester..."
-                className="input pl-10 w-full text-xs"
-              />
-            </div>
-          </div>
-
-          {loadingErrands ? (
-            <div className="glass-card rounded-3xl p-12 text-center">
-              <Loader2 className="w-8 h-8 text-primary-400 animate-spin mx-auto mb-3" />
-              <p className="text-white/60 text-sm">Loading errands...</p>
-            </div>
-          ) : filteredErrands.length === 0 ? (
-            <div className="glass-card rounded-3xl p-12 text-center border border-white/10">
-              <Package className="w-12 h-12 text-white/20 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-white mb-1">No errands found</h3>
-              <p className="text-white/60 text-sm">No tasks matching the selected filters.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredErrands.map((errand) => (
-                <div
-                  key={errand.id}
-                  className="glass-card rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-                >
-                  <div className="space-y-2 max-w-2xl">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-mono text-primary-400 font-bold">
-                        #{errand.id.substring(0, 8)}
-                      </span>
-                      <h3 className="font-bold text-white text-base">{errand.title}</h3>
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                          errand.status === 'completed'
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                            : errand.status === 'cancelled'
-                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                            : errand.status === 'in_progress' || errand.status === 'assigned'
-                            ? 'bg-primary-500/20 text-primary-300 border-primary-500/30'
-                            : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                        }`}
-                      >
-                        {errand.status.replace('_', ' ')}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-white/60 line-clamp-1">{errand.description}</p>
-
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-white/60">
-                      <span>From: <strong className="text-white">{errand.pickup_location}</strong></span>
-                      <span>To: <strong className="text-white">{errand.delivery_location}</strong></span>
-                      <span>Requester: <strong className="text-white">{errand.requester?.full_name || 'N/A'}</strong></span>
-                      <span>Runner: <strong className="text-white">{errand.runner?.full_name || 'Unassigned'}</strong></span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between lg:justify-end gap-6 pt-3 lg:pt-0 border-t lg:border-t-0 border-white/10">
-                    <div className="text-right">
-                      <span className="text-xs text-white/40 block">Total Fee</span>
-                      <span className="text-base font-bold text-white">{formatCurrency(errand.total_fee)}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedErrand(errand)}
-                        className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-all flex items-center gap-1.5"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Inspect
-                      </button>
-
-                      {errand.status !== 'completed' && errand.status !== 'cancelled' && (
-                        <button
-                          type="button"
-                          onClick={() => handleErrandAction(errand.id, 'cancel')}
-                          className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 text-xs font-semibold transition-all"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 3: USER DIRECTORY */}
-      {activeTab === 'users' && (
-        <div className="space-y-6">
-          <div className="glass-card rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              {['all', 'user', 'runner', 'admin'].map((role) => (
-                <button
-                  key={role}
-                  onClick={() => setUserRoleFilter(role)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                    userRoleFilter === role
-                      ? 'bg-white text-dark-base'
-                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full sm:max-w-md">
-              <Search className="w-4 h-4 text-white/40 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search user name, ID, phone..."
-                className="input pl-10 w-full text-xs"
-              />
-            </div>
-          </div>
-
-          {loadingUsers ? (
-            <div className="glass-card rounded-3xl p-12 text-center">
-              <Loader2 className="w-8 h-8 text-primary-400 animate-spin mx-auto mb-3" />
-              <p className="text-white/60 text-sm">Loading user directory...</p>
-            </div>
-          ) : (
-            <div className="glass-card rounded-3xl border border-white/10 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs min-w-[800px]">
-                  <thead className="bg-white/5 text-white/40 uppercase tracking-wider font-semibold border-b border-white/10">
-                    <tr>
-                      <th className="p-4">Student / User</th>
-                      <th className="p-4">Student ID</th>
-                      <th className="p-4">Phone</th>
-                      <th className="p-4">Role</th>
-                      <th className="p-4">Verification</th>
-                      <th className="p-4">Rating</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {filteredUsers.map((u) => (
-                      <tr key={u.id} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="p-4 font-bold text-white">{u.full_name}</td>
-                        <td className="p-4 font-mono text-white/80">{u.student_id || 'N/A'}</td>
-                        <td className="p-4 text-white/60">{u.phone_number || 'N/A'}</td>
-                        <td className="p-4">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[10px] ${
-                              u.role === 'admin'
-                                ? 'bg-accent-purple/20 text-accent-purple'
-                                : u.role === 'runner'
-                                ? 'bg-emerald-500/20 text-emerald-300'
-                                : 'bg-white/10 text-white/80'
-                            }`}
-                          >
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full font-semibold text-[10px] ${
-                              u.verification_status === 'verified'
-                                ? 'text-emerald-400'
-                                : u.verification_status === 'pending'
-                                ? 'text-amber-400'
-                                : 'text-white/40'
-                            }`}
-                          >
-                            {u.verification_status}
-                          </span>
-                        </td>
-                        <td className="p-4 font-semibold text-amber-400">
-                          {u.rating ? `★ ${u.rating}` : '—'}
-                        </td>
-                        <td className="p-4 text-right">
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleUserRoleChange(u.id, e.target.value)}
-                            className="bg-white/5 border border-white/10 rounded-lg text-[11px] p-1 text-white"
-                          >
-                            <option value="user" className="bg-dark-base">Set as User</option>
-                            <option value="runner" className="bg-dark-base">Set as Runner</option>
-                            <option value="admin" className="bg-dark-base">Set as Admin</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 4: DISPUTES CENTER */}
-      {activeTab === 'disputes' && (
-        <div className="space-y-6">
-          {loadingDisputes ? (
-            <div className="glass-card rounded-3xl p-12 text-center">
-              <Loader2 className="w-8 h-8 text-primary-400 animate-spin mx-auto mb-3" />
-              <p className="text-white/60 text-sm">Loading disputes...</p>
-            </div>
-          ) : disputes.length === 0 ? (
-            <div className="glass-card rounded-3xl p-12 text-center border border-white/10">
-              <CheckCircle2 className="w-12 h-12 text-emerald-400/40 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-white mb-1">Zero Open Disputes</h3>
-              <p className="text-white/60 text-sm">No unresolved issues or claims from students.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {disputes.map((d) => (
-                <div key={d.id} className="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <span className="text-xs font-bold text-rose-400 uppercase tracking-wider block mb-1">
-                        Dispute #{d.id.substring(0, 8)}
-                      </span>
-                      <h3 className="text-base font-bold text-white">{d.reason}</h3>
-                      <p className="text-xs text-white/60 mt-1">{d.description}</p>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                      {d.status}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3.5 bg-white/5 rounded-2xl text-xs">
-                    <div>
-                      <span className="text-white/40 block mb-0.5">Initiator</span>
-                      <span className="font-semibold text-white">{d.initiator?.full_name || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-white/40 block mb-0.5">Respondent</span>
-                      <span className="font-semibold text-white">{d.respondent?.full_name || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-white/40 block mb-0.5">Errand Value</span>
-                      <span className="font-semibold text-white">{formatCurrency(d.errand?.total_fee || 0)}</span>
-                    </div>
-                  </div>
-
-                                      {/* Evidence & Logs */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-white/5 rounded-2xl text-xs">
-                      <div>
-                        <span className="text-white/40 block mb-1">Photo Evidence</span>
-                        <div className="flex gap-2">
-                          {d.errand?.pickup_photo_url ? (
-                            <a href={d.errand.pickup_photo_url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded block">View Pickup</a>
-                          ) : <span className="text-white/30">No Pickup Photo</span>}
+                          ) : (
+                            <span className="text-slate-400">No Pickup Photo</span>
+                          )}
                           {d.errand?.dropoff_photo_url ? (
-                            <a href={d.errand.dropoff_photo_url} target="_blank" rel="noreferrer" className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded block">View Dropoff</a>
-                          ) : <span className="text-white/30">No Dropoff Photo</span>}
+                            <a
+                              href={d.errand.dropoff_photo_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg font-medium hover:bg-blue-100 transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Dropoff Photo
+                            </a>
+                          ) : (
+                            <span className="text-slate-400">No Dropoff Photo</span>
+                          )}
                         </div>
                       </div>
                       <div>
-                        <span className="text-white/40 block mb-1">Delivery PIN</span>
-                        <span className="font-mono font-bold text-white tracking-widest">{d.errand?.delivery_pin || 'NONE'}</span>
+                        <span className="text-slate-400 block mb-1.5">Delivery PIN</span>
+                        <span className="font-mono font-bold text-slate-900 tracking-widest text-base">
+                          {d.errand?.delivery_pin || 'NONE'}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Financial Resolution */}
-                    <div className="p-4 border border-white/10 rounded-2xl bg-slate-900/50 space-y-4">
-                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">Resolution Controls (Total Value: {formatCurrency(d.errand?.total_fee || 0)})</h4>
-                      
+                    {/* Resolution controls */}
+                    <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 space-y-4">
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                        Resolution Controls — Total: {formatCurrency(d.errand?.total_fee || 0)}
+                      </h4>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-xs text-white/60 block mb-1">Runner Payout (?)</label>
-                          <input type="number" className="input w-full text-xs" placeholder="0" value={disputeRunnerPayouts[d.id] ?? ''} onChange={(e) => setDisputeRunnerPayouts(prev => ({...prev, [d.id]: Number(e.target.value)}))} />
-                          <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                            <input type="checkbox" checked={runnerStrikes[d.id] || false} onChange={(e) => setRunnerStrikes(prev => ({...prev, [d.id]: e.target.checked}))} className="rounded bg-dark-base border-white/20" />
-                            <span className="text-xs text-rose-300">Issue Warning Strike to Runner</span>
+                        {/* Runner payout */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-slate-600 block">Runner Payout (₦)</label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={disputeRunnerPayouts[d.id] ?? ''}
+                            onChange={(e) =>
+                              setDisputeRunnerPayouts((prev) => ({ ...prev, [d.id]: Number(e.target.value) }))
+                            }
+                          />
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={runnerStrikes[d.id] || false}
+                              onChange={(e) =>
+                                setRunnerStrikes((prev) => ({ ...prev, [d.id]: e.target.checked }))
+                              }
+                              className="rounded border-slate-300"
+                            />
+                            <span className="text-xs text-red-600 font-medium">Issue Warning Strike to Runner</span>
                           </label>
                         </div>
-                        <div>
-                          <label className="text-xs text-white/60 block mb-1">Customer Refund (?)</label>
-                          <input type="number" className="input w-full text-xs" placeholder="0" value={disputeCustomerRefunds[d.id] ?? ''} onChange={(e) => setDisputeCustomerRefunds(prev => ({...prev, [d.id]: Number(e.target.value)}))} />
-                          <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                            <input type="checkbox" checked={customerStrikes[d.id] || false} onChange={(e) => setCustomerStrikes(prev => ({...prev, [d.id]: e.target.checked}))} className="rounded bg-dark-base border-white/20" />
-                            <span className="text-xs text-rose-300">Issue Warning Strike to Customer</span>
+
+                        {/* Customer refund */}
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-slate-600 block">Customer Refund (₦)</label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={disputeCustomerRefunds[d.id] ?? ''}
+                            onChange={(e) =>
+                              setDisputeCustomerRefunds((prev) => ({ ...prev, [d.id]: Number(e.target.value) }))
+                            }
+                          />
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={customerStrikes[d.id] || false}
+                              onChange={(e) =>
+                                setCustomerStrikes((prev) => ({ ...prev, [d.id]: e.target.checked }))
+                              }
+                              className="rounded border-slate-300"
+                            />
+                            <span className="text-xs text-red-600 font-medium">Issue Warning Strike to Customer</span>
                           </label>
                         </div>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-                        <input
-                          type="text"
-                          placeholder="Admin arbitration notes (Internal)..."
+                      {/* Notes + resolve */}
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Input
+                          placeholder="Admin arbitration notes (internal)…"
                           value={disputeNotes[d.id] || ''}
-                          onChange={(e) => setDisputeNotes((prev) => ({ ...prev, [d.id]: e.target.value }))}
-                          className="input w-full text-xs"
+                          onChange={(e) =>
+                            setDisputeNotes((prev) => ({ ...prev, [d.id]: e.target.value }))
+                          }
+                          className="flex-1"
                         />
-                        <button
-                          type="button"
-                          onClick={() => handleResolveDispute(d)}
-                          disabled={processingId === d.id}
-                          className="btn-primary py-2 px-6 text-xs whitespace-nowrap bg-emerald-600 hover:bg-emerald-500 border-emerald-500 disabled:opacity-50"
+                        <Button
+                          className="shrink-0 bg-green-600 hover:bg-green-700"
+                          isLoading={processingId === d.id}
+                          onClick={() => {
+                            if (window.confirm('Resolve this dispute with the configured payouts and strikes?')) {
+                              handleResolveDispute(d);
+                            }
+                          }}
                         >
-                          {processingId === d.id ? 'Resolving...' : 'Resolve Dispute'}
-                        </button>
+                          Resolve Dispute
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
-            </div>
-          )}
-        </div>
-      )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
 
-      {/* TAB 5: FINANCIAL & PLATFORM ANALYTICS */}
-              {/* TAB 6: PAYOUTS */}
-        {activeTab === 'payouts' && (
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-white">Pending Runner Withdrawals</h2>
-            {loadingPayouts ? (
-              <div className="animate-pulse h-32 bg-white/5 rounded-2xl" />
-            ) : payouts.length === 0 ? (
-              <div className="text-center py-12 text-white/50">
-                No pending withdrawals.
+        {/* ── TAB: ERRANDS ───────────────────────────────────────────────── */}
+        {activeTab === 'errands' && (
+          <div className="space-y-4">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {['all', 'unassigned', 'assigned', 'in_progress', 'completed', 'cancelled'].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setErrandStatusFilter(s)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all border whitespace-nowrap ${
+                      errandStatusFilter === s
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {s.replace('_', ' ')}
+                  </button>
+                ))}
               </div>
+              <div className="w-full sm:w-72">
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search errand, requester, runner…"
+                  icon={<Search className="w-4 h-4" />}
+                />
+              </div>
+            </div>
+
+            {loadingErrands ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : filteredErrands.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-slate-500 text-sm">No errands match the selected filter.</p>
+                </CardContent>
+              </Card>
             ) : (
-              <div className="space-y-4">
-                {payouts.map((tx) => (
-                  <div key={tx.id} className="glass-card rounded-2xl p-6 border border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                    <div>
-                      <h3 className="font-bold text-lg text-white mb-1">{tx.profiles?.full_name}</h3>
-                      <div className="text-sm text-white/60 space-y-1">
-                        <p>Requested: {new Date(tx.created_at).toLocaleString()}</p>
-                        <div className="bg-dark-bg p-3 rounded-lg border border-white/5 mt-3">
-                          <p className="font-mono text-emerald-400 font-bold mb-1">₦{tx.amount.toLocaleString()}</p>
-                          <p>Bank: <span className="text-white">{tx.profiles?.bank_name || 'NOT PROVIDED'}</span></p>
-                          <p>Account: <span className="text-white">{tx.profiles?.account_number || 'NOT PROVIDED'}</span></p>
-                          <p>Name: <span className="text-white">{tx.profiles?.account_name || 'NOT PROVIDED'}</span></p>
+              <div className="space-y-3">
+                {filteredErrands.map((errand) => (
+                  <Card key={errand.id}>
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-mono text-blue-600 font-bold">
+                              #{errand.id.substring(0, 8)}
+                            </span>
+                            <h3 className="font-semibold text-slate-900 truncate">{errand.title}</h3>
+                            <Badge variant={errandStatusVariant(errand.status)}>
+                              {errand.status.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-slate-500 line-clamp-1">{errand.description}</p>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                            <span>From: <strong className="text-slate-700">{errand.pickup_location}</strong></span>
+                            <span>To: <strong className="text-slate-700">{errand.delivery_location}</strong></span>
+                            <span>Requester: <strong className="text-slate-700">{errand.requester?.full_name || 'N/A'}</strong></span>
+                            <span>Runner: <strong className="text-slate-700">{errand.runner?.full_name || 'Unassigned'}</strong></span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 shrink-0">
+                          <div className="text-right">
+                            <span className="text-xs text-slate-400 block">Total Fee</span>
+                            <span className="font-bold text-slate-900">{formatCurrency(errand.total_fee)}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="secondary" onClick={() => setSelectedErrand(errand)}>
+                              Inspect
+                            </Button>
+                            {errand.status !== 'completed' && errand.status !== 'cancelled' && (
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                onClick={() => {
+                                  if (window.confirm('Cancel this errand?')) {
+                                    handleErrandAction(errand.id, 'cancel');
+                                  }
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => handleProcessPayout(tx.id)}
-                      disabled={processingPayoutId === tx.id || !tx.profiles?.bank_name}
-                      className="btn-primary whitespace-nowrap"
-                    >
-                      {processingPayoutId === tx.id ? 'Processing...' : 'Process via Paystack API'}
-                    </button>
-                  </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'stats' && stats && (
-        <div className="space-y-6">
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-green-500/10 text-green-400">
-                  <TrendingUp className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white">Gross Marketplace Volume</h3>
-                  <p className="text-xs text-white/60">Total transaction value</p>
-                </div>
+        {/* ── TAB: WITHDRAWALS ───────────────────────────────────────────── */}
+        {activeTab === 'payouts' && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-bold text-slate-900">Pending Runner Withdrawals</h2>
+            {loadingPayouts ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
-              <div className="text-3xl font-black text-white">
-                {formatCurrency(stats.totalVolume)}
-              </div>
-              <div className="text-xs text-white/60">
-                Total paid to student runners:{' '}
-                <strong className="text-green-400">{formatCurrency(stats.totalRunnerPayouts)}</strong>
-              </div>
-            </div>
+            ) : payouts.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-slate-500 text-sm">No pending withdrawal requests.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              payouts.map((tx) => (
+                <Card key={tx.id}>
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="space-y-1">
+                        <h3 className="font-semibold text-slate-900">{tx.profiles?.full_name}</h3>
+                        <p className="text-xs text-slate-500">
+                          Requested: {new Date(tx.created_at).toLocaleString()}
+                        </p>
+                        <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1 text-sm">
+                          <p className="font-mono font-bold text-green-600 text-base">
+                            ₦{tx.amount?.toLocaleString()}
+                          </p>
+                          <p className="text-slate-500 text-xs">
+                            Bank: <span className="text-slate-800 font-medium">{tx.profiles?.bank_name || 'NOT PROVIDED'}</span>
+                          </p>
+                          <p className="text-slate-500 text-xs">
+                            Account: <span className="text-slate-800 font-medium font-mono">{tx.profiles?.account_number || 'NOT PROVIDED'}</span>
+                          </p>
+                          <p className="text-slate-500 text-xs">
+                            Name: <span className="text-slate-800 font-medium">{tx.profiles?.account_name || 'NOT PROVIDED'}</span>
+                          </p>
+                        </div>
+                      </div>
 
-            <div className="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-primary-500/10 text-primary-400">
-                  <PackageCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white">Fulfillment Health</h3>
-                  <p className="text-xs text-white/60">Completion rate</p>
-                </div>
-              </div>
-              <div className="text-3xl font-black text-white">
-                {stats.totalErrands > 0
-                  ? `${Math.round((stats.completedCount / stats.totalErrands) * 100)}%`
-                  : '100%'}
-              </div>
-              <div className="text-xs text-white/60">
-                {stats.completedCount} completed of {stats.totalErrands} total requests
-              </div>
-            </div>
-
-            <div className="glass-card rounded-3xl p-6 border border-white/10 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-accent-purple/10 text-accent-purple">
-                  <Users className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white">Community Size</h3>
-                  <p className="text-xs text-white/60">Registered students</p>
-                </div>
-              </div>
-              <div className="text-3xl font-black text-white">
-                {stats.totalUsers}
-              </div>
-              <div className="text-xs text-white/60">
-                {stats.totalRunners} verified runners actively fulfilling tasks
-              </div>
-            </div>
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <Button
+                          isLoading={processingPayoutId === tx.id}
+                          disabled={processingPayoutId === tx.id || !tx.profiles?.bank_name}
+                          onClick={() => handleProcessPayout(tx.id)}
+                          className="whitespace-nowrap"
+                        >
+                          Process via Paystack
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            if (window.confirm('Mark this withdrawal as manually paid?')) {
+                              handleMarkPaid(tx.id);
+                            }
+                          }}
+                          className="whitespace-nowrap"
+                        >
+                          Mark as Paid
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
+        )}
 
-          <div className="glass-card rounded-3xl p-6 border border-white/10 mt-6 space-y-4 max-w-xl">
-             <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400">
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white">Runner Capacity Limits</h3>
-                  <p className="text-xs text-white/60">Prevent oversaturation by limiting runners</p>
-                </div>
-             </div>
-             <form className="space-y-4" onSubmit={async (e) => {
-               e.preventDefault();
-               const form = e.target as HTMLFormElement;
-               const maxRunners = Number((form.elements.namedItem('maxRunners') as HTMLInputElement).value);
-               const dynamicEnabled = (form.elements.namedItem('dynamicEnabled') as HTMLInputElement).checked;
-               const usersPerRunner = Number((form.elements.namedItem('usersPerRunner') as HTMLInputElement).value);
-               
-               const loadingToast = toast.loading('Saving settings...');
-               try {
-                 const res = await fetch('/api/admin/settings', {
-                   method: 'POST',
-                   headers: { 'Content-Type': 'application/json' },
-                   body: JSON.stringify({ max_active_runners: maxRunners, dynamic_ratio_enabled: dynamicEnabled, users_per_runner: usersPerRunner })
-                 });
-                 if (!res.ok) throw new Error('Failed to update settings');
-                 toast.success('Settings updated', { id: loadingToast });
-               } catch (err: any) {
-                 toast.error(err.message, { id: loadingToast });
-               }
-             }}>
-               <div>
-                  <label className="text-xs font-medium text-white/80 block mb-1">Max Absolute Runners (Hard Limit)</label>
-                  <input name="maxRunners" type="number" defaultValue="50" className="input text-xs w-full max-w-xs" />
-               </div>
-               <div className="flex items-center gap-2">
-                  <input type="checkbox" name="dynamicEnabled" id="dynamicEnabled" defaultChecked className="rounded border-white/20 bg-dark-base text-primary-500" />
-                  <label htmlFor="dynamicEnabled" className="text-xs font-medium text-white/80">Enable Dynamic Ratio (Based on standard users count)</label>
-               </div>
-               <div>
-                  <label className="text-xs font-medium text-white/80 block mb-1">Ratio: 1 Runner per X Users</label>
-                  <input name="usersPerRunner" type="number" defaultValue="5" className="input text-xs w-full max-w-xs" />
-                  <p className="text-[10px] text-white/40 mt-1">If dynamic is enabled, we cap runners at (total users / ratio), or the absolute max, whichever is lower.</p>
-               </div>
-               <button type="submit" className="btn-primary py-2 px-6 text-xs mt-2">Save Limits</button>
-             </form>
-          </div>
-        </div>
+      </div>
+
+      {/* Modals */}
+      {selectedErrand && (
+        <ErrandModal
+          errand={selectedErrand}
+          onClose={() => setSelectedErrand(null)}
+          onAction={handleErrandAction}
+        />
       )}
-
-      {/* ERRAND INSPECT MODAL */}
-      <AnimatePresence>
-        {selectedErrand && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card rounded-3xl p-6 max-w-xl w-full border border-white/20 relative max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
-                <div>
-                  <span className="text-xs font-mono text-primary-400 font-bold block">
-                    Errand #{selectedErrand.id}
-                  </span>
-                  <h3 className="text-lg font-bold text-white">{selectedErrand.title}</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedErrand(null)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-4 text-xs">
-                <div>
-                  <span className="text-white/40 block mb-1">Description</span>
-                  <p className="p-3 bg-white/5 rounded-2xl text-white/80">{selectedErrand.description}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 p-3.5 bg-white/5 rounded-2xl">
-                  <div>
-                    <span className="text-white/40 block">Pickup Point</span>
-                    <span className="font-semibold text-white">{selectedErrand.pickup_location}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block">Drop-off Point</span>
-                    <span className="font-semibold text-white">{selectedErrand.delivery_location}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block">Requester</span>
-                    <span className="font-semibold text-white">{selectedErrand.requester?.full_name}</span>
-                    <span className="text-white/40 block">{selectedErrand.requester?.phone_number}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block">Runner</span>
-                    <span className="font-semibold text-white">{selectedErrand.runner?.full_name || 'None'}</span>
-                    <span className="text-white/40 block">{selectedErrand.runner?.phone_number || '—'}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 p-3.5 bg-white/5 rounded-2xl text-center">
-                  <div>
-                    <span className="text-white/40 block">Total Fee</span>
-                    <span className="font-bold text-white text-sm">{formatCurrency(selectedErrand.total_fee)}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block">Runner Share</span>
-                    <span className="font-bold text-emerald-400 text-sm">{formatCurrency(selectedErrand.runner_amount)}</span>
-                  </div>
-                  <div>
-                    <span className="text-white/40 block">Platform (20%)</span>
-                    <span className="font-bold text-primary-400 text-sm">{formatCurrency(selectedErrand.platform_fee)}</span>
-                  </div>
-                </div>
-
-                {/* Admin Actions */}
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleErrandAction(selectedErrand.id, 'unassign')}
-                    className="flex-1 btn-secondary py-2 text-xs"
-                  >
-                    Unassign Runner
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleErrandAction(selectedErrand.id, 'complete')}
-                    className="flex-1 btn-primary py-2 text-xs bg-emerald-600 hover:bg-emerald-500 border-emerald-500"
-                  >
-                    Force Complete
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleErrandAction(selectedErrand.id, 'cancel')}
-                    className="px-4 py-2 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* DOCUMENT PREVIEW MODAL */}
-      <AnimatePresence>
-        {selectedDocUrl && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] flex flex-col relative border border-white/20 overflow-y-auto"
-            >
-              <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-primary-400" />
-                  <h3 className="font-bold text-white">Student Verification Document</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDocUrl(null)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-auto rounded-2xl border border-white/10 bg-black/40 p-2 flex items-center justify-center">
-                {selectedDocUrl.endsWith('.pdf') ? (
-                  <iframe src={selectedDocUrl} className="w-full h-[500px] rounded-xl" title="Document PDF" />
-                ) : (
-                  <img
-                    src={selectedDocUrl}
-                    alt="Student ID Card"
-                    className="max-h-[500px] w-auto object-contain rounded-xl"
-                  />
-                )}
-              </div>
-
-              <div className="pt-4 flex justify-between items-center text-xs text-white/60">
-                <span>Verify student photo, matric number, and institution seal</span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDocUrl(null)}
-                  className="btn-secondary py-1.5 px-4 text-xs"
-                >
-                  Close Preview
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
+      {selectedDocUrl && (
+        <DocModal url={selectedDocUrl} onClose={() => setSelectedDocUrl(null)} />
+      )}
+    </AdminGuard>
   );
 }
-
-
-
-

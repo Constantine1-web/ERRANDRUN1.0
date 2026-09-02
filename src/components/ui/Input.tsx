@@ -3,25 +3,35 @@ import { cn } from '@/lib/utils';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
+  icon?: React.ReactNode;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, error, ...props }, ref) => {
+  ({ className, type, error, icon, ...props }, ref) => {
     return (
       <div className="w-full">
-        <input
-          type={type}
-          className={cn(
-            "flex h-12 w-full rounded-xl border bg-dark-base px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary-500/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all",
-            error ? "border-rose-500/50 focus:ring-rose-500/50" : "border-white/10",
-            className
+        <div className="relative">
+          {icon && (
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+              {icon}
+            </div>
           )}
-          ref={ref}
-          {...props}
-        />
-        {error && <p className="mt-1.5 text-xs text-rose-400">{error}</p>}
+          <input
+            type={type}
+            className={cn(
+              'h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50 transition-all',
+              icon && 'pl-10',
+              error && 'border-red-500 focus:ring-red-500 focus:border-red-500',
+              className
+            )}
+            ref={ref}
+            {...props}
+          />
+        </div>
+        {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
       </div>
     );
   }
 );
-Input.displayName = "Input";
+Input.displayName = 'Input';
+

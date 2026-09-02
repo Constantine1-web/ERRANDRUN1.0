@@ -17,30 +17,29 @@ export default function RunnerTrackIndexPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold mb-2">Runner Tracking Center</CardTitle>
-          <p className="text-white/60">Enter the errand ID to send live status and location updates.</p>
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-xl font-bold text-slate-900">Runner Location & Broadcast</CardTitle>
+          <p className="text-xs text-slate-500 mt-0.5">Enter an assigned errand ID to transmit live GPS updates.</p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-5">
           <form onSubmit={handleGoToTracker} className="space-y-4">
             <div>
-              <label className="block text-sm text-white/60 mb-2">Errand ID</label>
+              <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                Errand ID
+              </label>
               <Input
                 value={errandId}
                 onChange={(event) => setErrandId(event.target.value)}
-                placeholder="Enter assigned errand ID"
+                placeholder="Paste errand UUID..."
+                required
               />
             </div>
-            <Button type="submit" className="w-full">
-              Go to Tracking Page
+            <Button type="submit" variant="primary" className="w-full font-bold">
+              Open Live Tracker
             </Button>
           </form>
-          <div className="mt-6 text-sm text-white/60">
-            <p>If you were assigned an errand, use its ID here to update progress and location.</p>
-            <p className="mt-2">Once accepted, send updates from the dedicated tracking page.</p>
-          </div>
         </CardContent>
       </Card>
     </div>

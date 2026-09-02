@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
-import { Timeline } from '@/components/ui/Timeline';
 
 export default function VerificationPage() {
   const { user, setUser } = useAppStore();
@@ -22,7 +21,6 @@ export default function VerificationPage() {
   const [studentId, setStudentId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // New states for Step 4 & 5
   const [idPreviewUrl, setIdPreviewUrl] = useState<string | null>(null);
   const [faceImage, setFaceImage] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -36,7 +34,7 @@ export default function VerificationPage() {
         videoRef.current.srcObject = stream;
         setIsCameraActive(true);
       }
-    } catch (err) {
+    } catch {
       toast.error('Camera access denied or unavailable.');
     }
   };
@@ -61,7 +59,6 @@ export default function VerificationPage() {
     }
   };
 
-  // Cleanup camera on unmount
   React.useEffect(() => {
     return () => stopCamera();
   }, []);
@@ -71,12 +68,11 @@ export default function VerificationPage() {
     if (phone.length < 10) return toast.error('Enter a valid phone number');
     
     setIsLoading(true);
-    // Simulate API call for OTP
     setTimeout(() => {
       toast.success('Verification code sent! (Use 1234)');
       setOtpSent(true);
       setIsLoading(false);
-    }, 1500);
+    }, 1000);
   };
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
@@ -91,9 +87,7 @@ export default function VerificationPage() {
     
     setIsLoading(true);
     try {
-      // In a real app, this updates Supabase. We simulate the store update.
       if (user) {
-        // Set expiration for exactly 1 year (365 days) from now
         const oneYearFromNow = new Date();
         oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
@@ -110,7 +104,7 @@ export default function VerificationPage() {
       setTimeout(() => {
         router.push('/dashboard/user');
       }, 1000);
-    } catch (error) {
+    } catch {
       toast.error('Failed to verify profile');
     } finally {
       setIsLoading(false);
@@ -119,15 +113,15 @@ export default function VerificationPage() {
 
   if (user?.verificationStatus === 'verified') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] text-center p-6">
-        <div className="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-500/20">
-          <CheckCircle className="w-10 h-10" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+        <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mb-4">
+          <CheckCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-3xl font-black text-white mb-4">Profile Verified</h2>
-        <p className="text-white/60 mb-8 max-w-md text-lg">
-          Your student profile is fully verified. You can now post errands and fund your wallet!
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Profile Already Verified</h2>
+        <p className="text-slate-500 mb-6 max-w-md text-xs">
+          Your student profile is active. You have full access to post and accept campus errands.
         </p>
-        <Button onClick={() => router.push('/dashboard/user')} size="lg">
+        <Button onClick={() => router.push('/dashboard/user')} size="md" variant="primary" className="font-bold">
           Return to Dashboard
         </Button>
       </div>
@@ -135,67 +129,67 @@ export default function VerificationPage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto w-full p-4 md:py-12 space-y-8">
+    <div className="max-w-xl mx-auto px-4 py-8 md:py-12 space-y-6">
       <div className="text-center">
-        <div className="w-20 h-20 bg-brand-blue/10 text-brand-blue rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-brand-blue/10">
-          <ShieldCheck className="w-10 h-10" />
+        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+          <ShieldCheck className="w-7 h-7" />
         </div>
-        <h1 className="text-4xl font-bold text-white mb-4">Verify Profile</h1>
-        <p className="text-white/60 text-lg max-w-md mx-auto">
-          To ensure community safety, you must verify your identity before posting errands.
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">Student Identity Verification</h1>
+        <p className="text-slate-500 text-xs max-w-md mx-auto">
+          Verify your student identity to ensure trust and accountability across the campus network.
         </p>
       </div>
 
-      <Card>
-        <CardContent className="p-8">
+      <Card className="shadow-md">
+        <CardContent className="p-6 sm:p-8">
           {/* Step Indicator */}
-          <div className="flex justify-between mb-12 relative px-4">
-            <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/10 -z-10 -translate-y-1/2" />
+          <div className="flex justify-between mb-8 relative px-4">
+            <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-200 -z-10 -translate-y-1/2" />
             {[1, 2].map((i) => (
               <div 
                 key={i}
-                className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${
-                  step >= i ? 'bg-brand-blue text-white shadow-lg shadow-brand-blue/30 scale-110' : 'bg-dark-base text-white/40 border-2 border-white/10'
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold transition-all bg-white ${
+                  step >= i ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-100' : 'text-slate-400 border border-slate-300'
                 }`}
               >
-                {i === 1 ? <Smartphone className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+                {i === 1 ? <Smartphone className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
               </div>
             ))}
           </div>
 
           {/* STEP 1: PHONE VERIFICATION */}
           {step === 1 && (
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-              <h2 className="text-2xl font-bold text-white text-center mb-8">Verify Phone Number</h2>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <h2 className="text-lg font-bold text-slate-900 text-center mb-4">Step 1: Phone Verification</h2>
               {!otpSent ? (
-                <form onSubmit={handleSendOTP} className="space-y-6">
+                <form onSubmit={handleSendOTP} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2">
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                       Phone Number
                     </label>
                     <Input 
                       type="tel" 
-                      placeholder="+234 800 000 0000"
+                      placeholder="08012345678"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       autoFocus
+                      required
                     />
                   </div>
-                  <Button type="submit" className="w-full flex justify-center items-center gap-2" disabled={isLoading} size="lg">
-                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send Verification Code'}
-                    {!isLoading && <ArrowRight className="w-4 h-4" />}
+                  <Button type="submit" className="w-full font-bold" disabled={isLoading} size="lg">
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Verification Code'}
                   </Button>
                 </form>
               ) : (
-                <form onSubmit={handleVerifyOTP} className="space-y-6">
+                <form onSubmit={handleVerifyOTP} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-white/70 mb-2">
-                      Enter 4-Digit Code
+                    <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                      Enter 4-Digit SMS Code
                     </label>
-                    <p className="text-sm text-brand-yellow mb-4">Code sent to {phone} (Demo: 1234)</p>
+                    <p className="text-xs text-amber-700 font-medium mb-3">Code sent to {phone} (Demo code: <strong>1234</strong>)</p>
                     <Input 
                       type="text" 
-                      className="text-center text-3xl tracking-[1em] font-mono py-6" 
+                      className="text-center text-2xl tracking-[0.4em] font-mono py-3" 
                       placeholder="0000"
                       maxLength={4}
                       value={otp}
@@ -203,17 +197,17 @@ export default function VerificationPage() {
                       autoFocus
                     />
                   </div>
-                  <Button type="submit" className="w-full flex justify-center items-center gap-2" size="lg">
-                    Verify & Continue
+                  <Button type="submit" className="w-full font-bold" size="lg">
+                    Verify & Continue <ArrowRight className="w-4 h-4 ml-1.5" />
                   </Button>
-                  <div className="text-center mt-6">
+                  <div className="text-center mt-3">
                     <button 
                       type="button" 
                       onClick={handleSendOTP} 
                       disabled={isLoading}
-                      className="text-sm text-white/50 hover:text-white font-medium transition-colors"
+                      className="text-xs text-slate-500 hover:text-blue-600 transition-colors"
                     >
-                      Didn't receive the code? <span className="text-brand-blue underline underline-offset-4">Send again</span>
+                      Didn't get code? <span className="underline font-semibold">Resend</span>
                     </button>
                   </div>
                 </form>
@@ -223,22 +217,22 @@ export default function VerificationPage() {
 
           {/* STEP 2: IDENTITY VERIFICATION */}
           {step === 2 && (
-            <motion.form initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} onSubmit={handleCompleteVerification} className="space-y-8">
+            <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleCompleteVerification} className="space-y-5">
               <div>
-                <h2 className="text-2xl font-bold text-white text-center mb-2">Student Identity</h2>
-                <p className="text-sm text-white/50 text-center mb-8">Provide a document and a selfie. We will verify your status manually.</p>
+                <h2 className="text-lg font-bold text-slate-900 text-center mb-1">Step 2: Student Identity</h2>
+                <p className="text-xs text-slate-500 text-center mb-4">Provide matriculation details and upload ID proof.</p>
               </div>
 
               {/* Reg Number */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-white/70 flex items-center gap-2">
-                  <GraduationCap className="w-4 h-4 text-brand-blue" />
-                  Registration / Matric Number
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-blue-600" />
+                  Registration Number
                 </label>
                 <Input 
                   type="text" 
                   className="font-mono uppercase" 
-                  placeholder="e.g. MAT/2023/123"
+                  placeholder="21/ENG/012"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
                   required
@@ -246,21 +240,21 @@ export default function VerificationPage() {
               </div>
 
               {/* Document Upload */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-white/70">
-                  Official Document (ID Card, Course Form, etc.)
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                  Student ID Card Photo
                 </label>
                 {!idPreviewUrl ? (
-                  <label className="border-2 border-dashed border-white/20 hover:border-brand-blue rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all bg-white/5 hover:bg-white/10 group">
-                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:bg-brand-blue/10 group-hover:text-brand-blue transition-colors text-white/40">
-                      <ShieldCheck className="w-8 h-8" />
+                  <label className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all bg-slate-50 hover:bg-blue-50/20">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center mb-2 text-blue-600">
+                      <ShieldCheck className="w-5 h-5" />
                     </div>
-                    <span className="text-lg font-bold text-white mb-2">Upload Document</span>
-                    <span className="text-sm text-white/40">From gallery or files (Max 5MB)</span>
+                    <span className="text-xs font-bold text-slate-800">Upload ID Card Photo</span>
+                    <span className="text-[10px] text-slate-400">JPEG or PNG up to 5MB</span>
                     <input 
                       type="file" 
                       className="hidden" 
-                      accept="image/*,.pdf"
+                      accept="image/*"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -271,15 +265,17 @@ export default function VerificationPage() {
                     />
                   </label>
                 ) : (
-                  <div className="relative rounded-xl overflow-hidden border-2 border-white/20 group">
-                    <img src={idPreviewUrl} alt="Document Preview" className="w-full h-48 object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200">
+                    <img src={idPreviewUrl} alt="Document Preview" className="w-full h-40 object-cover" />
+                    <div className="p-2 bg-slate-50 text-right">
                       <Button 
                         type="button"
-                        variant="secondary"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setIdPreviewUrl(null)}
+                        className="text-xs text-rose-600 hover:text-rose-700"
                       >
-                        Replace Document
+                        Replace Image
                       </Button>
                     </div>
                   </div>
@@ -287,13 +283,13 @@ export default function VerificationPage() {
               </div>
 
               {/* Face Capture */}
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-white/70">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   Live Selfie
                 </label>
-                <div className="w-full bg-black/50 rounded-xl overflow-hidden aspect-[4/3] relative flex items-center justify-center border-2 border-white/10">
+                <div className="w-full bg-slate-100 rounded-xl overflow-hidden aspect-[4/3] relative flex items-center justify-center border border-slate-300">
                   {!isCameraActive && !faceImage ? (
-                    <Button type="button" onClick={startCamera} variant="outline" className="gap-2">
+                    <Button type="button" onClick={startCamera} variant="outline" size="sm" className="gap-1.5 text-xs font-bold">
                       <Smartphone className="w-4 h-4" />
                       Open Camera
                     </Button>
@@ -311,32 +307,27 @@ export default function VerificationPage() {
                   {faceImage && (
                     <img src={faceImage} alt="Captured Face" className="w-full h-full object-cover" />
                   )}
-                  
-                  {isCameraActive && !faceImage && (
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                      <div className="w-48 h-64 border-4 border-green-500/70 rounded-[100%] animate-pulse" />
-                    </div>
-                  )}
 
                   {isCameraActive && !faceImage && (
-                    <div className="absolute bottom-6 left-0 right-0 flex justify-center">
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center">
                       <Button 
                         type="button"
                         onClick={captureFace}
-                        className="bg-green-500 hover:bg-green-600 text-white rounded-full px-8 py-6 shadow-lg shadow-green-500/20 text-lg"
+                        variant="primary"
+                        className="rounded-full px-6 text-xs font-bold"
                       >
-                        Snap Photo
+                        Capture Photo
                       </Button>
                     </div>
                   )}
                 </div>
                 
                 {faceImage && (
-                  <div className="flex justify-end pt-2">
+                  <div className="flex justify-end pt-1">
                     <button 
-                      type="button"
+                      type="button" 
                       onClick={() => { setFaceImage(null); startCamera(); }}
-                      className="text-sm text-brand-blue hover:text-brand-blue/80 font-medium transition-colors"
+                      className="text-xs text-blue-600 font-semibold"
                     >
                       Retake Selfie
                     </button>
@@ -344,21 +335,20 @@ export default function VerificationPage() {
                 )}
               </div>
 
-              <div className="pt-6 border-t border-white/10">
+              <div className="pt-4 border-t border-slate-100">
                 <Button 
                   type="submit"
                   disabled={isLoading || !faceImage || !idPreviewUrl || !studentId}
-                  className="w-full flex justify-center items-center gap-2 bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
+                  variant="primary"
+                  className="w-full font-bold"
                   size="lg"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" /> Submitting...
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" /> Verifying...
                     </>
                   ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5" /> Submit for Verification
-                    </>
+                    'Submit Verification'
                   )}
                 </Button>
               </div>

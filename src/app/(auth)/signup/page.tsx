@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
-import { Mail, Loader, Eye, EyeOff } from 'lucide-react';
+import { Mail, Eye, EyeOff } from 'lucide-react';
+import { RunnerLogo } from '@/components/RunnerLogo';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 
 function SignupForm() {
   const searchParams = useSearchParams();
@@ -48,7 +49,6 @@ function SignupForm() {
     }
 
     const formattedRegNo = formData.studentId.trim().toUpperCase();
-    // Supports 21/ENG/012 or 21/MS/CO/1234
     const uniuyoRegRegex = /^\d{2}\/([A-Z]{2,5}\/)+\d{3,4}$/;
     
     if (!uniuyoRegRegex.test(formattedRegNo)) {
@@ -59,7 +59,6 @@ function SignupForm() {
     try {
       setLoading(true);
 
-      // Check for duplicate Registration Number first
       const { data: existingUser } = await supabase
         .from('profiles')
         .select('student_id')
@@ -72,7 +71,6 @@ function SignupForm() {
         return;
       }
 
-      // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -84,7 +82,6 @@ function SignupForm() {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Create profile
         const { error: profileError } = await supabase.from('profiles').insert([
           {
             id: authData.user.id,
@@ -98,7 +95,6 @@ function SignupForm() {
 
         if (profileError) throw profileError;
 
-        // Create wallet for new user
         const { error: walletError } = await supabase.from('wallets').insert([
           {
             user_id: authData.user.id,
@@ -123,24 +119,20 @@ function SignupForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-dark-base flex items-center justify-center px-4 relative overflow-hidden">
-        {/* Background Gradients */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary-500/10 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
-        
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-4">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md z-10"
+          className="w-full max-w-md"
         >
-          <Card className="text-center">
-            <CardContent className="pt-8 pb-8">
-              <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Mail className="w-8 h-8 text-green-400" />
+          <Card className="text-center p-6 shadow-md border-slate-200">
+            <CardContent className="pt-6 pb-6">
+              <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
+                <Mail className="w-7 h-7" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Confirm your email</h2>
-              <p className="text-white/60 mb-8">
-                We've sent a confirmation link to <strong className="text-white">{formData.email}</strong>. Click it to activate your account.
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">Confirm your email</h2>
+              <p className="text-slate-600 mb-6 text-sm">
+                We've sent a confirmation link to <strong className="text-slate-900">{formData.email}</strong>. Click it to activate your account.
               </p>
               <Link href="/login" className="block w-full">
                 <Button className="w-full" variant="primary">
@@ -155,164 +147,171 @@ function SignupForm() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-base flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">
-      {/* Background Gradients */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
-
-      {/* Back button */}
-      <Link href="/" className="absolute top-6 left-6 text-white/60 hover:text-white transition-colors z-10 flex items-center gap-2 text-sm font-medium">
-        &larr; Back
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center px-4 py-12 relative">
+      <Link
+        href="/"
+        className="absolute top-6 left-6 text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1.5 text-sm font-medium"
+      >
+        ← Back to Home
       </Link>
 
       <motion.div
-        className="w-full max-w-md z-10"
-        initial={{ opacity: 0, y: 20 }}
+        className="max-w-md w-full"
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Card className="border-white/10 shadow-2xl">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-3xl font-bold text-white mb-2">Join ErrandRun</CardTitle>
-            <p className="text-white/60">
-              Sign up to get started on campus
-            </p>
-          </CardHeader>
-          <CardContent>
-            {/* Role Selector Tabs */}
-            <div className="flex bg-white/5 p-1 rounded-xl mb-8 border border-white/5">
-              <button
-                type="button"
-                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  userRole === 'user' 
-                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' 
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-                onClick={() => setUserRole('user')}
-              >
-                Student
-              </button>
-              <button
-                type="button"
-                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  userRole === 'runner' 
-                    ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/20' 
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-                onClick={() => setUserRole('runner')}
-              >
-                Runner
-              </button>
-            </div>
+        <div className="text-center mb-6">
+          <Link href="/" className="inline-flex items-center gap-2 mb-2">
+            <RunnerLogo className="w-9 h-9" animate={false} />
+            <span className="text-2xl font-black text-slate-900 tracking-tight">
+              Errand<span className="text-blue-600">Run</span>
+            </span>
+          </Link>
+          <p className="text-sm text-slate-500">Create your campus account</p>
+        </div>
 
-            <form onSubmit={handleSignup} className="space-y-5 mb-6">
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-white/80">Full Name</label>
+        {/* Role Toggle */}
+        <div className="flex bg-slate-100 p-1 rounded-xl mb-5 border border-slate-200">
+          <button
+            type="button"
+            onClick={() => setUserRole('user')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              userRole === 'user' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Student Requester
+          </button>
+          <button
+            type="button"
+            onClick={() => setUserRole('runner')}
+            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+              userRole === 'runner' ? 'bg-white text-green-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Campus Runner
+          </button>
+        </div>
+
+        <Card className="shadow-md border-slate-200">
+          <CardContent className="p-6 sm:p-8">
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Full Name
+                </label>
                 <Input
                   type="text"
+                  placeholder="John Doe"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  placeholder="John Doe"
                   disabled={loading}
+                  required
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-white/80">Email</label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  University Email
+                </label>
                 <Input
                   type="email"
+                  placeholder="student@uniuyo.edu.ng"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="john@university.edu"
                   disabled={loading}
+                  required
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-white/80">Password</label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      placeholder="••••••••"
-                      disabled={loading}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors focus:outline-none"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Reg Number
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="21/ENG/012"
+                    value={formData.studentId}
+                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                    disabled={loading}
+                    required
+                  />
                 </div>
-
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-white/80">Confirm Password</label>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={formData.confirmPassword}
-                      onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                      placeholder="••••••••"
-                      disabled={loading}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors focus:outline-none"
-                      tabIndex={-1}
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Phone Number
+                  </label>
+                  <Input
+                    type="tel"
+                    placeholder="08012345678"
+                    value={formData.phoneNumber}
+                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    disabled={loading}
+                    required
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-white/80">Student ID</label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
                   <Input
-                    type="text"
-                    value={formData.studentId}
-                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                    placeholder="UNIUYO/2023/001"
-                    className="font-mono text-sm"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Min 6 characters"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     disabled={loading}
+                    required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-white/80">Phone Number</label>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Confirm Password
+                </label>
+                <div className="relative">
                   <Input
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    placeholder="+234 800 0000"
-                    className="font-mono text-sm"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Repeat password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                     disabled={loading}
+                    required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
               <Button
                 type="submit"
                 variant="primary"
-                className="w-full mt-6"
+                size="lg"
+                className="w-full font-bold mt-2"
                 isLoading={loading}
               >
-                Create Account
+                Create {userRole === 'runner' ? 'Runner' : 'Requester'} Account
               </Button>
             </form>
 
-            {/* Already have account */}
-            <p className="text-center text-white/60 text-sm">
+            <p className="text-center text-xs text-slate-500 mt-5">
               Already have an account?{' '}
-              <Link href="/login" className="text-primary-400 hover:text-primary-300 transition-colors font-medium">
+              <Link href="/login" className="text-blue-600 font-semibold hover:underline">
                 Sign in
               </Link>
             </p>
@@ -325,12 +324,8 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <React.Suspense fallback={
-      <div className="min-h-screen bg-dark-base flex items-center justify-center">
-        <Loader className="w-12 h-12 text-primary-500 animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">Loading...</div>}>
       <SignupForm />
-    </React.Suspense>
+    </Suspense>
   );
 }

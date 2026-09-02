@@ -11,60 +11,47 @@ const config = {
         mono: ['var(--font-geist-mono)', ...defaultTheme.fontFamily.mono],
       },
       colors: {
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: '#38BDF8', // Light Blue
-          50: '#F0F9FF',
-          100: '#E0F2FE',
-          200: '#BAE6FD',
-          300: '#7DD3FC',
-          400: '#38BDF8',
-          500: '#0EA5E9',
-          600: '#0284C7',
-          700: '#0369A1',
-          800: '#075985',
-          900: '#0C4A6E',
+          DEFAULT: '#2563EB',
+          50:  '#EFF6FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          300: '#93C5FD',
+          400: '#60A5FA',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
+          800: '#1E40AF',
+          900: '#1E3A8A',
         },
         brand: {
-          blue: '#38BDF8',
-          yellow: '#FBBF24',
-          green: '#10B981',
+          green:  '#16A34A',
+          yellow: '#D97706',
+          red:    '#DC2626',
         },
-        accent: {
-          purple: '#A855F7', // Keep for legacy elements until migrated
-          neon: '#00FF41',
-        },
-        dark: {
-          base: '#0B0F17',
-          secondary: '#121824',
-        },
-      },
-      backdropBlur: {
-        glass: '12px',
       },
       animation: {
-        'fade-in': 'fadeIn 0.3s ease-in-out',
-        'slide-up': 'slideUp 0.3s ease-out',
+        'fade-in':       'fadeIn 0.3s ease-in-out',
+        'slide-up':      'slideUp 0.3s ease-out',
         'slide-in-left': 'slideInLeft 0.25s ease-out',
-        'shimmer': 'shimmer 2s infinite',
+        'shimmer':       'shimmer 2s infinite',
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: '0' },
+          '0%':   { opacity: '0' },
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { transform: 'translateY(10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
+          '0%':   { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)',    opacity: '1' },
         },
         slideInLeft: {
-          '0%': { transform: 'translateX(-100%)', opacity: '0' },
-          '100%': { transform: 'translateX(0)', opacity: '1' },
+          '0%':   { transform: 'translateX(-100%)', opacity: '0' },
+          '100%': { transform: 'translateX(0)',      opacity: '1' },
         },
         shimmer: {
-          '0%': { opacity: '0.6' },
-          '50%': { opacity: '1' },
+          '0%':   { opacity: '0.6' },
+          '50%':  { opacity: '1' },
           '100%': { opacity: '0.6' },
         },
       },
@@ -74,3 +61,4 @@ const config = {
 } satisfies Config;
 
 export default config;
+

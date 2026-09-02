@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Zap, MapPin, DollarSign, Trophy, Wallet } from 'lucide-react';
+import { Zap, MapPin, DollarSign, Trophy, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Input } from '@/components/ui/Input';
 
 interface ErrandTask {
   id: string;
@@ -42,7 +43,6 @@ export default function RunnerDashboard() {
   const [accepting, setAccepting] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [_isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export default function RunnerDashboard() {
       setStatusMessage('Unable to change duty state. Please try again.');
     } else {
       setRunnerStatus(nextStatus);
-      setStatusMessage(`Duty set to ${nextStatus === 'online' ? 'Online' : 'Offline'}.`);
+      setStatusMessage(`Status set to ${nextStatus === 'online' ? 'Online' : 'Offline'}.`);
     }
 
     setToggleLoading(false);
@@ -167,7 +167,7 @@ export default function RunnerDashboard() {
       window.location.href = `/dashboard/runner/accepted/${taskId}`;
     } catch (error: any) {
       console.error('Accept error:', error);
-      setStatusMessage(error?.message || 'Failed to accept contract.');
+      setStatusMessage(error?.message || 'Failed to accept task.');
     } finally {
       setAccepting(null);
     }
@@ -184,7 +184,7 @@ export default function RunnerDashboard() {
   }, [historyErrands]);
 
   const handleWithdraw = async () => {
-    if (withdrawAmount < 2000) return toast.error('Minimum withdrawal is N2,000');
+    if (withdrawAmount < 2000) return toast.error('Minimum withdrawal is ₦2,000');
     if (withdrawAmount > walletBalance) return toast.error('Insufficient funds');
     
     try {
@@ -198,225 +198,222 @@ export default function RunnerDashboard() {
       if (!res.ok || !data.success) throw new Error(data.error);
       
       setWalletBalance(data.balance);
-      setIsWithdrawing(false);
+      toast.success('Withdrawal queued successfully!', { id: 'withdraw' });
       setWithdrawAmount(0);
-      toast.success('Withdrawal requested successfully! Processing...', { id: 'withdraw' });
     } catch (err: any) {
-      toast.error(err.message || 'Failed to withdraw', { id: 'withdraw' });
+      toast.error(err.message || 'Withdrawal failed', { id: 'withdraw' });
     }
   };
 
   return (
     <RunnerGuard>
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
         
-        {/* Earnings Summary Header using Card */}
-        <Card className="mb-8">
-          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <Wallet className="h-6 w-6 text-emerald-400" />
-                Earnings Summary
-              </CardTitle>
-              <p className="text-white/60 mt-1">Monitor your payouts and statistics.</p>
+        {/* Header with Duty Switch */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="success" className="text-xs">Level {runnerLevel} Runner</Badge>
+              <span className="text-xs text-slate-400">• University of Uyo</span>
             </div>
-            <Button
-              variant={runnerStatus === 'online' ? 'primary' : 'secondary'}
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Runner Marketplace</h1>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Duty Status</span>
+            <button
               onClick={toggleDuty}
-              isLoading={toggleLoading}
-              className={runnerStatus === 'online' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
+              disabled={toggleLoading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                runnerStatus === 'online'
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+              }`}
             >
-              <span className={`mr-2 h-2.5 w-2.5 rounded-full ${runnerStatus === 'online' ? 'bg-white' : 'bg-slate-500'}`} />
-              {runnerStatus === 'online' ? 'Duty Online' : 'Duty Offline'}
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-4">
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm text-white/60 uppercase tracking-wider mb-2">Wallet Balance</p>
-                <p className="text-2xl font-mono font-bold text-emerald-400">{formatCurrency(walletBalance)}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm text-white/60 uppercase tracking-wider mb-2">Net Earnings</p>
-                <p className="text-2xl font-mono font-bold text-white">{formatCurrency(financialMetrics.runnerEarnings)}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm text-white/60 uppercase tracking-wider mb-2">Platform Cut</p>
-                <p className="text-2xl font-mono font-bold text-white">{formatCurrency(financialMetrics.companyCut)}</p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-sm text-white/60 uppercase tracking-wider mb-2">Completed Runs</p>
-                <p className="text-2xl font-mono font-bold text-white">{financialMetrics.completedCount}</p>
-              </div>
-            </div>
-            {statusMessage && (
-              <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 text-emerald-200 text-sm border border-emerald-500/20">
-                {statusMessage}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              <span className={`w-2 h-2 rounded-full ${runnerStatus === 'online' ? 'bg-white animate-pulse' : 'bg-slate-400'}`} />
+              {runnerStatus === 'online' ? 'ONLINE (Accepting)' : 'OFFLINE'}
+            </button>
+          </div>
+        </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <section className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-bold text-white">Run Errands & Earn</h2>
-              <div className="flex gap-2">
-                <Button variant={viewMode === 'available' ? 'primary' : 'ghost'} size="sm" onClick={() => setViewMode('available')}>
-                  Available
-                </Button>
-                <Button variant={viewMode === 'history' ? 'primary' : 'ghost'} size="sm" onClick={() => setViewMode('history')}>
-                  History
+        {statusMessage && (
+          <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-xs">
+            {statusMessage}
+          </div>
+        )}
+
+        {/* 1. Earnings Summary Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Wallet Balance</p>
+              <p className="text-3xl font-black text-green-600 font-mono">{formatCurrency(walletBalance)}</p>
+              <div className="mt-3 flex items-center gap-2">
+                <Input 
+                  type="number"
+                  placeholder="Min ₦2,000"
+                  value={withdrawAmount || ''}
+                  onChange={(e) => setWithdrawAmount(Number(e.target.value))}
+                  className="h-8 text-xs"
+                />
+                <Button size="sm" variant="outline" onClick={handleWithdraw} className="shrink-0 text-xs font-bold">
+                  Payout
                 </Button>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {loading ? (
-              <div className="text-white/60 py-8">Loading tasks...</div>
-            ) : viewMode === 'available' ? (
-              <div className="space-y-4">
-                {availableErrands.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-8 text-center text-white/60">
-                      <p>No tasks nearby.</p>
-                      <p className="text-sm mt-1">Check back soon for new pickup contracts.</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  availableErrands.map((errand) => (
-                    <Card key={errand.id} className="hover:border-emerald-500/30 transition-colors">
-                      <CardContent className="p-5">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="flex-1 space-y-3">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="info">{errand.category}</Badge>
-                              <Badge variant={errand.priority === 'high' ? 'danger' : 'outline'}>
-                                {errand.priority} priority
-                              </Badge>
-                            </div>
-                            <h3 className="text-xl font-semibold text-white">{errand.title}</h3>
-                            
-                            <div className="space-y-1.5 mt-2">
-                              <div className="flex flex-col">
-                                <span className="text-xs text-white/40 uppercase font-semibold">Pickup</span>
-                                <span className="text-sm text-white/80">{errand.pickup_location}</span>
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-xs text-white/40 uppercase font-semibold">Dropoff</span>
-                                <span className="text-sm text-white/80">{errand.delivery_location}</span>
-                              </div>
-                            </div>
-                          </div>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Lifetime Earnings</p>
+              <p className="text-3xl font-black text-slate-900 font-mono">{formatCurrency(financialMetrics.runnerEarnings)}</p>
+              <p className="text-xs text-slate-400 mt-3">From completed campus deliveries</p>
+            </CardContent>
+          </Card>
 
-                          <div className="flex flex-col gap-3 sm:items-end min-w-[140px]">
-                            <div className="text-left sm:text-right">
-                              <span className="block text-xs text-white/50 uppercase font-semibold">Payout</span>
-                              <strong className="text-2xl font-mono text-emerald-400">
-                                {formatCurrency(Number(errand.total_fee) * 0.8)}
-                              </strong>
-                            </div>
-                            
-                            {Number(errand.total_fee) > 10000 && runnerLevel < 2 ? (
-                              <Badge variant="warning" className="px-3 py-1.5">🔒 Level 2 Req</Badge>
-                            ) : activeErrands.length >= 2 ? (
-                              <Badge variant="danger" className="px-3 py-1.5">Max Tasks Reached</Badge>
-                            ) : (
-                              <Button
-                                variant="primary"
-                                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20 border-blue-500/50"
-                                onClick={() => handleAccept(errand.id)}
-                                isLoading={accepting === errand.id}
-                              >
-                                {accepting === errand.id ? 'Accepting...' : 'Accept Errand'}
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {historyErrands.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-8 text-center text-white/60">
-                      <p>No completed runs yet.</p>
-                      <p className="text-sm mt-1">Finish a delivery to start building your history log.</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  historyErrands.map((history) => (
-                    <Card key={history.id}>
-                      <CardContent className="p-5">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3 className="font-semibold text-white">{history.title}</h3>
-                            <p className="text-sm text-white/60">{new Date(history.updated_at ?? history.created_at).toLocaleDateString()}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-xs text-white/50 uppercase">Runner Fee</span>
-                            <p className="text-lg font-mono text-emerald-400 font-semibold">{formatCurrency(Number(history.runner_amount ?? history.total_fee * 0.8))}</p>
-                          </div>
-                        </div>
-                        <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                          <div className="bg-white/5 p-2 rounded-lg">
-                            <span className="text-xs text-white/40 block">Platform Cut</span>
-                            <span className="text-white/80">{formatCurrency(Number(history.platform_fee ?? history.total_fee * 0.2))}</span>
-                          </div>
-                          <div className="bg-white/5 p-2 rounded-lg">
-                            <span className="text-xs text-white/40 block">Route</span>
-                            <span className="text-white/80 truncate block">{history.pickup_location} &rarr; {history.delivery_location}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            )}
-          </section>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Runs Completed</p>
+              <p className="text-3xl font-black text-slate-900 font-mono">{financialMetrics.completedCount}</p>
+              <p className="text-xs text-slate-400 mt-3">Total successful handoffs</p>
+            </CardContent>
+          </Card>
+        </div>
 
-          <aside className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xl">Active Assignments</CardTitle>
-                  <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1 rounded-full text-xs">
-                    <span className={`h-2 w-2 rounded-full ${activeErrands.length > 0 ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                    <span className="text-white/70">{activeErrands.length} Active</span>
-                  </div>
+        {/* Active Task Banner */}
+        {currentActiveTask && (
+          <Card className="border-2 border-blue-300 bg-blue-50/60 shadow-sm">
+            <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge variant="info">Active Assignment</Badge>
+                  <span className="text-xs text-slate-500">In Progress</span>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {activeErrands.length === 0 ? (
-                  <div className="text-center text-white/60 py-6 bg-white/5 rounded-xl border border-dashed border-white/10">
-                    <p>No active assignments.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {activeErrands.map((errand) => (
-                      <div key={errand.id} className="p-4 rounded-xl border border-white/10 bg-slate-950/50">
-                        <Badge variant="outline" className="mb-2">{errand.priority} priority</Badge>
-                        <h3 className="font-semibold text-white mb-1">{errand.title}</h3>
-                        <p className="text-xs text-white/60 mb-4">{errand.pickup_location} &rarr; {errand.delivery_location}</p>
-                        
-                        <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/10">
-                          <Badge variant="info">{errand.status.replace('_', ' ')}</Badge>
-                          <Link href={`/dashboard/runner/track/${errand.id}`}>
-                            <Button variant="secondary" size="sm" className="gap-2 text-xs">
-                              <MapPin className="w-3 h-3" /> Track
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
+                <h3 className="font-bold text-slate-900 text-lg">{currentActiveTask.title}</h3>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  📍 {currentActiveTask.pickup_location} → 📦 {currentActiveTask.delivery_location}
+                </p>
+              </div>
+              <Link href={`/dashboard/runner/accepted/${currentActiveTask.id}`}>
+                <Button variant="primary" size="md" className="gap-2 font-bold whitespace-nowrap">
+                  Open Mission View <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 2. Marketplace Section */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Run Errands & Earn</h2>
+              <p className="text-slate-500 text-xs mt-0.5">Available tasks posted by students nearby.</p>
+            </div>
+
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+              <button
+                onClick={() => setViewMode('available')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  viewMode === 'available' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                Available ({availableErrands.length})
+              </button>
+              <button
+                onClick={() => setViewMode('history')}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  viewMode === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                History ({historyErrands.length})
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <Card className="p-10 text-center">
+              <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin mx-auto mb-2" />
+              <p className="text-slate-500 text-xs">Scanning available tasks...</p>
             </Card>
-          </aside>
+          ) : viewMode === 'available' ? (
+            availableErrands.length === 0 ? (
+              <Card className="p-10 text-center">
+                <Zap className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <h3 className="font-bold text-slate-800 text-sm">No tasks currently waiting</h3>
+                <p className="text-slate-400 text-xs mt-1">Keep your status Online to receive instant alerts when a student posts.</p>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {availableErrands.map((task) => {
+                  const payout = Number(task.total_fee) * 0.8;
+                  return (
+                    <Card key={task.id} className="hover:border-blue-300 hover:shadow-sm transition-all">
+                      <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline">{task.category}</Badge>
+                            {task.priority === 'urgent' && <Badge variant="warning">Urgent</Badge>}
+                            <span className="text-[11px] text-slate-400">
+                              {new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <h3 className="font-bold text-slate-900 text-base leading-snug">{task.title}</h3>
+                          <div className="text-xs text-slate-500 space-y-0.5">
+                            <p className="truncate">📍 Pickup: <strong className="text-slate-700">{task.pickup_location}</strong></p>
+                            <p className="truncate">📦 Dropoff: <strong className="text-slate-700">{task.delivery_location}</strong></p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
+                          <div className="text-left sm:text-right">
+                            <p className="text-lg font-black text-green-600 font-mono leading-none">{formatCurrency(payout)}</p>
+                            <span className="text-[10px] text-slate-400">Your 80% Payout</span>
+                          </div>
+                          <Button
+                            variant="primary"
+                            size="md"
+                            className="font-bold whitespace-nowrap"
+                            disabled={accepting === task.id || runnerStatus !== 'online'}
+                            isLoading={accepting === task.id}
+                            onClick={() => handleAccept(task.id)}
+                          >
+                            Accept Errand
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            /* History view */
+            historyErrands.length === 0 ? (
+              <Card className="p-8 text-center text-slate-500 text-xs">
+                No completed errand history yet.
+              </Card>
+            ) : (
+              <div className="space-y-2">
+                {historyErrands.map((task) => (
+                  <Card key={task.id}>
+                    <CardContent className="p-4 flex items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="success">Completed</Badge>
+                          <span className="text-[11px] text-slate-400">{new Date(task.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm">{task.title}</h4>
+                      </div>
+                      <span className="font-mono font-bold text-green-600 text-sm">
+                        +{formatCurrency(Number(task.runner_amount || task.total_fee * 0.8))}
+                      </span>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )
+          )}
         </div>
       </div>
     </RunnerGuard>

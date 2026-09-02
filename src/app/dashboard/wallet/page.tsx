@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, Plus, Loader, X } from 'lucide-react';
@@ -41,7 +40,6 @@ function WalletContent() {
       let walletId = walletData?.id;
 
       if (!walletData) {
-        // Create wallet if doesn't exist
         const { data: newWallet, error: createError } = await supabase
           .from('wallets')
           .insert([{ user_id: user.id, balance: 0, total_earned: 0, total_spent: 0 }])
@@ -55,7 +53,6 @@ function WalletContent() {
         setWallet(walletData);
       }
 
-      // Fetch transactions
       const { data: txData, error: txError } = await supabase
         .from('wallet_transactions')
         .select('*')
@@ -74,7 +71,6 @@ function WalletContent() {
     fetchWalletData();
   }, [fetchWalletData]);
 
-  // Handle Paystack callback verification
   useEffect(() => {
     if (!paymentReference) return;
 
@@ -106,7 +102,7 @@ function WalletContent() {
     const amount = Number(depositAmount);
     
     if (!amount || amount < 100) {
-      alert('Please enter a valid amount (minimum ₦100)');
+      toast.error('Please enter a valid amount (minimum ₦100)');
       return;
     }
 
@@ -128,184 +124,161 @@ function WalletContent() {
         throw new Error(result.error || 'Failed to initialize payment');
       }
 
-      // Redirect to Paystack
       window.location.href = result.data.authorization_url;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Deposit error:', error);
-      alert('Unable to process deposit. Please try again.');
+      toast.error(error.message || 'Unable to process deposit. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-white mb-8">Wallet</h1>
+    <div className="max-w-4xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Campus Wallet</h1>
+          <p className="text-slate-500 text-xs mt-0.5">Manage your balance, top up via Paystack, or withdraw earnings.</p>
+        </div>
+        <Button onClick={() => setIsAddFundsOpen(true)} className="gap-1.5 font-bold">
+          <Plus className="w-4 h-4" /> Add Funds
+        </Button>
+      </div>
 
       {verifying && (
-        <Card className="mb-6 border-primary-500/30">
-          <CardContent className="p-4 flex items-center gap-3 text-primary-400">
-            <Loader className="w-5 h-5 animate-spin" />
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4 flex items-center gap-3 text-blue-700 text-xs">
+            <Loader className="w-4 h-4 animate-spin" />
             <span>Verifying your Paystack deposit, please wait...</span>
           </CardContent>
         </Card>
       )}
 
       {/* Wallet Balance Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <Card className="mb-8 border-white/10 shadow-xl">
-          <CardContent className="p-6 sm:p-8">
-            <div className="flex items-start sm:items-center justify-between mb-8">
-              <div>
-                <p className="text-white/60 text-sm mb-2">Available Balance</p>
-                <h2 className="text-4xl sm:text-5xl font-bold text-white font-mono">
-                  ₦{wallet?.balance?.toLocaleString() || '0.00'}
-                </h2>
-              </div>
-              <WalletIcon className="w-12 h-12 sm:w-16 sm:h-16 text-primary-400/30 hidden sm:block" />
+      <Card className="border-slate-200 shadow-sm">
+        <CardContent className="p-6 sm:p-8">
+          <div className="flex items-start sm:items-center justify-between mb-6">
+            <div>
+              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Available Balance</p>
+              <h2 className="text-4xl sm:text-5xl font-black text-green-600 font-mono">
+                ₦{wallet?.balance?.toLocaleString() || '0.00'}
+              </h2>
             </div>
+            <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
+              <WalletIcon className="w-7 h-7" />
+            </div>
+          </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 pb-6 border-b border-white/10">
-              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                <p className="text-white/60 text-xs mb-1">Total Earned</p>
-                <p className="text-2xl font-bold text-emerald-400 font-mono">
-                  ₦{wallet?.total_earned?.toLocaleString() || '0'}
-                </p>
-              </div>
-              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-                <p className="text-white/60 text-xs mb-1">Total Spent</p>
-                <p className="text-2xl font-bold text-rose-400 font-mono">
-                  ₦{wallet?.total_spent?.toLocaleString() || '0'}
-                </p>
-              </div>
+          <div className="grid grid-cols-2 gap-4 pt-6 border-t border-slate-100">
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+              <p className="text-slate-400 text-[11px] font-semibold uppercase mb-0.5">Total Earned</p>
+              <p className="text-xl font-bold text-slate-800 font-mono">
+                ₦{wallet?.total_earned?.toLocaleString() || '0'}
+              </p>
             </div>
-
-            {/* Actions */}
-            <div className="flex justify-end">
-              <Button 
-                onClick={() => setIsAddFundsOpen(true)}
-                className="w-full sm:w-auto"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add Funds
-              </Button>
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+              <p className="text-slate-400 text-[11px] font-semibold uppercase mb-0.5">Total Spent</p>
+              <p className="text-xl font-bold text-slate-800 font-mono">
+                ₦{wallet?.total_spent?.toLocaleString() || '0'}
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Transaction History */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <Card className="border-white/10 shadow-xl">
-          <CardHeader>
-            <CardTitle className="text-2xl">Transaction History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {transactions.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-white/60">No transactions yet</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {transactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all gap-4 border border-white/5"
-                  >
-                    <div className="flex items-start sm:items-center gap-4">
-                      {tx.transaction_type === 'credit' ? (
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                          <ArrowDownLeft className="w-5 h-5 text-emerald-400" />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center flex-shrink-0">
-                          <ArrowUpRight className="w-5 h-5 text-rose-400" />
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-white font-medium break-words">{tx.description || 'Transaction'}</p>
-                        <p className="text-xs text-white/40 mt-1">
-                          {new Date(tx.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
+      <Card>
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">Transaction History</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-2">
+          {transactions.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 text-xs">
+              No transactions recorded yet.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {transactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="py-3.5 flex items-center justify-between gap-4 text-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                      tx.transaction_type === 'credit' ? 'bg-green-50 text-green-600' : 'bg-rose-50 text-rose-600'
+                    }`}>
+                      {tx.transaction_type === 'credit' ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                     </div>
-                    <div className="flex sm:block justify-end w-full sm:w-auto border-t border-white/5 pt-3 sm:border-0 sm:pt-0 mt-1 sm:mt-0 flex-col sm:items-end gap-2 sm:gap-1">
-                      <span
-                        className={`text-xl sm:text-base font-bold font-mono text-right ${tx.transaction_type === 'credit' ? 'text-emerald-400' : 'text-rose-400'}`}
-                      >
-                        {tx.transaction_type === 'credit' ? '+' : '-'}₦{Math.abs(tx.amount).toLocaleString()}
-                      </span>
-                      <div className="text-right sm:mt-1">
-                        <Badge variant={tx.status === 'completed' || tx.status === 'success' ? 'success' : tx.status === 'pending' ? 'warning' : 'danger'}>
-                          {tx.status || 'completed'}
-                        </Badge>
-                      </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-sm">{tx.description || 'Transaction'}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {new Date(tx.created_at).toLocaleDateString()} at {new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
+
+                  <div className="text-right">
+                    <span
+                      className={`font-mono font-bold text-sm block ${
+                        tx.transaction_type === 'credit' ? 'text-green-600' : 'text-slate-800'
+                      }`}
+                    >
+                      {tx.transaction_type === 'credit' ? '+' : '-'}₦{Math.abs(tx.amount).toLocaleString()}
+                    </span>
+                    <Badge variant={tx.status === 'completed' || tx.status === 'success' ? 'success' : tx.status === 'pending' ? 'warning' : 'danger'} className="text-[9px] mt-0.5">
+                      {tx.status || 'completed'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add Funds Modal */}
       {isAddFundsOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4 sm:p-6 backdrop-blur-sm">
-          <motion.div 
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-md relative max-h-[90vh]"
-          >
-            <Card className="rounded-t-3xl sm:rounded-3xl border-white/10 shadow-2xl">
-              <button 
-                onClick={() => setIsAddFundsOpen(false)}
-                className="absolute top-6 right-6 text-white/40 hover:text-white z-10 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              <CardHeader className="pt-8">
-                <CardTitle className="text-2xl">Add Funds</CardTitle>
-                <p className="text-white/60 text-sm mt-1">Top up your wallet balance.</p>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleDeposit} className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-medium text-white/80 mb-2">
-                      Amount (₦)
-                    </label>
-                    <Input
-                      type="number"
-                      min="100"
-                      step="100"
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(e.target.value)}
-                      placeholder="Enter amount (e.g. 5000)"
-                      className="text-lg font-mono"
-                      required
-                    />
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    disabled={loading || !depositAmount}
-                    isLoading={loading}
-                    className="w-full"
-                  >
-                    Proceed to Payment
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </motion.div>
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <Card className="max-w-md w-full relative shadow-xl">
+            <button 
+              onClick={() => setIsAddFundsOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-lg font-bold text-slate-900">Top Up Wallet</CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">Deposit funds securely via Paystack.</p>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <form onSubmit={handleDeposit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Amount (₦)
+                  </label>
+                  <Input
+                    type="number"
+                    min="100"
+                    step="100"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    placeholder="e.g. 2000"
+                    className="text-base font-mono"
+                    required
+                  />
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  disabled={loading || !depositAmount}
+                  isLoading={loading}
+                  className="w-full font-bold"
+                >
+                  Proceed to Paystack Checkout
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
@@ -317,7 +290,7 @@ export default function WalletPage() {
     <Suspense
       fallback={
         <div className="max-w-4xl mx-auto px-4 py-8 flex items-center justify-center min-h-[400px]">
-          <Loader className="w-8 h-8 text-primary-400 animate-spin" />
+          <Loader className="w-8 h-8 text-blue-600 animate-spin" />
         </div>
       }
     >
