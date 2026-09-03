@@ -3,11 +3,54 @@
 @tailwind utilities;
 
 @layer base {
-  html { -webkit-font-smoothing: antialiased; }
-  body { background-color: #FFFFFF; color: #111111; font-family: system-ui, -apple-system, sans-serif; }
-  * { min-width: 0; box-sizing: border-box; }
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --canvas: #F8FAFC;
+    --canvas-subtle: #F1F5F9;
+    --border-subtle: #E2E8F0;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #F8FAFC;
+    color: #0F172A;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    overflow-x: hidden;
+  }
+
+  * {
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  ::selection {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+  }
 }
+
 @layer utilities {
-  .scrollbar-none::-webkit-scrollbar { display: none; }
-  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .glass-surface {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
 }

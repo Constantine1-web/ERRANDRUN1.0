@@ -2,9 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { MapPin, Clock, AlertCircle, Bike, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { formatCurrency } from '@/utils/pricing';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 interface ErrandTask {
   id: string;
@@ -146,11 +149,11 @@ export default function RunnerTasksPage() {
 
   const accept = async (id: string) => {
     if (!user?.id) return;
-    
-    const taskToAccept = available.find(t => t.id === id);
+
+    const taskToAccept = available.find((t) => t.id === id);
     if (taskToAccept && taskToAccept.min_runner_rating && taskToAccept.min_runner_rating > 0) {
       if ((user.rating || 0) < taskToAccept.min_runner_rating) {
-        setMessage(`This High Priority task requires a runner rating of ${taskToAccept.min_runner_rating}★ or higher.`);
+        setMessage(`This task requires a runner rating of ${taskToAccept.min_runner_rating}★ or higher.`);
         return;
       }
     }
@@ -166,7 +169,10 @@ export default function RunnerTasksPage() {
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Accept failed');
       setMessage('Accepted errand.');
-      setAssigned((s) => [{ id, title: '(updating)', pickup_location: '', delivery_location: '', total_fee: 0, status: 'assigned' }, ...s]);
+      setAssigned((s) => [
+        { id, title: '(updating)', pickup_location: '', delivery_location: '', total_fee: 0, status: 'assigned' },
+        ...s,
+      ]);
       setAvailable((a) => a.filter((x) => x.id !== id));
       router.push(`/dashboard/runner/accepted/${id}`);
     } catch (err: any) {
@@ -188,7 +194,7 @@ export default function RunnerTasksPage() {
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Decline failed');
-      setMessage('Declined errand. It is now available for others.');
+      setMessage('Declined errand.');
       setAssigned((s) => s.filter((t) => t.id !== id));
     } catch (err: any) {
       setMessage(err?.message || 'Failed to decline');
@@ -197,43 +203,168 @@ export default function RunnerTasksPage() {
     }
   };
 
-  // ── STRIPPED: Awaiting redesign ──
   return (
-    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>My Runner Tasks</h1>
-      {message && <p>{message}</p>}
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6 animate-fadeIn">
 
-      <section>
-        <h2>Assigned to You</h2>
-        {loading ? <p>Loading tasks…</p> : assigned.length === 0 ? <p>No current assignments.</p> : (
-          <div>
+      {/* ── HEADER ── */}
+      <div className="pb-4 border-b border-slate-200">
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+          Flight Operations
+        </span>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          Runner Mission Roster
+        </h1>
+        <p className="text-xs text-slate-500 mt-0.5">
+          Review tasks currently assigned to you and browse unassigned campus errands.
+        </p>
+      </div>
+
+      {message && (
+        <div className={`p-3.5 rounded-2xl flex items-center gap-2.5 text-xs font-medium border ${
+          message.toLowerCase().includes('fail') || message.toLowerCase().includes('require')
+            ? 'text-rose-700 bg-rose-50 border-rose-200'
+            : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+        }`}>
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{message}</span>
+        </div>
+      )}
+
+      {/* ── SECTION 1: ASSIGNED MISSIONS ── */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+            Assigned to You
+          </h2>
+          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black">
+            {assigned.length} Active
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center text-xs text-slate-400 animate-pulse">
+            Loading active assignments…
+          </div>
+        ) : assigned.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 border border-dashed border-slate-300 text-center space-y-1">
+            <p className="text-sm font-bold text-slate-800">No active assignments</p>
+            <p className="text-xs text-slate-500">Claim an errand from the list below or on the Opportunity Radar.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
             {assigned.map((t) => (
-              <div key={t.id} style={{ border: '1px solid black', padding: '10px', margin: '10px 0' }}>
-                <h3>{t.title} - {t.status}</h3>
-                <p>Pickup: {t.pickup_location} → Delivery: {t.delivery_location}</p>
-                <button onClick={() => router.push(`/dashboard/runner/accepted/${t.id}`)}>Execute Task</button>
-                <button onClick={() => decline(t.id)} disabled={actionLoading === t.id}>Decline</button>
+              <div
+                key={t.id}
+                className="bg-white rounded-3xl border-2 border-blue-500/80 p-5 sm:p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5"
+              >
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="info" className="text-[10px] uppercase font-black tracking-wider">
+                      {t.status.replace('_', ' ')}
+                    </Badge>
+                    {t.priority === 'urgent' && (
+                      <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 text-[10px] font-black uppercase">
+                        Urgent
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900">{t.title}</h3>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>{t.pickup_location} → {t.delivery_location}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between md:justify-end gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0">
+                  <Button
+                    variant="primary"
+                    size="md"
+                    onClick={() => router.push(`/dashboard/runner/accepted/${t.id}`)}
+                    className="font-bold text-xs shadow-sm"
+                  >
+                    <Bike className="w-4 h-4 mr-1.5" />
+                    Launch Console
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={() => decline(t.id)}
+                    isLoading={actionLoading === t.id}
+                    className="text-xs font-semibold text-rose-600 border-rose-200 hover:bg-rose-50"
+                  >
+                    Decline
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </section>
 
-      <section>
-        <h2>Available Errands</h2>
-        {loading ? <p>Loading errands…</p> : available.length === 0 ? <p>No errands available.</p> : (
-          <div>
-            {available.map((t) => (
-              <div key={t.id} style={{ border: '1px solid black', padding: '10px', margin: '10px 0' }}>
-                <h3>{t.title}</h3>
-                <p>Pickup: {t.pickup_location} → Delivery: {t.delivery_location}</p>
-                <p>Payout: {formatCurrency(Number(t.total_fee) * 0.8)}</p>
-                <button onClick={() => accept(t.id)} disabled={actionLoading === t.id}>Accept</button>
-              </div>
-            ))}
+      {/* ── SECTION 2: OPEN CAMPUS ERRANDS ── */}
+      <section className="space-y-3 pt-4">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+            Open Campus Errands
+          </h2>
+          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black">
+            {available.length} Available
+          </span>
+        </div>
+
+        {available.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 border border-dashed border-slate-300 text-center text-xs text-slate-400">
+            No unassigned errands waiting right now.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {available.map((t) => {
+              const payout = Number(t.total_fee) * 0.8;
+              return (
+                <div
+                  key={t.id}
+                  className="bg-white hover:bg-slate-50 border border-slate-200 rounded-3xl p-5 transition-all shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+                >
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-900 text-base">{t.title}</h3>
+                      {t.min_runner_rating && t.min_runner_rating > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                          ★ {t.min_runner_rating}+ Rating Required
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      📍 {t.pickup_location} → 📦 {t.delivery_location}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between md:justify-end gap-6 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0">
+                    <div className="text-left md:text-right">
+                      <span className="font-mono text-xl font-black text-emerald-600 block leading-none">
+                        {formatCurrency(payout)}
+                      </span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold">80% Payout</span>
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      size="md"
+                      onClick={() => accept(t.id)}
+                      isLoading={actionLoading === t.id}
+                      className="font-bold text-xs"
+                    >
+                      Accept Task
+                      <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
+
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { MapContainer, Marker, Polyline, TileLayer, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -13,6 +13,23 @@ import { useErrandTracking } from '@/hooks/useRealtimeErrands';
 import type { Errand } from '@/types';
 import { formatCurrency } from '@/utils/pricing';
 import toast from 'react-hot-toast';
+import {
+  MapPin,
+  Clock,
+  ShieldCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Radio,
+  Phone,
+  User,
+  Star,
+  Copy,
+  ChevronLeft,
+  X,
+  ExternalLink
+} from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 const defaultIcon = L.Icon.Default;
 defaultIcon.mergeOptions({
@@ -23,27 +40,24 @@ defaultIcon.mergeOptions({
 
 function RecenterMap({ center }: { center: [number, number] }) {
   const map = useMap();
-
   useEffect(() => {
     if (!center) return;
     map.setView(center, map.getZoom());
   }, [center, map]);
-
   return null;
 }
 
 export default function ErrandDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params?.id as string | undefined;
   const { tracking, loading: trackingLoading } = useErrandTracking(id);
   const [errand, setErrand] = useState<Errand | null>(null);
   const [loading, setLoading] = useState(true);
-  const [_isCompleting, setIsCompleting] = useState(false);
-  const [_completionMessage, setCompletionMessage] = useState<string | null>(null);
 
+  // Fetch Errand
   useEffect(() => {
     if (!id) return;
-
     const fetchErrand = async () => {
       setLoading(true);
       try {
@@ -56,8 +70,23 @@ export default function ErrandDetailPage() {
         setLoading(false);
       }
     };
-
     fetchErrand();
+
+    // Subscribe to errand changes
+    const sub = supabase
+      .channel(`errand_live_${id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'errands', filter: `id.eq.${id}` },
+        (payload) => {
+          if (payload.new) setErrand(payload.new as Errand);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      sub.unsubscribe();
+    };
   }, [id]);
 
   const searchParams = useSearchParams();
@@ -94,7 +123,7 @@ export default function ErrandDetailPage() {
     if (errand.runner_id) {
       supabase
         .from('profiles')
-        .select('id, full_name, student_id, rating, total_ratings, avatar_url')
+        .select('id, full_name, student_id, phone_number, rating, total_ratings, avatar_url')
         .eq('id', errand.runner_id)
         .single()
         .then(({ data }) => setRunnerProfile(data));
@@ -121,25 +150,25 @@ export default function ErrandDetailPage() {
       .catch(console.error);
   }, [errand]);
 
+  // Payment Verification
   useEffect(() => {
     if (!paymentReference) return;
-
     const verifyPayment = async () => {
       try {
         const response = await fetch(`/api/payments?reference=${encodeURIComponent(paymentReference)}`);
         const result = await response.json();
         if (result?.success) {
-          toast.success('Payment confirmed! Your errand is now active.');
+          toast.success('Payment confirmed! Errand is now live.');
           setErrand((current) => (current ? { ...current, status: 'unassigned' } : current));
         }
       } catch (error) {
         console.error('Payment verification failed', error);
       }
     };
-
     verifyPayment();
   }, [paymentReference]);
 
+  // Cancel Handler
   const handleCancelErrand = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!errand) return;
@@ -156,29 +185,22 @@ export default function ErrandDetailPage() {
       const res = await fetch('/api/errands/cancel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          errandId: errand.id,
-          userId,
-          reason: cancelReason,
-        }),
+        body: JSON.stringify({ errandId: errand.id, userId, reason: cancelReason }),
       });
-
       const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to cancel errand');
-      }
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to cancel errand');
 
-      toast.success(data.message || 'Errand cancelled');
+      toast.success(data.message || 'Errand cancelled. Funds refunded to wallet.');
       setErrand((current) => (current ? { ...current, status: 'cancelled' } : current));
       setShowCancelModal(false);
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || 'Failed to cancel errand');
     } finally {
       setCancellingErrand(false);
     }
   };
 
+  // Dispute Handler
   const handleSubmitDispute = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!errand) return;
@@ -202,58 +224,21 @@ export default function ErrandDetailPage() {
           description: disputeDescription,
         }),
       });
-
       const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to file dispute');
-      }
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to file dispute');
 
-      toast.success('Dispute filed successfully. Admin will review within 24 hours.');
+      toast.success('Dispute filed. Campus ops team will review.');
       setExistingDispute(data.data);
       setErrand((current) => (current ? { ...current, status: 'disputed' } : current));
       setShowDisputeModal(false);
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message || 'Failed to file dispute');
     } finally {
       setSubmittingDispute(false);
     }
   };
 
-  const _handleComplete = async () => {
-    if (!id) return;
-    setCompletionMessage(null);
-    setIsCompleting(true);
-
-    try {
-      const response = await fetch('/api/errands/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ errandId: id }),
-      });
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to confirm completion');
-      }
-
-      setErrand((current) =>
-        current
-          ? { ...current, status: 'completed', actual_completion_time: new Date().toISOString() }
-          : current
-      );
-      setCompletionMessage('Delivery marked complete. Thank you for confirming.');
-      toast.success('Errand marked completed! Runner wallet credited.');
-      setShowRatingModal(true);
-    } catch (error: any) {
-      console.error('Completion confirmation failed', error);
-      setCompletionMessage(error.message || 'Unable to confirm completion. Please try again.');
-      toast.error('Failed to mark completed');
-    } finally {
-      setIsCompleting(false);
-    }
-  };
-
+  // Rating Handler
   const handleSubmitRating = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!errand || !errand.runner_id) return;
@@ -261,8 +246,8 @@ export default function ErrandDetailPage() {
     try {
       setSubmittingRating(true);
       const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      if (!userId) {
+      const raterId = userData?.user?.id;
+      if (!raterId) {
         toast.error('Please sign in');
         return;
       }
@@ -272,36 +257,27 @@ export default function ErrandDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           errandId: errand.id,
-          raterId: userId,
+          raterId,
           rateeId: errand.runner_id,
           rating: selectedStars,
           review: reviewComment,
-          categories: selectedTags,
+          tags: selectedTags,
         }),
       });
-
       const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to submit rating');
-      }
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to submit rating');
 
-      toast.success('Thank you for rating your runner!');
+      toast.success('Runner rated! Thank you.');
       setExistingRating(data.data);
       setShowRatingModal(false);
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || 'Could not submit rating');
+      toast.error(err.message || 'Failed to submit review');
     } finally {
       setSubmittingRating(false);
     }
   };
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
-  };
-
+  // Map Coordinates & Center
   const latestTracking = tracking[0] || null;
   const pathPositions = useMemo(
     () =>
@@ -319,142 +295,517 @@ export default function ErrandDetailPage() {
     if (errand?.pickup_coordinates) {
       return [errand.pickup_coordinates.lat, errand.pickup_coordinates.lng] as [number, number];
     }
-    return [5.0377, 7.9128] as [number, number]; // Uyo coords default
+    return [5.0377, 7.9128] as [number, number]; // UniUyo campus coords
   }, [latestTracking, errand]);
 
-  // ── STRIPPED: Awaiting redesign ──
+  const copyPIN = () => {
+    if (errand?.delivery_pin) {
+      navigator.clipboard.writeText(errand.delivery_pin);
+      toast.success('PIN copied to clipboard!');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center text-xs text-slate-400">
+        Loading Flight Tracker…
+      </div>
+    );
+  }
+
+  if (!errand) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-900">Errand Not Found</h2>
+        <p className="text-xs text-slate-500">The requested errand could not be retrieved.</p>
+        <Button onClick={() => router.push('/dashboard/user')}>Return to Hub</Button>
+      </div>
+    );
+  }
+
+  // Journey Steps
+  const journeySteps = [
+    { key: 'unassigned', label: 'Dispatched', desc: 'Awaiting runner claim' },
+    { key: 'assigned', label: 'Assigned', desc: 'Runner en route to pickup' },
+    { key: 'in_progress', label: 'In Transit', desc: 'Item secured / delivering' },
+    { key: 'completed', label: 'Completed', desc: 'Verified & escrow released' },
+  ];
+
+  const currentStepIndex =
+    errand.status === 'completed' ? 3 :
+    errand.status === 'in_progress' ? 2 :
+    errand.status === 'assigned' ? 1 : 0;
+
   return (
-    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>Live Delivery Tracking</h1>
-      
-      {loading ? (
-        <p>Loading tracking details…</p>
-      ) : !errand ? (
-        <p>Errand not found.</p>
-      ) : (
-        <div>
-          <div>Status: {errand.status}</div>
-          
-          {(errand.status === 'assigned' || errand.status === 'in_progress' || errand.status === 'unassigned') && (
-            <div>
-              <h3>Secure 4-Digit Delivery PIN</h3>
-              <p>{errand.delivery_pin || '----'}</p>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6 animate-fadeIn">
+
+      {/* ── TOP BREADCRUMB & STATUS BAR ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/dashboard/errands')}
+            className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div>
+            <div className="flex items-center gap-2">
+              <Badge
+                variant={
+                  errand.status === 'completed' ? 'success' :
+                  errand.status === 'in_progress' || errand.status === 'assigned' ? 'info' :
+                  errand.status === 'cancelled' || errand.status === 'disputed' ? 'danger' : 'warning'
+                }
+                className="text-[10px] uppercase font-black tracking-wider"
+              >
+                {errand.status.replace('_', ' ')}
+              </Badge>
+              <span className="text-xs text-slate-400 font-mono">#{errand.id.slice(0, 8)}</span>
             </div>
-          )}
-
-          <div>
-            <h3>Errand Summary</h3>
-            <p>Title: {errand.title}</p>
-            <p>Description: {errand.description}</p>
-            <p>Pickup: {errand.pickup_location}</p>
-            <p>Dropoff: {errand.delivery_location}</p>
-            <p>Total Escrow: {formatCurrency(Number(errand.total_fee))}</p>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+              {errand.title}
+            </h1>
           </div>
+        </div>
 
-          {runnerProfile && (
-            <div>
-              <h3>Assigned Runner</h3>
-              <p>Name: {runnerProfile.full_name}</p>
-              <p>Rating: {runnerProfile.rating || '5.0'} ⭐</p>
-            </div>
+        {/* Dispute / Cancel Buttons */}
+        <div className="flex items-center gap-2">
+          {errand.status !== 'completed' && errand.status !== 'cancelled' && (
+            <>
+              {errand.status === 'unassigned' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCancelModal(true)}
+                  className="text-xs font-semibold text-rose-600 border-rose-200 hover:bg-rose-50"
+                >
+                  Cancel Errand
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDisputeModal(true)}
+                className="text-xs font-semibold text-amber-700 border-amber-300 hover:bg-amber-50"
+              >
+                Report Issue
+              </Button>
+            </>
           )}
+          {errand.status === 'completed' && !existingRating && runnerProfile && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowRatingModal(true)}
+              className="text-xs font-bold"
+            >
+              <Star className="w-3.5 h-3.5 mr-1" /> Rate Runner
+            </Button>
+          )}
+        </div>
+      </div>
 
-          <div>
-            <h3>Actions & Resolution</h3>
-            {(errand.status === 'unassigned' || errand.status === 'payment_pending') && (
-              <button onClick={() => setShowCancelModal(true)}>Cancel Errand</button>
-            )}
-            {(errand.status === 'assigned' || errand.status === 'in_progress') && !existingDispute && (
-              <button onClick={() => setShowDisputeModal(true)}>Report Issue / File Dispute</button>
-            )}
-            {errand.status === 'completed' && !existingRating && (
-              <button onClick={() => setShowRatingModal(true)}>Rate Runner</button>
-            )}
-          </div>
+      {/* ── ERRAND JOURNEY STEPPER RIBBON ── */}
+      {errand.status !== 'cancelled' && errand.status !== 'disputed' && (
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Live Flight Journey
+          </span>
 
-          <div>
-            <h3>Status Log</h3>
-            {trackingLoading ? (
-              <p>Loading activity...</p>
-            ) : tracking.length === 0 ? (
-              <p>No activity recorded yet.</p>
-            ) : (
-              tracking.map((t: any) => (
-                <div key={t.id}>
-                  <p>{t.status_update}</p>
-                  <p>{new Date(t.timestamp).toLocaleTimeString()}</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative">
+            {journeySteps.map((s, idx) => {
+              const isPast = idx < currentStepIndex;
+              const isCurrent = idx === currentStepIndex;
+              return (
+                <div key={s.key} className="flex flex-col space-y-1.5 relative z-10">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all ${
+                        isPast
+                          ? 'bg-emerald-600 text-white'
+                          : isCurrent
+                          ? 'bg-blue-600 text-white shadow-sm ring-4 ring-blue-100'
+                          : 'bg-slate-100 text-slate-400 border border-slate-200'
+                      }`}
+                    >
+                      {isPast ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
+                    </div>
+                    <span className={`text-xs font-bold ${isCurrent ? 'text-blue-700' : isPast ? 'text-slate-900' : 'text-slate-400'}`}>
+                      {s.label}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 pl-9 leading-tight">
+                    {s.desc}
+                  </p>
                 </div>
-              ))
-            )}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {showRatingModal && (
-        <div style={{ border: '1px solid black', padding: '20px', marginTop: '20px' }}>
-          <h2>Rate Your Runner</h2>
-          <form onSubmit={handleSubmitRating}>
-            <div>
-              <label>Stars (1-5): </label>
-              <input type="number" min="1" max="5" value={selectedStars} onChange={(e) => setSelectedStars(Number(e.target.value))} />
+      {/* ── MAIN 2-COLUMN DISPLAY ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        {/* LEFT COLUMN: Map & Route Details */}
+        <div className="lg:col-span-7 space-y-6">
+
+          {/* Leaflet Map Surface */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden h-[340px] relative">
+            <MapContainer
+              center={mapCenter}
+              zoom={14}
+              scrollWheelZoom={false}
+              className="h-full w-full z-0"
+            >
+              <RecenterMap center={mapCenter} />
+              <TileLayer
+                attribution='&copy; OpenStreetMap contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              {pathPositions.length > 1 && (
+                <Polyline positions={pathPositions} pathOptions={{ color: '#2563EB', weight: 4 }} />
+              )}
+              {errand.pickup_coordinates && (
+                <Marker position={[errand.pickup_coordinates.lat, errand.pickup_coordinates.lng]}>
+                  <Popup>📍 Pickup: {errand.pickup_location}</Popup>
+                </Marker>
+              )}
+              {errand.delivery_coordinates && (
+                <Marker position={[errand.delivery_coordinates.lat, errand.delivery_coordinates.lng]}>
+                  <Popup>📦 Destination: {errand.delivery_location}</Popup>
+                </Marker>
+              )}
+              {latestTracking?.current_location && (
+                <Marker position={[latestTracking.current_location.lat, latestTracking.current_location.lng]}>
+                  <Popup>🏃 Runner Broadcast Location</Popup>
+                </Marker>
+              )}
+            </MapContainer>
+
+            {/* Map Telemetry Overlay */}
+            <div className="absolute top-3 left-3 z-[400] bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-1.5 shadow-sm">
+              <Radio className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+              Live Route Radar
             </div>
-            <div>
-              <label>Tags: </label>
-              {availableTags.map((tag) => (
-                <label key={tag}>
-                  <input type="checkbox" checked={selectedTags.includes(tag)} onChange={() => toggleTag(tag)} />
-                  {tag}
-                </label>
+          </div>
+
+          {/* Route & Instructions Strip */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Route & Task Directives
+            </h3>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+                <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pickup Location</span>
+                  <span className="font-semibold text-slate-900 text-sm">{errand.pickup_location}</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+                <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Delivery Destination</span>
+                  <span className="font-semibold text-slate-900 text-sm">{errand.delivery_location}</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Instructions</span>
+                <p className="text-slate-700 leading-relaxed">{errand.description}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Activity Broadcast Log */}
+          {tracking.length > 0 && (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Runner Broadcast Feed
+              </h3>
+              <div className="divide-y divide-slate-100 text-xs">
+                {tracking.map((t) => (
+                  <div key={t.id} className="py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      <span className="font-medium text-slate-800">{t.status_update}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: PIN Security Capsule, Runner Info & Escrow */}
+        <div className="lg:col-span-5 space-y-6">
+
+          {/* ── PROMINENT DELIVERY PIN SECURITY CAPSULE ── */}
+          <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl p-6 text-white shadow-md relative overflow-hidden space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-300" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-200">
+                  Delivery PIN Verification
+                </span>
+              </div>
+              <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                Do Not Share Early
+              </span>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 text-center border border-white/20 space-y-1">
+              <span className="text-[11px] text-blue-200 font-medium">Your 4-Digit Secret Code</span>
+              <div className="flex items-center justify-center gap-3">
+                <span className="font-mono text-4xl sm:text-5xl font-black tracking-[0.25em] text-white select-all">
+                  {errand.delivery_pin || '••••'}
+                </span>
+                {errand.delivery_pin && (
+                  <button
+                    onClick={copyPIN}
+                    className="p-2 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-colors"
+                    title="Copy PIN"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <p className="text-[11px] text-blue-100 leading-relaxed text-center">
+              ⚠️ Give this PIN to your runner <strong>ONLY</strong> when they arrive and place your item into your hands. This releases their payout.
+            </p>
+          </div>
+
+          {/* Runner Profile Strip (If Assigned) */}
+          {runnerProfile ? (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Assigned Campus Runner
+                </span>
+                <Badge variant="success" className="text-[10px] font-bold">
+                  Verified Student
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 font-black flex items-center justify-center text-base shrink-0 border border-emerald-200">
+                  {runnerProfile.full_name?.charAt(0) || <User className="w-6 h-6" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-slate-900 text-sm truncate">
+                    {runnerProfile.full_name}
+                  </h4>
+                  <p className="text-xs text-slate-400 font-mono mt-0.5">
+                    {runnerProfile.student_id}
+                  </p>
+                  <div className="flex items-center gap-1 text-amber-500 text-xs font-bold mt-1">
+                    <Star className="w-3.5 h-3.5 fill-amber-500" />
+                    <span>{runnerProfile.rating?.toFixed(1) || '5.0'}</span>
+                    <span className="text-slate-400 font-normal">({runnerProfile.total_ratings || 0} reviews)</span>
+                  </div>
+                </div>
+              </div>
+
+              {runnerProfile.phone_number && (
+                <a
+                  href={`tel:${runnerProfile.phone_number}`}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-bold transition-colors"
+                >
+                  <Phone className="w-3.5 h-3.5 text-blue-600" />
+                  Call Runner ({runnerProfile.phone_number})
+                </a>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm text-center space-y-2">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+                <Clock className="w-5 h-5 animate-spin" />
+              </div>
+              <h4 className="font-bold text-slate-900 text-sm">Broadcasting on Campus Grid</h4>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                Nearby verified runners are notified. A runner will accept and lock your mission shortly.
+              </p>
+            </div>
+          )}
+
+          {/* Financial Settlement Breakdown */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-3">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+              Escrow Settlement
+            </span>
+            <div className="space-y-2 text-xs divide-y divide-slate-100">
+              <div className="flex justify-between text-slate-500 pt-1">
+                <span>Total Amount Secured:</span>
+                <span className="font-mono font-bold text-slate-900">{formatCurrency(errand.total_fee)}</span>
+              </div>
+              <div className="flex justify-between text-slate-500 pt-2">
+                <span>Runner Payout (80%):</span>
+                <span className="font-mono font-bold text-emerald-600">{formatCurrency(errand.runner_amount)}</span>
+              </div>
+              <div className="flex justify-between text-slate-400 pt-2 text-[11px]">
+                <span>Platform Assurance (20%):</span>
+                <span className="font-mono">{formatCurrency(errand.platform_fee)}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* ── CANCEL MODAL ── */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-base text-slate-900">Cancel Errand</h3>
+              <button onClick={() => setShowCancelModal(false)} className="text-slate-400 font-bold">✕</button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Your locked escrow fee of <strong>{formatCurrency(errand.total_fee)}</strong> will be refunded immediately to your wallet.
+            </p>
+            <form onSubmit={handleCancelErrand} className="space-y-4">
+              <textarea
+                placeholder="Reason for cancellation (optional)..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-300 text-xs"
+                rows={3}
+              />
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={() => setShowCancelModal(false)} className="flex-1">
+                  Keep Errand
+                </Button>
+                <Button type="submit" variant="danger" isLoading={cancellingErrand} className="flex-1 font-bold">
+                  Confirm Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── DISPUTE MODAL ── */}
+      {showDisputeModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-base text-slate-900">Report an Issue / Dispute</h3>
+              <button onClick={() => setShowDisputeModal(false)} className="text-slate-400 font-bold">✕</button>
+            </div>
+            <p className="text-xs text-slate-500">
+              Our campus operations team will freeze escrow and review runner tracking logs within 24 hours.
+            </p>
+            <form onSubmit={handleSubmitDispute} className="space-y-4">
+              <select
+                value={disputeReason}
+                onChange={(e) => setDisputeReason(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-slate-300 text-xs"
+              >
+                <option value="Item not delivered / Missing">Item not delivered / Missing</option>
+                <option value="Wrong items delivered">Wrong items delivered</option>
+                <option value="Damaged / Spoiled goods">Damaged / Spoiled goods</option>
+                <option value="Runner unresponsive">Runner unresponsive</option>
+                <option value="Runner demanded extra cash">Runner demanded extra cash</option>
+              </select>
+              <textarea
+                placeholder="Describe what happened..."
+                value={disputeDescription}
+                onChange={(e) => setDisputeDescription(e.target.value)}
+                required
+                className="w-full p-3 rounded-xl border border-slate-300 text-xs"
+                rows={3}
+              />
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={() => setShowDisputeModal(false)} className="flex-1">
+                  Close
+                </Button>
+                <Button type="submit" variant="primary" isLoading={submittingDispute} className="flex-1 font-bold">
+                  File Dispute
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── RATING MODAL ── */}
+      {showRatingModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-center">
+            <h3 className="font-bold text-base text-slate-900">Rate Your Runner</h3>
+            <p className="text-xs text-slate-500">How did {runnerProfile?.full_name} handle your errand?</p>
+
+            {/* Stars */}
+            <div className="flex items-center justify-center gap-2 py-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setSelectedStars(star)}
+                  className={`text-2xl transition-transform hover:scale-110 ${
+                    star <= selectedStars ? 'text-amber-500' : 'text-slate-200'
+                  }`}
+                >
+                  ★
+                </button>
               ))}
             </div>
-            <div>
-              <label>Review: </label>
-              <textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
+
+            {/* Tags */}
+            <div className="flex flex-wrap gap-1.5 justify-center py-2">
+              {availableTags.map((tag) => {
+                const isSelected = selectedTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTags((prev) =>
+                        isSelected ? prev.filter((t) => t !== tag) : [...prev, tag]
+                      );
+                    }}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
             </div>
-            <button type="submit" disabled={submittingRating}>Submit Rating</button>
-            <button type="button" onClick={() => setShowRatingModal(false)}>Cancel</button>
-          </form>
+
+            <textarea
+              placeholder="Leave a friendly review..."
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              className="w-full p-3 rounded-xl border border-slate-300 text-xs"
+              rows={3}
+            />
+
+            <Button
+              onClick={handleSubmitRating}
+              variant="primary"
+              size="lg"
+              className="w-full font-bold"
+              isLoading={submittingRating}
+            >
+              Submit Review
+            </Button>
+          </div>
         </div>
       )}
 
-      {showDisputeModal && (
-        <div style={{ border: '1px solid black', padding: '20px', marginTop: '20px' }}>
-          <h2>File a Dispute</h2>
-          <form onSubmit={handleSubmitDispute}>
-            <div>
-              <label>Reason: </label>
-              <select value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)}>
-                <option value="Item not delivered / Missing">Item not delivered / Missing</option>
-                <option value="Damaged or incorrect item">Damaged or incorrect item</option>
-                <option value="Unreasonable delay or abandoned task">Unreasonable delay or abandoned task</option>
-                <option value="Pricing / Payment discrepancy">Pricing / Payment discrepancy</option>
-                <option value="Unprofessional behavior">Unprofessional behavior</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div>
-              <label>Detailed Explanation: </label>
-              <textarea required value={disputeDescription} onChange={(e) => setDisputeDescription(e.target.value)} />
-            </div>
-            <button type="submit" disabled={submittingDispute || !disputeDescription}>Submit Dispute</button>
-            <button type="button" onClick={() => setShowDisputeModal(false)}>Cancel</button>
-          </form>
-        </div>
-      )}
-
-      {showCancelModal && (
-        <div style={{ border: '1px solid black', padding: '20px', marginTop: '20px' }}>
-          <h2>Cancel Errand</h2>
-          <form onSubmit={handleCancelErrand}>
-            <div>
-              <label>Reason (Optional): </label>
-              <input type="text" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
-            </div>
-            <button type="submit" disabled={cancellingErrand}>Confirm Cancel</button>
-            <button type="button" onClick={() => setShowCancelModal(false)}>Keep Errand</button>
-          </form>
-        </div>
-      )}
     </div>
   );
 }
