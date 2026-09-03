@@ -10,7 +10,7 @@ interface ProvidersProps {
 
 export default function Providers({ children }: ProvidersProps) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={true}>
       {children}
       <Toaster position="bottom-center" />
     </ThemeProvider>

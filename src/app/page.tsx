@@ -20,6 +20,7 @@ import {
 import { RunnerLogo } from '@/components/RunnerLogo';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function LandingPage() {
   const [calcCategory, setCalcCategory] = useState<'academic' | 'food_delivery' | 'campus_errand'>('food_delivery');
@@ -45,6 +46,8 @@ export default function LandingPage() {
           </Link>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle variant="icon" />
+
             <Link
               href="/login"
               className="text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-2 transition-colors"

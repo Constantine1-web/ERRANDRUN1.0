@@ -44,11 +44,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} dark`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icon.png" />
       </head>
-      <body className="bg-dark-base text-foreground antialiased">
+      <body className="antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-200">
         <Providers>{children}</Providers>
       </body>
     </html>

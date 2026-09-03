@@ -24,6 +24,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { RunnerLogo } from '@/components/RunnerLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function DashboardLayout({
   children,
@@ -307,6 +308,9 @@ export default function DashboardLayout({
                 ₦{walletBalance !== null ? walletBalance.toLocaleString('en-NG') : '…'}
               </span>
             </Link>
+
+            {/* Day / Night Mode Toggle */}
+            <ThemeToggle variant="icon" />
 
             {/* Profile / Trust Seal */}
             <Link

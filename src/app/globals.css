@@ -8,7 +8,21 @@
     --foreground: 222 47% 11%;
     --canvas: #F8FAFC;
     --canvas-subtle: #F1F5F9;
+    --surface-card: #FFFFFF;
     --border-subtle: #E2E8F0;
+    --text-primary: #0F172A;
+    --text-secondary: #64748B;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --canvas: #0B0F17;
+    --canvas-subtle: #121824;
+    --surface-card: #151D2A;
+    --border-subtle: #1E293B;
+    --text-primary: #F8FAFC;
+    --text-secondary: #94A3B8;
   }
 
   html {
@@ -18,10 +32,11 @@
   }
 
   body {
-    background-color: #F8FAFC;
-    color: #0F172A;
+    background-color: var(--canvas);
+    color: var(--text-primary);
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   * {
@@ -33,6 +48,77 @@
     background-color: #DBEAFE;
     color: #1E40AF;
   }
+
+  .dark ::selection {
+    background-color: #1E3A8A;
+    color: #BFDBFE;
+  }
+}
+
+/* ── Intelligent Dark Mode Surface Adaptations ── */
+.dark .bg-\[\#F8FAFC\],
+.dark .bg-slate-50 {
+  background-color: #0B0F17 !important;
+}
+
+.dark .bg-white {
+  background-color: #121824 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1A2232 !important;
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: #161F2E !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #1E293B !important;
+}
+
+.dark .border-slate-200,
+.dark .border-slate-200\/90,
+.dark .border-slate-100,
+.dark .border-slate-300 {
+  border-color: #1E293B !important;
+}
+
+.dark .text-slate-900 {
+  color: #F8FAFC !important;
+}
+
+.dark .text-slate-800 {
+  color: #F1F5F9 !important;
+}
+
+.dark .text-slate-700 {
+  color: #CBD5E1 !important;
+}
+
+.dark .text-slate-600 {
+  color: #94A3B8 !important;
+}
+
+.dark .text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+.dark .text-slate-400 {
+  color: #64748B !important;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #121824;
+  color: #F8FAFC;
+  border-color: #334155;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748B;
 }
 
 @layer utilities {
@@ -46,6 +132,12 @@
 
   .glass-surface {
     background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .dark .glass-surface {
+    background: rgba(18, 24, 36, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
