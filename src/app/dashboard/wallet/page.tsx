@@ -227,7 +227,7 @@ function WalletContent() {
       {/* ── FINANCIAL TELEMETRY SURFACE ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         {/* Available Balance */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-sm space-y-2 relative overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-2 relative overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
               Available Balance
@@ -243,11 +243,11 @@ function WalletContent() {
         </div>
 
         {/* Total Earned */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-sm space-y-2">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-2">
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
             Total Career Earnings
           </span>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 font-mono tracking-tight">
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
             ₦{wallet?.total_earned?.toLocaleString('en-NG') || '0'}
           </p>
           <span className="text-[11px] text-emerald-600 font-semibold block pt-1">
@@ -256,11 +256,11 @@ function WalletContent() {
         </div>
 
         {/* Total Spent */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/90 shadow-sm space-y-2">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-2">
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
             Total Dispatched / Spent
           </span>
-          <p className="text-2xl sm:text-3xl font-black text-slate-700 font-mono tracking-tight">
+          <p className="text-2xl sm:text-3xl font-black text-slate-700 dark:text-slate-300 font-mono tracking-tight">
             ₦{wallet?.total_spent?.toLocaleString('en-NG') || '0'}
           </p>
           <span className="text-[11px] text-slate-400 block pt-1">
@@ -270,7 +270,7 @@ function WalletContent() {
       </div>
 
       {/* ── TRANSACTION LEDGER ── */}
-      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
+      <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
             <h2 className="text-base font-bold text-slate-900">Transaction History</h2>

@@ -7,13 +7,12 @@ import { useAppStore } from '@/lib/store';
 import { formatCurrency } from '@/utils/pricing';
 import {
   Search,
-  PlusCircle,
+  Plus,
   MapPin,
   Clock,
   ArrowRight,
-  Filter,
-  CheckCircle2,
-  AlertCircle
+  Package,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -31,7 +30,7 @@ interface ErrandSummary {
   created_at: string;
 }
 
-export default function ErrandsChroniclePage() {
+export default function ErrandsActivityPage() {
   const router = useRouter();
   const { user } = useAppStore();
   const [errands, setErrands] = useState<ErrandSummary[]>([]);
@@ -85,41 +84,38 @@ export default function ErrandsChroniclePage() {
   });
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6 animate-fadeIn">
+    <div className="py-6 sm:py-8 space-y-6 animate-fadeIn">
 
-      {/* ── HEADER & DISPATCH BUTTON ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      {/* ── HEADER ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Activity Ledger
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            My Errand Chronicle
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            Activity & Past Errands
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Full history of your dispatched campus requests and live deliveries.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Track active deliveries and review your completed campus orders.
           </p>
         </div>
 
         <Button
           size="lg"
           onClick={() => router.push('/dashboard/errands/new')}
-          className="font-bold text-sm shadow-sm shrink-0"
+          className="font-bold text-xs sm:text-sm shadow-md shrink-0 h-12"
         >
-          <PlusCircle className="w-4 h-4 mr-2" />
-          Dispatch New Errand
+          <Plus className="w-4 h-4 mr-1.5" />
+          Request New Errand
         </Button>
       </div>
 
       {/* ── SEARCH & FILTER CONTROLS ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-auto overflow-x-auto">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* Filter Tabs */}
+        <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm w-full sm:w-auto overflow-x-auto">
           {[
-            { id: 'all', label: 'All Tasks', count: errands.length },
+            { id: 'all', label: 'All', count: errands.length },
             { id: 'active', label: 'In-Flight', count: errands.filter(e => ['unassigned', 'assigned', 'in_progress'].includes(e.status)).length },
             { id: 'completed', label: 'Delivered', count: errands.filter(e => e.status === 'completed').length },
-            { id: 'issues', label: 'Disputes / Cancelled', count: errands.filter(e => ['disputed', 'cancelled'].includes(e.status)).length },
+            { id: 'issues', label: 'Cancelled', count: errands.filter(e => ['disputed', 'cancelled'].includes(e.status)).length },
           ].map((tab) => {
             const isActive = statusFilter === tab.id;
             return (
@@ -129,12 +125,12 @@ export default function ErrandsChroniclePage() {
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <span>{tab.label}</span>
                 <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                  isActive ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                 }`}>
                   {tab.count}
                 </span>
@@ -151,20 +147,21 @@ export default function ErrandsChroniclePage() {
             placeholder="Search tasks, locations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-300 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-11 pl-10 pr-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
 
       {/* ── ACTIVITY STREAM LIST ── */}
       {loading ? (
-        <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-xs text-slate-400 animate-pulse">
-          Loading your errand ledger…
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-12 text-center text-xs text-slate-400 animate-pulse">
+          Loading activity ledger…
         </div>
       ) : filteredErrands.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-12 text-center space-y-3">
-          <p className="text-sm font-bold text-slate-800">No errands found</p>
-          <p className="text-xs text-slate-500">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-12 text-center space-y-3">
+          <Package className="w-8 h-8 text-slate-400 mx-auto" />
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No errands found</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {searchQuery ? 'Try adjusting your search criteria.' : 'You have not dispatched any errands in this category yet.'}
           </p>
         </div>
@@ -177,61 +174,46 @@ export default function ErrandsChroniclePage() {
               <div
                 key={errand.id}
                 onClick={() => router.push(`/dashboard/user/errand/${errand.id}`)}
-                className="bg-white hover:bg-slate-50 border border-slate-200/90 rounded-2xl p-5 cursor-pointer transition-all hover:border-blue-300 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+                className="bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 cursor-pointer transition-all hover:border-blue-300 dark:hover:border-blue-700 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
               >
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap">
+                <div className="space-y-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {errand.category.replace('_', ' ')}
+                    </span>
                     <Badge
-                      variant={
-                        isDelivered ? 'success' :
-                        isInFlight ? 'info' : 'danger'
-                      }
-                      className="text-[10px] uppercase font-black tracking-wider"
+                      variant={isDelivered ? 'success' : isInFlight ? 'info' : 'danger'}
+                      className="text-[10px] uppercase font-bold"
                     >
                       {errand.status.replace('_', ' ')}
                     </Badge>
-                    <span className="text-[11px] font-semibold text-slate-400 capitalize">
-                      {errand.category?.replace('_', ' ') || 'Errand'}
-                    </span>
-                    <span className="text-[11px] text-slate-300 font-mono">•</span>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      {new Date(errand.created_at).toLocaleDateString()} at{' '}
-                      {new Date(errand.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
                     {errand.title}
                   </h3>
 
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                    <span className="font-medium truncate max-w-[200px]">{errand.pickup_location}</span>
-                    <span className="text-slate-300">→</span>
-                    <span className="font-medium truncate max-w-[200px]">{errand.delivery_location}</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="truncate">📍 From: {errand.pickup_location}</span>
+                    <span className="hidden sm:inline">•</span>
+                    <span className="truncate">📦 To: {errand.delivery_location}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between md:justify-end gap-6 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0">
-                  {errand.delivery_pin && isInFlight && (
-                    <div className="text-left md:text-right">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">PIN</span>
-                      <span className="font-mono text-sm font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                        {errand.delivery_pin}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="text-right">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total Secured</span>
-                    <span className="font-mono text-lg font-black text-emerald-600">
+                <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+                  <div className="text-left md:text-right">
+                    <span className="font-mono font-black text-base text-slate-900 dark:text-white block">
                       {formatCurrency(errand.total_fee)}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {new Date(errand.created_at).toLocaleDateString()}
                     </span>
                   </div>
 
-                  <Button size="sm" variant="outline" className="font-bold text-xs">
-                    Flight Details <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
+                  <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-bold text-xs">
+                    <span>Details</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </div>
               </div>
             );

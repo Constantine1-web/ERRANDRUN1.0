@@ -409,7 +409,7 @@ export default function ErrandDetailPage() {
 
       {/* ── ERRAND JOURNEY STEPPER RIBBON ── */}
       {errand.status !== 'cancelled' && errand.status !== 'disputed' && (
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
             Live Flight Journey
           </span>
@@ -453,7 +453,7 @@ export default function ErrandDetailPage() {
         <div className="lg:col-span-7 space-y-6">
 
           {/* Leaflet Map Surface */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden h-[340px] relative">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm overflow-hidden h-[340px] relative">
             <MapContainer
               center={mapCenter}
               zoom={14}
@@ -493,38 +493,38 @@ export default function ErrandDetailPage() {
           </div>
 
           {/* Route & Instructions Strip */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Route & Task Directives
             </h3>
 
             <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
                 <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pickup Location</span>
-                  <span className="font-semibold text-slate-900 text-sm">{errand.pickup_location}</span>
+                  <span className="font-semibold text-slate-900 dark:text-white text-sm">{errand.pickup_location}</span>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+              <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
                 <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Delivery Destination</span>
-                  <span className="font-semibold text-slate-900 text-sm">{errand.delivery_location}</span>
+                  <span className="font-semibold text-slate-900 dark:text-white text-sm">{errand.delivery_location}</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Instructions</span>
-                <p className="text-slate-700 leading-relaxed">{errand.description}</p>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{errand.description}</p>
               </div>
             </div>
           </div>
 
           {/* Live Activity Broadcast Log */}
           {tracking.length > 0 && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-3">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 Runner Broadcast Feed
               </h3>
@@ -587,8 +587,8 @@ export default function ErrandDetailPage() {
 
           {/* Runner Profile Strip (If Assigned) */}
           {runnerProfile ? (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Assigned Campus Runner
                 </span>
@@ -598,11 +598,11 @@ export default function ErrandDetailPage() {
               </div>
 
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 font-black flex items-center justify-center text-base shrink-0 border border-emerald-200">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-black flex items-center justify-center text-base shrink-0 border border-emerald-200 dark:border-emerald-800">
                   {runnerProfile.full_name?.charAt(0) || <User className="w-6 h-6" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-bold text-slate-900 text-sm truncate">
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">
                     {runnerProfile.full_name}
                   </h4>
                   <p className="text-xs text-slate-400 font-mono mt-0.5">
@@ -619,19 +619,19 @@ export default function ErrandDetailPage() {
               {runnerProfile.phone_number && (
                 <a
                   href={`tel:${runnerProfile.phone_number}`}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-bold transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold transition-colors"
                 >
-                  <Phone className="w-3.5 h-3.5 text-blue-600" />
+                  <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   Call Runner ({runnerProfile.phone_number})
                 </a>
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm text-center space-y-2">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm text-center space-y-2">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center mx-auto">
                 <Clock className="w-5 h-5 animate-spin" />
               </div>
-              <h4 className="font-bold text-slate-900 text-sm">Broadcasting on Campus Grid</h4>
+              <h4 className="font-bold text-slate-900 dark:text-white text-sm">Broadcasting on Campus Grid</h4>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
                 Nearby verified runners are notified. A runner will accept and lock your mission shortly.
               </p>
@@ -639,7 +639,7 @@ export default function ErrandDetailPage() {
           )}
 
           {/* Financial Settlement Breakdown */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-3">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
               Escrow Settlement
             </span>

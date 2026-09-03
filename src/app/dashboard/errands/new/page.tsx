@@ -1,39 +1,33 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { calculateDistance, calculatePricing, formatCurrency, estimateQueueComplexity } from '@/utils/pricing';
+import { calculatePricing, calculateDistance, estimateQueueComplexity, formatCurrency } from '@/utils/pricing';
 import type { ErrandCategory, ErrandPriority } from '@/types';
 import toast from 'react-hot-toast';
-import { MapPicker } from '@/components/MapPicker';
 import {
+  MapPin,
   Utensils,
   Printer,
-  Users,
-  Package,
-  Layers,
-  MapPin,
   Clock,
-  Zap,
-  ShieldCheck,
+  Package,
   ArrowRight,
-  ArrowLeft,
-  Info,
+  ShieldCheck,
+  Zap,
   CheckCircle2,
-  AlertTriangle,
-  X
+  Navigation,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
+import { MapPicker } from '@/components/MapPicker';
 
-function ErrandStudioContent() {
+function ErrandBookingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialCategory = (searchParams.get('category') as ErrandCategory) || 'academic';
+  const initialCategory = (searchParams.get('category') as ErrandCategory) || 'food_delivery';
 
   // Form State
-  const [step, setStep] = useState<number>(1);
   const [category, setCategory] = useState<ErrandCategory>(initialCategory);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -46,13 +40,11 @@ function ErrandStudioContent() {
   const [priority, setPriority] = useState<ErrandPriority>('normal');
   const [hasQueue, setHasQueue] = useState(false);
   const [isBulkyItem, setIsBulkyItem] = useState(false);
-  const [allowNegotiation, setAllowNegotiation] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // Map Modal
   const [mapModalOpen, setMapModalOpen] = useState<'pickup' | 'delivery' | null>(null);
 
-  // Synchronize category if searchParams change
   useEffect(() => {
     const paramCat = searchParams.get('category') as ErrandCategory;
     if (paramCat) setCategory(paramCat);
@@ -63,7 +55,7 @@ function ErrandStudioContent() {
     if (pickupLat && pickupLng && deliveryLat && deliveryLng) {
       return calculateDistance(pickupLat, pickupLng, deliveryLat, deliveryLng);
     }
-    return 1.2; // default campus distance estimate
+    return 1.2;
   }, [pickupLat, pickupLng, deliveryLat, deliveryLng]);
 
   // Live Pricing
@@ -79,19 +71,34 @@ function ErrandStudioContent() {
   }, [pickupLocation]);
 
   const categories = [
-    { id: 'academic', title: 'Academic & Print', desc: 'Handouts, photocopies, project binding', icon: Printer },
-    { id: 'food_delivery', title: 'Food & Cafeteria', desc: 'Campus cafe orders, drinks & snacks', icon: Utensils },
-    { id: 'campus_errand', title: 'Queue Standing', desc: 'Clearance queues, bursary, admin desks', icon: Users },
-    { id: 'personal', title: 'Hostel & Dorm', desc: 'Supplies, medicine, hostel-to-hostel drop', icon: Package },
-    { id: 'custom', title: 'Custom Logistics', desc: 'Any other specialized on-campus errand', icon: Layers },
+    { id: 'food_delivery', title: 'Food & Meals', icon: Utensils },
+    { id: 'academic', title: 'Print & Handouts', icon: Printer },
+    { id: 'campus_errand', title: 'Queue Standing', icon: Clock },
+    { id: 'personal', title: 'Package / Dorm', icon: Package },
   ];
 
-  const canProceedStep1 = title.trim().length > 3 && description.trim().length > 5;
-  const canProceedStep2 = pickupLocation.trim().length > 2 && deliveryLocation.trim().length > 2;
+  const quickLandmarks = [
+    { label: '🏛️ Main Gate', name: 'Main Campus Gate' },
+    { label: '📚 Central Library', name: 'University Central Library' },
+    { label: '⚙️ Engineering Complex', name: 'Faculty of Engineering' },
+    { label: '🍲 Cafeteria', name: 'Campus Central Cafeteria' },
+    { label: '🛏️ Hall 6 Hostels', name: 'Hall 6 Hostel' },
+    { label: '📍 Town Gate (Ikpa)', name: 'Town Campus Gate' },
+  ];
 
-  const handleSubmit = async () => {
+  const canSubmit =
+    title.trim().length >= 3 &&
+    pickupLocation.trim().length >= 2 &&
+    deliveryLocation.trim().length >= 2;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) {
+      toast.error('Please fill in pickup, destination, and what to deliver');
+      return;
+    }
+
     setSubmitting(true);
-
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData?.user;
@@ -104,10 +111,10 @@ function ErrandStudioContent() {
       const payload = {
         requester_id: user.id,
         category,
-        title,
-        description,
-        pickup_location: pickupLocation,
-        delivery_location: deliveryLocation,
+        title: title.trim(),
+        description: description.trim() || 'No additional notes provided.',
+        pickup_location: pickupLocation.trim(),
+        delivery_location: deliveryLocation.trim(),
         pickup_coordinates: pickupLat && pickupLng ? { lat: pickupLat, lng: pickupLng } : null,
         delivery_coordinates: deliveryLat && deliveryLng ? { lat: deliveryLat, lng: deliveryLng } : null,
         base_fee: pricing.baseFee,
@@ -119,7 +126,7 @@ function ErrandStudioContent() {
         platform_fee: pricing.platformFee,
         runner_amount: pricing.runnerAmount,
         priority,
-        min_runner_rating: (priority === 'high' || priority === 'urgent') ? 4.5 : 0,
+        min_runner_rating: priority === 'urgent' ? 4.5 : 0,
       };
 
       const res = await fetch('/api/errands/create', {
@@ -135,468 +142,273 @@ function ErrandStudioContent() {
         return;
       }
 
-      toast.success('Errand dispatched! Escrow secured.');
+      toast.success('Runner requested! Escrow secured.');
       router.push(`/dashboard/user/errand/${data.errandId}`);
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Failed to dispatch errand');
+      toast.error(err?.message || 'Failed to dispatch errand');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-8 space-y-6 animate-fadeIn">
+    <div className="py-6 sm:py-8 space-y-6 animate-fadeIn">
+      
+      {/* ── HEADER ── */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+          Request a Campus Runner
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          Upfront pricing • Escrow protected • Delivered in minutes
+        </p>
+      </div>
 
-      {/* ── STUDIO HEADER ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Guided Errand Studio
-            </span>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        {/* ── LEFT: BOOKING FORM (Uber/Bolt Style) ── */}
+        <div className="lg:col-span-7 space-y-5">
+          
+          {/* Card 1: Route (From ➔ To) */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Navigation className="w-3.5 h-3.5 text-blue-600" />
+              1. Delivery Route
+            </h2>
+
+            {/* Pickup Input */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Pickup Location (Where from?)
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="e.g. Science Faculty Cafeteria"
+                    value={pickupLocation}
+                    onChange={(e) => setPickupLocation(e.target.value)}
+                    className="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMapModalOpen('pickup')}
+                  className="text-xs font-bold shrink-0 border-slate-300 dark:border-slate-700 h-11 gap-1"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                  {pickupLat ? 'Pinned' : 'Map'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Destination Input */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Dropoff Location (Where to deliver?)
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <div className="w-3 h-3 rounded-full bg-blue-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="e.g. Hall 6 Female Hostel, Room 204"
+                    value={deliveryLocation}
+                    onChange={(e) => setDeliveryLocation(e.target.value)}
+                    className="w-full h-11 pl-9 pr-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMapModalOpen('delivery')}
+                  className="text-xs font-bold shrink-0 border-slate-300 dark:border-slate-700 h-11 gap-1"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                  {deliveryLat ? 'Pinned' : 'Map'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Fast Campus Snaps */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2">
+                Quick Campus Landmarks:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {quickLandmarks.map((lm) => (
+                  <button
+                    key={lm.name}
+                    type="button"
+                    onClick={() => {
+                      if (!pickupLocation) setPickupLocation(lm.name);
+                      else setDeliveryLocation(lm.name);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 transition-colors"
+                  >
+                    {lm.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Dispatch an Errand
-          </h1>
-        </div>
 
-        {/* Step Stepper Indicator */}
-        <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-          {[
-            { num: 1, label: 'What' },
-            { num: 2, label: 'Where' },
-            { num: 3, label: 'How' },
-            { num: 4, label: 'Escrow' },
-          ].map((s) => {
-            const isActive = step === s.num;
-            const isDone = step > s.num;
-            return (
+          {/* Card 2: What are you requesting? */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-4">
+            <h2 className="text-sm font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5 text-blue-600" />
+              2. Items & Details
+            </h2>
+
+            {/* Category Selector */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {categories.map((c) => {
+                const Icon = c.icon;
+                const active = category === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCategory(c.id as ErrandCategory)}
+                    className={`p-3 rounded-xl border text-center flex flex-col items-center gap-1.5 transition-all ${
+                      active
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold shadow-sm ring-1 ring-blue-500'
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-xs leading-tight">{c.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Title Input */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                What should the runner do?
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Pick up 2 plates of Jollof rice and cold drink"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full h-11 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            {/* Instructions Textarea */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Instructions & Room Details
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Specific vendors, phone contact, or room number for delivery..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Priority & Toggles */}
+            <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
-                key={s.num}
                 type="button"
-                onClick={() => {
-                  if (s.num < step) setStep(s.num);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : isDone
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : 'text-slate-400 hover:text-slate-600'
+                onClick={() => setPriority(priority === 'normal' ? 'urgent' : 'normal')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                  priority === 'urgent'
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                 }`}
               >
-                {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : <span>{s.num}.</span>}
-                <span>{s.label}</span>
+                <Zap className="w-3.5 h-3.5" />
+                {priority === 'urgent' ? '⚡ Express Delivery (+20%)' : 'Standard Speed'}
               </button>
-            );
-          })}
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* ── LEFT: PROGRESSIVE WIZARD STUDIO ── */}
-        <div className="lg:col-span-8 space-y-6">
-
-          {/* STEP 1: WHAT NEEDS TO BE DONE? */}
-          {step === 1 && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6 animate-fadeIn">
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Step 1 of 4</span>
-                <h2 className="text-xl font-bold text-slate-900">What do you need done?</h2>
-                <p className="text-xs text-slate-500">Choose the best category so the right runner accepts your mission.</p>
-              </div>
-
-              {/* Category Selector Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {categories.map((c) => {
-                  const Icon = c.icon;
-                  const isSelected = category === c.id;
-                  return (
-                    <div
-                      key={c.id}
-                      onClick={() => setCategory(c.id as ErrandCategory)}
-                      className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3.5 ${
-                        isSelected
-                          ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-500'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className={`text-sm font-bold truncate ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>
-                          {c.title}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5 leading-snug">
-                          {c.desc}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Title Input */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Task Title
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Pick up fried rice & bottle water from Faculty cafeteria"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                />
-              </div>
-
-              {/* Instructions Textarea */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Detailed Runner Instructions
-                </label>
-                <textarea
-                  rows={4}
-                  placeholder="Specify food spot name, order specifics, phone contact, or room number for delivery..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full p-4 rounded-xl border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all leading-relaxed"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <Button
-                  size="lg"
-                  disabled={!canProceedStep1}
-                  onClick={() => setStep(2)}
-                  className="font-bold text-sm"
-                >
-                  Continue to Locations <ArrowRight className="w-4 h-4 ml-1.5" />
-                </Button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsBulkyItem(!isBulkyItem)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                  isBulkyItem
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                Heavy Package (+₦300)
+              </button>
             </div>
-          )}
-
-          {/* STEP 2: WHERE DOES IT START & END? */}
-          {step === 2 && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6 animate-fadeIn">
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Step 2 of 4</span>
-                <h2 className="text-xl font-bold text-slate-900">Where should it happen?</h2>
-                <p className="text-xs text-slate-500">Pinpoint pickup and destination so your runner knows the exact route.</p>
-              </div>
-
-              {/* Route Waypoints */}
-              <div className="space-y-4">
-                {/* Pickup */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                    1. Pickup Point (Origin)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="e.g. Science Faculty Cafeteria / Library Quad"
-                      value={pickupLocation}
-                      onChange={(e) => setPickupLocation(e.target.value)}
-                      className="flex-1 h-11 px-4 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setMapModalOpen('pickup')}
-                      className="text-xs font-bold gap-1.5 shrink-0"
-                    >
-                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                      {pickupLat ? 'Pinned' : 'Map Pin'}
-                    </Button>
-                  </div>
-                  {pickupLat && (
-                    <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Exact GPS coordinates locked
-                    </p>
-                  )}
-                </div>
-
-                {/* Delivery */}
-                <div className="space-y-1.5 pt-2">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                    2. Delivery Point (Destination)
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="e.g. Hall 4 Dorm, Room 212 / Main Gate"
-                      value={deliveryLocation}
-                      onChange={(e) => setDeliveryLocation(e.target.value)}
-                      className="flex-1 h-11 px-4 rounded-xl border border-slate-300 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setMapModalOpen('delivery')}
-                      className="text-xs font-bold gap-1.5 shrink-0"
-                    >
-                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                      {deliveryLat ? 'Pinned' : 'Map Pin'}
-                    </Button>
-                  </div>
-                  {deliveryLat && (
-                    <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Exact GPS coordinates locked
-                    </p>
-                  )}
-                </div>
-
-                {/* Estimated Route Strip */}
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className="w-4 h-4 text-slate-400" />
-                    <span>Estimated Distance on Campus:</span>
-                  </div>
-                  <span className="font-mono font-bold text-slate-900 text-sm">
-                    {distanceKm.toFixed(1)} km (~{(distanceKm * 12).toFixed(0)} min walking)
-                  </span>
-                </div>
-              </div>
-
-              <div className="pt-4 flex items-center justify-between">
-                <Button variant="ghost" onClick={() => setStep(1)} className="font-semibold text-xs">
-                  <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
-                </Button>
-                <Button
-                  size="lg"
-                  disabled={!canProceedStep2}
-                  onClick={() => setStep(3)}
-                  className="font-bold text-sm"
-                >
-                  Continue to Logistics <ArrowRight className="w-4 h-4 ml-1.5" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: LOGISTICS & URGENCY */}
-          {step === 3 && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6 animate-fadeIn">
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Step 3 of 4</span>
-                <h2 className="text-xl font-bold text-slate-900">Logistics & Urgency</h2>
-                <p className="text-xs text-slate-500">Configure special handling so runners are fairly compensated.</p>
-              </div>
-
-              {/* Priority Dial */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Priority Level</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { id: 'normal', label: 'Standard', desc: 'Typical turnaround', multiplier: '1.0x' },
-                    { id: 'high', label: 'High Priority', desc: 'Preferred queue', multiplier: '1.25x' },
-                    { id: 'urgent', label: 'Urgent Dispatch', desc: 'Immediate runner alert', multiplier: '1.5x' },
-                  ].map((p) => {
-                    const isSelected = priority === p.id;
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => setPriority(p.id as ErrandPriority)}
-                        className={`p-3.5 rounded-2xl border cursor-pointer transition-all text-center space-y-1 ${
-                          isSelected
-                            ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-1 ring-blue-500'
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <p className="text-xs font-bold text-slate-900">{p.label}</p>
-                        <p className="text-[10px] text-slate-400">{p.desc}</p>
-                        <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 text-[9px] font-mono font-bold text-slate-600">
-                          {p.multiplier}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Toggles */}
-              <div className="space-y-3 pt-2">
-                {/* Queue standing */}
-                <label className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={hasQueue}
-                    onChange={(e) => setHasQueue(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 block">Queue Standing Required</span>
-                    <span className="text-[11px] text-slate-500 leading-snug">
-                      Check this if the runner will have to wait in line (e.g. food counter, bursary). Adds compensation for waiting time.
-                    </span>
-                  </div>
-                </label>
-
-                {/* Bulky cargo */}
-                <label className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={isBulkyItem}
-                    onChange={(e) => setIsBulkyItem(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded text-blue-600 focus:ring-blue-500"
-                  />
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 block">Heavy or Bulky Package</span>
-                    <span className="text-[11px] text-slate-500 leading-snug">
-                      Items over 5kg or large parcels requiring extra transport care.
-                    </span>
-                  </div>
-                </label>
-              </div>
-
-              <div className="pt-4 flex items-center justify-between">
-                <Button variant="ghost" onClick={() => setStep(2)} className="font-semibold text-xs">
-                  <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
-                </Button>
-                <Button
-                  size="lg"
-                  onClick={() => setStep(4)}
-                  className="font-bold text-sm"
-                >
-                  Review Escrow & Dispatch <ArrowRight className="w-4 h-4 ml-1.5" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: ESCROW COMMITMENT & DISPATCH */}
-          {step === 4 && (
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6 animate-fadeIn">
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Final Step 4 of 4</span>
-                <h2 className="text-xl font-bold text-slate-900">Authorize Escrow Commitment</h2>
-                <p className="text-xs text-slate-500">Review your task breakdown before dispatching to the campus network.</p>
-              </div>
-
-              {/* Summary Card */}
-              <div className="rounded-2xl bg-slate-50 p-5 border border-slate-200 space-y-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Task:</span>
-                  <span className="font-bold text-slate-900 text-sm">{title}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Route:</span>
-                  <span className="font-semibold text-slate-800 text-right">
-                    {pickupLocation} → {deliveryLocation}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 font-medium">Priority:</span>
-                  <Badge variant="default" className="uppercase text-[9px] font-bold">
-                    {priority}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Escrow Guarantee Notice */}
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div className="text-xs text-emerald-950 leading-relaxed">
-                  <strong>Protected Escrow:</strong> Your payment of <strong>{formatCurrency(pricing.totalFee)}</strong> is held securely by ERRANDRUN. The runner receives their <strong>{formatCurrency(pricing.runnerAmount)}</strong> payout only after you verify the physical delivery with your secret 4-digit PIN.
-                </div>
-              </div>
-
-              <div className="pt-4 flex items-center justify-between gap-4">
-                <Button variant="ghost" onClick={() => setStep(3)} className="font-semibold text-xs">
-                  <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
-                </Button>
-                <Button
-                  size="lg"
-                  variant="primary"
-                  isLoading={submitting}
-                  onClick={handleSubmit}
-                  className="font-bold text-sm shadow-md flex-1 sm:flex-initial"
-                >
-                  Authorize {formatCurrency(pricing.totalFee)} & Dispatch
-                </Button>
-              </div>
-            </div>
-          )}
+          </div>
 
         </div>
 
-        {/* ── RIGHT: LIVE ESCROW TELEMETRY HUD ── */}
-        <div className="lg:col-span-4 sticky top-24 space-y-4">
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-blue-600" />
-                Live Fee Breakdown
+        {/* ── RIGHT: UPFRONT FARE CARD (Uber Style) ── */}
+        <div className="lg:col-span-5 sticky top-20 space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Upfront Total Fare
               </span>
-              <Badge variant="info" className="text-[10px] font-bold">
-                Dynamic
-              </Badge>
+              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-full">
+                ~{distanceKm.toFixed(1)} km route
+              </span>
             </div>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between text-slate-500">
-                <span>Base Campus Fee:</span>
-                <span className="font-mono text-slate-800">{formatCurrency(pricing.baseFee)}</span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Distance Surcharge ({distanceKm.toFixed(1)} km):</span>
-                <span className="font-mono text-slate-800">{formatCurrency(pricing.distanceSurcharge)}</span>
-              </div>
-              {hasQueue && (
-                <div className="flex justify-between text-amber-600 font-semibold">
-                  <span>Queue Wait Compensation:</span>
-                  <span className="font-mono">{formatCurrency(pricing.queueComplexityFee)}</span>
-                </div>
-              )}
-              {isBulkyItem && (
-                <div className="flex justify-between text-slate-600 font-semibold">
-                  <span>Bulky Package Surcharge:</span>
-                  <span className="font-mono">₦200</span>
-                </div>
-              )}
-              <div className="flex justify-between text-slate-400 text-[11px] pt-1">
-                <span>Platform Assurance (20%):</span>
-                <span className="font-mono">{formatCurrency(pricing.platformFee)}</span>
-              </div>
-            </div>
-
-            {/* Total Fee Highlight */}
-            <div className="pt-3 border-t border-slate-100 flex items-baseline justify-between">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-                  Total Secured
-                </span>
-                <span className="text-xs text-emerald-600 font-semibold">Runner receives 80%</span>
-              </div>
-              <span className="text-2xl font-black text-slate-900 font-mono">
+            <div className="text-center py-2 space-y-1">
+              <span className="text-3xl sm:text-4xl font-black font-mono text-slate-900 dark:text-white">
                 {formatCurrency(pricing.totalFee)}
               </span>
+              <p className="text-xs text-emerald-600 font-semibold flex items-center justify-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Runner receives {formatCurrency(pricing.runnerAmount)} upon delivery
+              </p>
             </div>
-          </div>
 
-          {/* Quick Help Card */}
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-xs text-slate-500 space-y-1.5">
-            <p className="font-bold text-slate-700 flex items-center gap-1.5">
-              <Info className="w-3.5 h-3.5 text-blue-600" />
-              Need to cancel later?
-            </p>
-            <p className="text-[11px] leading-relaxed">
-              If no runner accepts your task within 30 minutes, or you cancel before pickup, your escrow is immediately refunded to your wallet.
-            </p>
+            {/* Breakdown */}
+            <div className="space-y-2 text-xs divide-y divide-slate-100 dark:divide-slate-800 pt-2 text-slate-500 dark:text-slate-400">
+              <div className="flex justify-between pt-2">
+                <span>Base Campus Fee</span>
+                <span className="font-mono text-slate-900 dark:text-white">{formatCurrency(pricing.baseFee)}</span>
+              </div>
+              <div className="flex justify-between pt-2">
+                <span>Distance Surcharge</span>
+                <span className="font-mono text-slate-900 dark:text-white">+{formatCurrency(pricing.distanceSurcharge)}</span>
+              </div>
+              {pricing.queueComplexityFee > 0 && (
+                <div className="flex justify-between pt-2 text-amber-600">
+                  <span>Queue Wait Fee</span>
+                  <span className="font-mono">+{formatCurrency(pricing.queueComplexityFee)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Escrow Guarantee Pill */}
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Payment held in escrow until you verify your 4-digit PIN.</span>
+            </div>
+
+            {/* Big Primary Submit Button */}
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              disabled={!canSubmit}
+              isLoading={submitting}
+              className="w-full h-14 text-base font-black shadow-lg"
+            >
+              Request Campus Runner <ArrowRight className="w-5 h-5 ml-1.5" />
+            </Button>
           </div>
         </div>
 
-      </div>
+      </form>
 
       {/* ── MAP PICKER MODAL ── */}
       {mapModalOpen && (
@@ -618,19 +430,6 @@ function ErrandStudioContent() {
             setMapModalOpen(null);
             toast.success('Campus location locked!');
           }}
-          onSelect={(lat: number, lng: number, address: string) => {
-            if (mapModalOpen === 'pickup') {
-              setPickupLat(lat);
-              setPickupLng(lng);
-              setPickupLocation(address);
-            } else {
-              setDeliveryLat(lat);
-              setDeliveryLng(lng);
-              setDeliveryLocation(address);
-            }
-            setMapModalOpen(null);
-            toast.success('Campus location locked!');
-          }}
         />
       )}
 
@@ -640,8 +439,8 @@ function ErrandStudioContent() {
 
 export default function NewErrandPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading Errand Studio...</div>}>
-      <ErrandStudioContent />
+    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-400">Loading booking console…</div>}>
+      <ErrandBookingContent />
     </Suspense>
   );
 }

@@ -2,26 +2,27 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { RunnerGuard } from '@/components/guards/RunnerGuard';
 import { formatCurrency } from '@/utils/pricing';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
 import {
   Radio,
   MapPin,
   Clock,
   ArrowRight,
   TrendingUp,
-  Award,
   Wallet,
   CheckCircle2,
   AlertCircle,
   Zap,
   Bike,
-  Compass,
-  ArrowUpRight,
-  Power
+  Power,
+  ChevronRight,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -42,6 +43,7 @@ interface ErrandTask {
 }
 
 export default function RunnerOpportunityRadar() {
+  const router = useRouter();
   const { user, setActiveTask } = useAppStore();
   const [availableErrands, setAvailableErrands] = useState<ErrandTask[]>([]);
   const [activeErrands, setActiveErrands] = useState<ErrandTask[]>([]);
@@ -126,14 +128,9 @@ export default function RunnerOpportunityRadar() {
 
     loadDashboard();
 
-    // Subscribe to errands updates for real-time bounties
     const channel = supabase
       .channel('runner_marketplace_feed')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'errands' },
-        () => loadDashboard()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'errands' }, () => loadDashboard())
       .subscribe();
 
     return () => {
@@ -162,7 +159,7 @@ export default function RunnerOpportunityRadar() {
       toast.error('Unable to toggle duty status');
     } else {
       setRunnerStatus(nextStatus);
-      toast.success(`You are now ${nextStatus === 'online' ? '🟢 Online & Visible' : '⚪ Offline'}`);
+      toast.success(nextStatus === 'online' ? '🟢 You are Online & visible to customers' : '⚪ You are Offline');
     }
 
     setToggleLoading(false);
@@ -179,331 +176,286 @@ export default function RunnerOpportunityRadar() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ errandId: taskId, runnerId: user.id }),
       });
-      const result = await response.json();
 
+      const result = await response.json();
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Could not claim errand');
+        toast.error(result.error || 'Failed to claim errand');
+        setAccepting(null);
+        return;
       }
 
-      toast.success('Errand locked to your mission console!');
-      setActiveTask(taskId);
-      window.location.href = `/dashboard/runner/accepted/${taskId}`;
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to accept task');
-    } finally {
+      toast.success('Bounty claimed! Opening mission console…');
+      router.push(`/dashboard/runner/accepted/${taskId}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error accepting errand');
       setAccepting(null);
     }
   };
 
-  const currentActiveTask = activeErrands[0] ?? null;
-
-  const financialMetrics = useMemo(() => {
-    const runnerEarnings = historyErrands.reduce((sum, task) => sum + Number(task.runner_amount ?? task.total_fee * 0.8), 0);
-    const completedCount = historyErrands.length;
-    return { runnerEarnings, completedCount };
-  }, [historyErrands]);
-
-  const handleWithdraw = async () => {
-    if (withdrawAmount < 2000) return toast.error('Minimum withdrawal is ₦2,000');
-    if (withdrawAmount > walletBalance) return toast.error('Insufficient funds');
+  const handleWithdrawalRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (withdrawAmount < 2000) {
+      toast.error('Minimum withdrawal is ₦2,000');
+      return;
+    }
+    if (withdrawAmount > walletBalance) {
+      toast.error('Insufficient wallet balance');
+      return;
+    }
 
     try {
-      toast.loading('Submitting payout request...', { id: 'withdraw' });
       const res = await fetch('/api/wallet/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user?.id, amount: withdrawAmount })
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error);
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to request payout');
 
-      setWalletBalance(data.balance);
-      toast.success('Payout request queued for processing!', { id: 'withdraw' });
+      toast.success('Payout request submitted to campus treasury!');
+      setWalletBalance(prev => prev - withdrawAmount);
       setWithdrawAmount(0);
       setIsWithdrawOpen(false);
     } catch (err: any) {
-toast.error(err.message || 'Withdrawal failed', { id: 'withdraw' });
+      toast.error(err?.message || 'Withdrawal failed');
     }
   };
 
+  const currentActiveTask = activeErrands[0];
+
   return (
     <RunnerGuard>
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-8 space-y-5 animate-fadeIn">
+      <div className="py-6 sm:py-8 space-y-6 animate-fadeIn">
 
-      {/* ── TOP RADAR HERO & AVAILABILITY STATUS ── */}
-      <section className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-7 md:p-8 border border-emerald-200/60 dark:border-emerald-900/40 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-emerald-50/70 dark:bg-emerald-950/40 -z-0 pointer-events-none blur-2xl" />
-
-        <div className="space-y-1 z-10">
-          <div className="flex items-center gap-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 border ${
-              runnerStatus === 'online'
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
-                : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${runnerStatus === 'online' ? 'bg-emerald-600 animate-ping' : 'bg-slate-400'}`}></span>
-              {runnerStatus === 'online' ? '🟢 ON DUTY / RECEIVING BOUNTIES' : '⚪ OFF DUTY'}
-            </span>
-            <Badge variant="success" className="text-[10px] font-bold">
-              Level {runnerLevel} Runner
-            </Badge>
+        {/* ── TOP UBER DRIVER-STYLE DUTY TOGGLE ── */}
+        <section className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-slate-800 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${runnerStatus === 'online' ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+              <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {runnerStatus === 'online' ? 'Active on Campus Grid' : 'Status: Offline'}
+              </span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              Runner Console
+            </h1>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            Campus Opportunity Radar
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-lg">
-            {runnerStatus === 'online'
-              ? 'You are live on the campus grid. Open bounties appear in real time below.'
-              : 'Toggle On-Duty to receive errand alerts and claim active bounties.'}
-          </p>
+
+          <div className="flex items-center gap-2.5">
+            {/* Big Uber-style GO ONLINE Button */}
+            <button
+              onClick={toggleDuty}
+              disabled={toggleLoading}
+              className={`flex-1 sm:flex-initial px-6 py-3.5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+                runnerStatus === 'online'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30 ring-2 ring-emerald-400/30'
+                  : 'bg-slate-900 hover:bg-slate-800 text-white'
+              }`}
+            >
+              <Power className="w-4 h-4" />
+              {runnerStatus === 'online' ? 'GO OFFLINE' : 'GO ONLINE'}
+            </button>
+
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => setIsWithdrawOpen(true)}
+              className="text-xs font-bold border-slate-300 dark:border-slate-700 h-12"
+            >
+              <Wallet className="w-4 h-4 text-emerald-600 mr-1" />
+              Cash Out
+            </Button>
+          </div>
+        </section>
+
+        {/* ── EARNINGS STRIP (Minimalist) ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">
+              Available Balance
+            </span>
+            <p className="text-xl sm:text-2xl font-black text-emerald-600 font-mono mt-0.5">
+              {formatCurrency(walletBalance)}
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Active Missions
+            </span>
+            <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+              {activeErrands.length}
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm col-span-2 sm:col-span-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Driver Score
+            </span>
+            <p className="text-xl sm:text-2xl font-black text-blue-600 font-mono mt-0.5">
+              {user?.rating ? `★ ${user.rating.toFixed(1)}` : 'Verified Runner'}
+            </p>
+          </div>
         </div>
 
-        {/* Duty Switch + Payout Button */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 z-10">
-          {/* Duty Button */}
-          <button
-            onClick={toggleDuty}
-            disabled={toggleLoading}
-            className={`px-5 py-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md ${
-              runnerStatus === 'online'
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30'
-                : 'bg-slate-900 hover:bg-slate-800 text-white'
-            }`}
-          >
-            <Power className="w-4 h-4" />
-            {runnerStatus === 'online' ? 'Go Offline' : 'Go On Duty'}
-          </button>
-
-          {/* Quick Payout Button */}
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setIsWithdrawOpen(true)}
-            className="text-xs font-bold gap-1.5 border-slate-300 dark:border-slate-700 h-11 sm:h-12"
-          >
-            <Wallet className="w-4 h-4 text-emerald-600" />
-            Request Payout
-          </Button>
-        </div>
-      </section>
-
-      {/* ── EARNINGS TELEMETRY HUD (Mobile Optimized 2-Col + 1-Col) ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1 col-span-2 sm:col-span-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
-            Available For Payout
-          </span>
-          <p className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-            {formatCurrency(walletBalance)}
-          </p>
-          <span className="text-[11px] text-slate-400 block pt-0.5">Min. withdrawal: ₦2,000</span>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-            Career Earnings
-          </span>
-          <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-            {formatCurrency(financialMetrics.runnerEarnings)}
-          </p>
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold block pt-0.5">80% net cut</span>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
-            Runs Completed
-          </span>
-          <p className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-            {financialMetrics.completedCount}
-          </p>
-          <span className="text-[10px] text-slate-400 block pt-0.5">
-            {user?.rating ? `★ ${user.rating.toFixed(1)} Score` : 'Campus Verified'}
-          </span>
-        </div>
-      </div>
-
-        {/* ── ACTIVE TASK SPOTLIGHT (FLIGHT PRIORITY) ── */}
+        {/* ── ACTIVE TASK IN-FLIGHT (Deliveroo style) ── */}
         {currentActiveTask && (
-          <section className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-3xl p-6 text-white shadow-md space-y-4">
+          <motion.section
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-emerald-600 text-white rounded-3xl p-5 sm:p-6 shadow-xl space-y-3"
+          >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-200">
-                  Priority Mission In-Flight
-                </span>
-              </div>
-              <Badge variant="warning" className="text-[10px] font-black uppercase">
-                {currentActiveTask.status.replace('_', ' ')}
-              </Badge>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-bold text-white">{currentActiveTask.title}</h3>
-                <div className="flex items-center gap-2 text-xs text-blue-200 mt-1">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{currentActiveTask.pickup_location} → {currentActiveTask.delivery_location}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 shrink-0">
-                <div className="text-right">
-                  <span className="text-[10px] uppercase tracking-wider text-blue-200 block">Your Payout</span>
-                  <span className="font-mono text-2xl font-black text-emerald-300">
-                    {formatCurrency(Number(currentActiveTask.total_fee) * 0.8)}
-                  </span>
-                </div>
-
-                <Link
-                  href={`/dashboard/runner/accepted/${currentActiveTask.id}`}
-                  className="bg-white text-slate-900 hover:bg-blue-50 px-5 py-3 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
-                >
-                  <Bike className="w-4 h-4 text-blue-600" />
-                  Open Mission Console
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── OPPORTUNITY RADAR FEED / BOUNTY BOARD ── */}
-        <section className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                {viewMode === 'available' ? 'Available Campus Bounties' : 'Completed Missions Ledger'}
-              </h2>
-              <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
-                {viewMode === 'available' ? availableErrands.length : historyErrands.length}
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full">
+                Active Mission In Progress
+              </span>
+              <span className="font-mono font-black text-sm">
+                Payout: {formatCurrency(Number(currentActiveTask.total_fee) * 0.8)}
               </span>
             </div>
 
-            {/* Toggle View */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
+            <div>
+              <h3 className="text-lg font-black">{currentActiveTask.title}</h3>
+              <p className="text-xs text-emerald-100 mt-1">
+                📍 {currentActiveTask.pickup_location} ➔ 📦 {currentActiveTask.delivery_location}
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-white/20 flex justify-end">
+              <Link
+                href={`/dashboard/runner/accepted/${currentActiveTask.id}`}
+                className="bg-white text-emerald-800 hover:bg-emerald-50 px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md"
+              >
+                Open Mission Console <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </motion.section>
+        )}
+
+        {/* ── OPEN BOUNTIES FEED (Uber Driver Requests) ── */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                Available Bounties
+              </h2>
+              <p className="text-xs text-slate-500">
+                {runnerStatus === 'online'
+                  ? `${availableErrands.length} nearby errands ready for pickup`
+                  : 'Go Online above to receive student requests'}
+              </p>
+            </div>
+
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
               <button
                 onClick={() => setViewMode('available')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  viewMode === 'available' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
+                className={`px-3 py-1 rounded-lg ${viewMode === 'available' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
               >
-                Available Radar
+                Nearby ({availableErrands.length})
               </button>
               <button
                 onClick={() => setViewMode('history')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  viewMode === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
+                className={`px-3 py-1 rounded-lg ${viewMode === 'history' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
               >
-                Completed Ledger
+                Completed ({historyErrands.length})
               </button>
             </div>
           </div>
 
-          {/* Available Bounties List */}
-          {viewMode === 'available' && (
-            <>
-              {loading ? (
-                <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-xs text-slate-400 animate-pulse">
-                  Sweeping campus grid for open bounties…
+          {viewMode === 'available' ? (
+            availableErrands.length === 0 ? (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 border border-slate-200/80 dark:border-slate-800 text-center space-y-3 shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto animate-pulse">
+                  <Radio className="w-6 h-6" />
                 </div>
-              ) : availableErrands.length === 0 ? (
-                <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-12 text-center space-y-2">
-                  <p className="text-sm font-bold text-slate-800">No open bounties at this moment</p>
-                  <p className="text-xs text-slate-500">
-                    New student requests will ping here automatically in real time. Keep your status ON.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {availableErrands.map((errand) => {
-                    const runnerPayout = Number(errand.total_fee) * 0.8;
-                    return (
-                      <div
-                        key={errand.id}
-                        className="bg-white hover:bg-slate-50 border border-slate-200/90 rounded-3xl p-5 sm:p-6 transition-all shadow-sm hover:border-blue-300 flex flex-col md:flex-row md:items-center justify-between gap-5"
-                      >
-                        <div className="flex-1 space-y-2.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wider">
-                              {errand.category.replace('_', ' ')}
-                            </span>
-                            {errand.priority === 'urgent' && (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 uppercase tracking-wider">
-                                Urgent
-                              </span>
-                            )}
-                            <span className="text-[11px] text-slate-400 font-mono">
-                              Posted {new Date(errand.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Scanning for Requests…</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  New student errands broadcast live onto this feed as soon as they are submitted.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {availableErrands.map((task) => {
+                  const netPayout = Number(task.total_fee) * 0.8;
+                  const isClaiming = accepting === task.id;
 
-                          <h3 className="text-base font-bold text-slate-900">
-                            {errand.title}
-                          </h3>
-
-                          {/* Waypoint Route */}
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                            <span className="font-semibold text-slate-800">{errand.pickup_location}</span>
-                            <span className="text-slate-300 font-bold">→</span>
-                            <span className="font-semibold text-slate-800">{errand.delivery_location}</span>
-                          </div>
+                  return (
+                    <div
+                      key={task.id}
+                      className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                            {task.category.replace('_', ' ')}
+                          </span>
+                          {task.priority === 'urgent' && (
+                            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                              ⚡ Express (+20%)
+                            </span>
+                          )}
                         </div>
 
-                        {/* Payout & Claim Action */}
-                        <div className="flex items-center justify-between md:justify-end gap-6 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0">
-                          <div className="text-left md:text-right">
-                            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">
-                              Net Takehome (80%)
-                            </span>
-                            <span className="font-mono text-2xl font-black text-emerald-600">
-                              {formatCurrency(runnerPayout)}
-                            </span>
-                          </div>
+                        <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
+                          {task.title}
+                        </h3>
 
-                          <Button
-                            size="lg"
-                            variant="primary"
-                            disabled={accepting === errand.id || runnerStatus === 'offline'}
-                            isLoading={accepting === errand.id}
-                            onClick={() => handleAccept(errand.id)}
-                            className="font-bold text-xs shadow-md"
-                          >
-                            {runnerStatus === 'offline' ? 'Go On Duty to Claim' : 'Claim Task'}
-                            <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                          </Button>
+                        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                          <p className="flex items-center gap-1.5 truncate">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            From: {task.pickup_location}
+                          </p>
+                          <p className="flex items-center gap-1.5 truncate">
+                            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                            To: {task.delivery_location}
+                          </p>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
 
-          {/* Completed History List */}
-          {viewMode === 'history' && (
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm divide-y divide-slate-100 overflow-hidden">
+                      {/* Right: Net Payout & One-tap Accept Button */}
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                        <div className="text-left sm:text-right">
+                          <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono block">
+                            {formatCurrency(netPayout)}
+                          </span>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold">Your Payout</span>
+                        </div>
+
+                        <Button
+                          size="md"
+                          variant="success"
+                          isLoading={isClaiming}
+                          disabled={runnerStatus !== 'online'}
+                          onClick={() => handleAccept(task.id)}
+                          className="font-black text-xs h-11 px-5 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          {runnerStatus !== 'online' ? 'Go Online to Accept' : 'Accept Errand'}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            <div className="space-y-3">
               {historyErrands.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-400">
-                  No completed deliveries recorded yet.
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+                  No completed errands in your log yet.
                 </div>
               ) : (
-                historyErrands.map((task) => (
-                  <div key={task.id} className="p-5 flex items-center justify-between text-xs">
-                    <div>
-                      <p className="font-bold text-slate-900 text-sm">{task.title}</p>
-                      <p className="text-slate-400 text-[11px] mt-0.5">
-                        {task.pickup_location} → {task.delivery_location}
-                      </p>
+                historyErrands.map((h) => (
+                  <div
+                    key={h.id}
+                    className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="truncate">
+                      <p className="font-bold text-slate-900 dark:text-white truncate">{h.title}</p>
+                      <p className="text-[10px] text-slate-400">{new Date(h.created_at).toLocaleDateString()}</p>
                     </div>
-                    <div className="text-right font-mono">
-                      <span className="text-base font-black text-emerald-600 block">
-                        +{formatCurrency(Number(task.runner_amount ?? task.total_fee * 0.8))}
-                      </span>
-                      <span className="text-[10px] text-slate-400">Completed & Verified</span>
-                    </div>
+                    <span className="font-mono font-bold text-emerald-600 text-sm">
+                      +{formatCurrency(Number(h.total_fee) * 0.8)}
+                    </span>
                   </div>
                 ))
               )}
@@ -511,38 +463,52 @@ toast.error(err.message || 'Withdrawal failed', { id: 'withdraw' });
           )}
         </section>
 
-        {/* ── PAYOUT MODAL ── */}
+        {/* ── WITHDRAWAL MODAL ── */}
         {isWithdrawOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <h3 className="font-bold text-base text-slate-900">Request Runner Payout</h3>
-                <button onClick={() => setIsWithdrawOpen(false)} className="text-slate-400 font-bold">✕</button>
+          <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Cash Out Earnings</h3>
+                <button onClick={() => setIsWithdrawOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <p className="text-xs text-slate-500">
-                Earnings are transferred to your saved campus bank account. Minimum payout is <strong>₦2,000</strong>.
-              </p>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Amount (₦)</label>
-                <input
-                  type="number"
-                  min={2000}
-                  step={500}
-                  value={withdrawAmount || ''}
-                  onChange={(e) => setWithdrawAmount(Number(e.target.value))}
-                  placeholder="Min ₦2,000"
-                  className="w-full h-11 px-3.5 rounded-xl border border-slate-300 font-mono text-base font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300 block">Available Balance</span>
+                <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(walletBalance)}
+                </span>
               </div>
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={handleWithdraw}
-                className="w-full font-bold bg-emerald-600 hover:bg-emerald-700"
-              >
-                Submit Payout Request
-              </Button>
-            </div>
+
+              <form onSubmit={handleWithdrawalRequest} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Amount (Min: ₦2,000)</label>
+                  <input
+                    type="number"
+                    min="2000"
+                    max={walletBalance}
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(Number(e.target.value))}
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    required
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="success"
+                  disabled={withdrawAmount < 2000 || withdrawAmount > walletBalance}
+                  className="w-full h-12 text-xs sm:text-sm font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+                >
+                  Confirm Payout to Bank
+                </Button>
+              </form>
+            </motion.div>
           </div>
         )}
 
