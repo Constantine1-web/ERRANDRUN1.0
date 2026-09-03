@@ -55,8 +55,10 @@ function ErrandBookingContent() {
     if (pickupLat && pickupLng && deliveryLat && deliveryLng) {
       return calculateDistance(pickupLat, pickupLng, deliveryLat, deliveryLng);
     }
-    return 1.2;
+    return 1.0; // Standard 1km default for campus errands
   }, [pickupLat, pickupLng, deliveryLat, deliveryLng]);
+
+  const hasLockedCoordinates = Boolean(pickupLat && pickupLng && deliveryLat && deliveryLng);
 
   // Live Pricing
   const pricing = useMemo(() => {
@@ -78,13 +80,34 @@ function ErrandBookingContent() {
   ];
 
   const quickLandmarks = [
-    { label: '🏛️ Main Gate', name: 'Main Campus Gate' },
-    { label: '📚 Central Library', name: 'University Central Library' },
-    { label: '⚙️ Engineering Complex', name: 'Faculty of Engineering' },
-    { label: '🍲 Cafeteria', name: 'Campus Central Cafeteria' },
-    { label: '🛏️ Hall 6 Hostels', name: 'Hall 6 Hostel' },
-    { label: '📍 Town Gate (Ikpa)', name: 'Town Campus Gate' },
+    { label: '🏛️ Main Gate', name: 'Main Campus Gate (Security Post)', lat: 5.0385, lng: 7.9892 },
+    { label: '📚 Central Library', name: 'University Central Library', lat: 5.0392, lng: 7.9880 },
+    { label: '⚙️ Engineering Complex', name: 'Faculty of Engineering Complex', lat: 5.0410, lng: 7.9865 },
+    { label: '🍲 Cafeteria', name: 'Campus Central Cafeteria & Food Hub', lat: 5.0405, lng: 7.9878 },
+    { label: '🛏️ Hall 6 Hostels', name: 'New Hostel (Hall 6)', lat: 5.0438, lng: 7.9870 },
+    { label: '📍 Town Gate (Ikpa)', name: 'Town Campus Gate (Ikpa Road)', lat: 5.0335, lng: 7.9268 },
+    { label: '⚖️ Law Complex', name: 'Faculty of Law Complex (Town Campus)', lat: 5.0345, lng: 7.9255 },
+    { label: '🔬 Science Quad', name: 'Faculty of Science & Laboratories', lat: 5.0398, lng: 7.9872 },
   ];
+
+  const handleLandmarkClick = (lm: typeof quickLandmarks[0]) => {
+    if (!pickupLocation || (pickupLocation && deliveryLocation)) {
+      setPickupLocation(lm.name);
+      setPickupLat(lm.lat);
+      setPickupLng(lm.lng);
+      if (deliveryLocation) {
+        setDeliveryLocation('');
+        setDeliveryLat(null);
+        setDeliveryLng(null);
+      }
+      toast.success(`📍 Pickup point locked: ${lm.label}`);
+    } else {
+      setDeliveryLocation(lm.name);
+      setDeliveryLat(lm.lat);
+      setDeliveryLng(lm.lng);
+      toast.success(`🎯 Destination locked: ${lm.label}! Live fee calculated at a go.`);
+    }
+  };
 
   const canSubmit =
     title.trim().length >= 3 &&
@@ -235,20 +258,44 @@ function ErrandBookingContent() {
               </div>
             </div>
 
+            {/* Live GPS Distance & Rate Telemetry (Updates at a go) */}
+            {hasLockedCoordinates ? (
+              <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-between text-xs animate-fadeIn">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    Live GPS Distance Locked
+                  </span>
+                  <p className="font-bold text-slate-900 dark:text-white">
+                    {distanceKm.toFixed(2)} km route •{' '}
+                    {distanceKm <= 1.0 ? 'Within Campus Standard Fare' : `${distanceKm.toFixed(2)} km @ ₦800/km`}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400 block">
+                    {formatCurrency(pricing.totalFee)}
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Locked at a go</span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500">
+                <span>Lock in pickup & destination coordinates to calculate route</span>
+                <span className="font-bold text-slate-700 dark:text-slate-300">Base: ₦800 (1km)</span>
+              </div>
+            )}
+
             {/* Fast Campus Snaps */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-[10px] uppercase font-bold text-slate-400 block mb-2">
-                Quick Campus Landmarks:
+                Quick Campus Landmarks (1-Tap Coordinate Lock):
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {quickLandmarks.map((lm) => (
                   <button
                     key={lm.name}
                     type="button"
-                    onClick={() => {
-                      if (!pickupLocation) setPickupLocation(lm.name);
-                      else setDeliveryLocation(lm.name);
-                    }}
+                    onClick={() => handleLandmarkClick(lm)}
                     className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:text-blue-600 transition-colors"
                   >
                     {lm.label}
@@ -356,7 +403,7 @@ function ErrandBookingContent() {
                 Upfront Total Fare
               </span>
               <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2.5 py-1 rounded-full">
-                ~{distanceKm.toFixed(1)} km route
+                {hasLockedCoordinates ? `${distanceKm.toFixed(2)} km locked` : '~1.0 km standard'}
               </span>
             </div>
 
@@ -366,32 +413,37 @@ function ErrandBookingContent() {
               </span>
               <p className="text-xs text-emerald-600 font-semibold flex items-center justify-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Runner receives {formatCurrency(pricing.runnerAmount)} upon delivery
+                {distanceKm <= 1.0 
+                  ? 'Standard ₦800 campus rate (1km)' 
+                  : `${distanceKm.toFixed(2)} km route @ ₦800/km`}
               </p>
             </div>
 
-            {/* Breakdown */}
+            {/* Live Breakdown */}
             <div className="space-y-2 text-xs divide-y divide-slate-100 dark:divide-slate-800 pt-2 text-slate-500 dark:text-slate-400">
               <div className="flex justify-between pt-2">
-                <span>Base Campus Fee</span>
+                <span>Distance Rate (1 km = ₦800)</span>
                 <span className="font-mono text-slate-900 dark:text-white">{formatCurrency(pricing.baseFee)}</span>
               </div>
               <div className="flex justify-between pt-2">
-                <span>Distance Surcharge</span>
-                <span className="font-mono text-slate-900 dark:text-white">+{formatCurrency(pricing.distanceSurcharge)}</span>
+                <span>Runner Payout (80%)</span>
+                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{formatCurrency(pricing.runnerAmount)}</span>
               </div>
-              {pricing.queueComplexityFee > 0 && (
-                <div className="flex justify-between pt-2 text-amber-600">
-                  <span>Queue Wait Fee</span>
-                  <span className="font-mono">+{formatCurrency(pricing.queueComplexityFee)}</span>
-                </div>
-              )}
+              <div className="flex justify-between pt-2">
+                <span>Platform Escrow (20%)</span>
+                <span className="font-mono text-slate-500">{formatCurrency(pricing.platformFee)}</span>
+              </div>
+            </div>
+
+            {/* Runner Counter Notice */}
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+              ℹ️ <strong>Standard Campus Fee: ₦800</strong> (1km rate). Runner will fulfill at standard ₦800 unless the runner counters with a custom proposal.
             </div>
 
             {/* Escrow Guarantee Pill */}
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Payment held in escrow until you verify your 4-digit PIN.</span>
+              <span>Payment held securely in escrow until you verify your 4-digit PIN.</span>
             </div>
 
             {/* Big Primary Submit Button */}

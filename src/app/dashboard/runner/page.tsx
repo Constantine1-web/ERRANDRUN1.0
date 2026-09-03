@@ -60,6 +60,41 @@ export default function RunnerOpportunityRadar() {
   const [withdrawAmount, setWithdrawAmount] = useState<number>(0);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
+  // Runner Counter Offer State
+  const [counterModalTask, setCounterModalTask] = useState<any | null>(null);
+  const [counterAmount, setCounterAmount] = useState<number>(1000);
+  const [counterNote, setCounterNote] = useState<string>('');
+  const [submittingCounter, setSubmittingCounter] = useState(false);
+
+  const handleSendCounter = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!counterModalTask) return;
+    if (counterAmount < 800) {
+      toast.error('Counter offer must be at least ₦800');
+      return;
+    }
+
+    setSubmittingCounter(true);
+    try {
+      const { error } = await supabase
+        .from('errands')
+        .update({
+          notes: `[Runner Counter Offer: ₦${counterAmount.toLocaleString()} by ${user?.fullName || 'Runner'}${counterNote ? ` - Note: ${counterNote}` : ''}]`,
+        })
+        .eq('id', counterModalTask.id);
+
+      if (error) throw error;
+
+      toast.success(`Counter offer of ₦${counterAmount.toLocaleString()} sent to requester!`);
+      setCounterModalTask(null);
+      setCounterNote('');
+    } catch {
+      toast.error('Failed to submit counter offer');
+    } finally {
+      setSubmittingCounter(false);
+    }
+  };
+
   useEffect(() => {
     const loadDashboard = async () => {
       if (!user?.id) {
@@ -421,16 +456,31 @@ export default function RunnerOpportunityRadar() {
                           <span className="text-[10px] text-slate-400 uppercase font-semibold">Your Payout</span>
                         </div>
 
-                        <Button
-                          size="md"
-                          variant="success"
-                          isLoading={isClaiming}
-                          disabled={runnerStatus !== 'online'}
-                          onClick={() => handleAccept(task.id)}
-                          className="font-black text-xs h-11 px-5 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                          {runnerStatus !== 'online' ? 'Go Online to Accept' : 'Accept Errand'}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={runnerStatus !== 'online'}
+                            onClick={() => {
+                              setCounterModalTask(task);
+                              setCounterAmount(Math.round(netPayout + 300));
+                            }}
+                            className="font-bold text-xs h-11 px-3 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          >
+                            Counter
+                          </Button>
+                          <Button
+                            size="md"
+                            variant="success"
+                            isLoading={isClaiming}
+                            disabled={runnerStatus !== 'online'}
+                            onClick={() => handleAccept(task.id)}
+                            className="font-black text-xs h-11 px-4 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                          >
+                            {runnerStatus !== 'online' ? 'Go Online' : 'Accept'}
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -507,6 +557,87 @@ export default function RunnerOpportunityRadar() {
                 >
                   Confirm Payout to Bank
                 </Button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* ── RUNNER COUNTER OFFER MODAL ── */}
+        {counterModalTask && (
+          <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Propose Counter Offer</h3>
+                  <p className="text-[11px] text-slate-400">Negotiate a custom fee for this errand</p>
+                </div>
+                <button onClick={() => setCounterModalTask(null)} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/60 rounded-2xl">
+                <span className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-300 block">Current Standard Fee</span>
+                <span className="text-lg font-black font-mono text-slate-900 dark:text-white">
+                  {formatCurrency(Number(counterModalTask.total_fee))}
+                </span>
+                <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                  📍 {counterModalTask.pickup_location} ➔ {counterModalTask.delivery_location}
+                </p>
+              </div>
+
+              <form onSubmit={handleSendCounter} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Your Proposed Counter Fee (₦)
+                  </label>
+                  <input
+                    type="number"
+                    min={800}
+                    step={100}
+                    value={counterAmount}
+                    onChange={(e) => setCounterAmount(Number(e.target.value))}
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Standard campus fee is ₦800 (1km rate)</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Reason / Note (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Heavy load, rain, or long line"
+                    value={counterNote}
+                    onChange={(e) => setCounterNote(e.target.value)}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setCounterModalTask(null)}
+                    className="flex-1 text-xs font-semibold"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    isLoading={submittingCounter}
+                    className="flex-1 text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                  >
+                    Send Counter
+                  </Button>
+                </div>
               </form>
             </motion.div>
           </div>

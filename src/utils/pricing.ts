@@ -34,13 +34,12 @@ export function calculatePricing(
   weatherSurgeApplied: boolean = false,
   isBulkyItem: boolean = false
 ): PricingBreakdown {
-  // Base fee is strictly 800 Naira
-  const baseFee = 800;
-
-  // Distance surcharge: standard campus perimeter (up to 1.5km) is covered by base fee.
-  // Additional distance beyond 1.5km adds ₦250/km.
-  const extraDistance = Math.max(0, distanceKm - 1.5);
-  const distanceSurcharge = Math.round(extraDistance * 250);
+  // Distance rate: strictly 800 Naira per 1 km.
+  // If errand is within campus (effective distance <= 1.0 km), standard fee is flat 800 Naira.
+  // Beyond 1.0 km, fee calculates dynamically at 800 Naira per km.
+  const effectiveDistance = Math.max(1, distanceKm);
+  const baseFee = Math.round(effectiveDistance * 800);
+  const distanceSurcharge = 0;
 
   // Queue complexity fee (flat 500 Naira if applicable)
   const queueComplexityFee = hasQueueComplexity ? QUEUE_COMPLEXITY_FEE : 0;
