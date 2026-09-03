@@ -39,9 +39,6 @@ export default function LandingPage() {
             <RunnerLogo className="w-8 h-8 text-blue-600" animate={false} />
             <span className="font-black text-slate-900 text-lg tracking-tight">
               ERRANDRUN
-              <span className="text-[10px] ml-1.5 uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                2.0
-              </span>
             </span>
           </Link>
 
@@ -241,7 +238,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <RunnerLogo className="w-6 h-6 text-blue-400" animate={false} />
-            <span className="font-bold text-white">ERRANDRUN 2.0</span>
+            <span className="font-bold text-white">ERRANDRUN</span>
             <span>• University Campus Network</span>
           </div>
 
