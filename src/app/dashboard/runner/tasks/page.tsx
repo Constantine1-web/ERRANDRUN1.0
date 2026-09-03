@@ -2,13 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MapPin, Clock, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { formatCurrency } from '@/utils/pricing';
-import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 
 interface ErrandTask {
   id: string;
@@ -201,123 +197,39 @@ export default function RunnerTasksPage() {
     }
   };
 
+  // ── STRIPPED: Awaiting redesign ──
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 md:py-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Runner Tasks</h1>
-        <p className="text-slate-500 text-xs mt-0.5">Manage your active contracts and browse unassigned tasks.</p>
-      </div>
+    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <h1>My Runner Tasks</h1>
+      {message && <p>{message}</p>}
 
-      {message && (
-        <div className={`p-3 rounded-xl flex items-center gap-2 text-xs ${
-          message.toLowerCase().includes('fail') || message.toLowerCase().includes('require') 
-            ? 'text-red-700 bg-red-50 border border-red-200' 
-            : 'text-green-700 bg-green-50 border border-green-200'
-        }`}>
-          <AlertCircle className="w-4 h-4" />
-          {message}
-        </div>
-      )}
-
-      {/* Assigned Tasks */}
-      <section className="space-y-3">
-        <h2 className="text-base font-bold text-slate-800 uppercase tracking-wide">Assigned to You</h2>
-        {loading ? (
-          <Card className="p-8 text-center text-slate-400 text-xs">Loading tasks…</Card>
-        ) : assigned.length === 0 ? (
-          <Card className="p-8 text-center text-slate-400 text-xs">
-            No current assignments. Accept an errand below.
-          </Card>
-        ) : (
-          <div className="space-y-3">
+      <section>
+        <h2>Assigned to You</h2>
+        {loading ? <p>Loading tasks…</p> : assigned.length === 0 ? <p>No current assignments.</p> : (
+          <div>
             {assigned.map((t) => (
-              <Card key={t.id} className="border-blue-200 shadow-sm">
-                <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                  <CardTitle className="text-base font-bold text-slate-900">{t.title}</CardTitle>
-                  <Badge variant="info">{t.status.replace('_', ' ')}</Badge>
-                </CardHeader>
-                <CardContent className="pb-3 text-xs text-slate-600 space-y-1">
-                  <p className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{t.pickup_location} → {t.delivery_location}</span>
-                  </p>
-                  {t.eta_minutes && (
-                    <p className="flex items-center gap-1.5 text-slate-400">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>ETA: {t.eta_minutes} min</span>
-                    </p>
-                  )}
-                </CardContent>
-                <CardFooter className="flex gap-2 pt-0">
-                  <Button 
-                    variant="primary" 
-                    size="sm"
-                    onClick={() => router.push(`/dashboard/runner/accepted/${t.id}`)}
-                    className="font-bold text-xs"
-                  >
-                    Execute Task
-                  </Button>
-                  <Button 
-                    variant="danger" 
-                    size="sm"
-                    onClick={() => decline(t.id)} 
-                    isLoading={actionLoading === t.id}
-                    className="text-xs"
-                  >
-                    Decline
-                  </Button>
-                </CardFooter>
-              </Card>
+              <div key={t.id} style={{ border: '1px solid black', padding: '10px', margin: '10px 0' }}>
+                <h3>{t.title} - {t.status}</h3>
+                <p>Pickup: {t.pickup_location} → Delivery: {t.delivery_location}</p>
+                <button onClick={() => router.push(`/dashboard/runner/accepted/${t.id}`)}>Execute Task</button>
+                <button onClick={() => decline(t.id)} disabled={actionLoading === t.id}>Decline</button>
+              </div>
             ))}
           </div>
         )}
       </section>
 
-      {/* Available Errands */}
-      <section className="space-y-3 pt-4">
-        <h2 className="text-base font-bold text-slate-800 uppercase tracking-wide">Available Errands</h2>
-        {loading ? (
-          <Card className="p-8 text-center text-slate-400 text-xs">Loading errands…</Card>
-        ) : available.length === 0 ? (
-          <Card className="p-8 text-center text-slate-400 text-xs">
-            No errands currently available.
-          </Card>
-        ) : (
-          <div className="space-y-3">
+      <section>
+        <h2>Available Errands</h2>
+        {loading ? <p>Loading errands…</p> : available.length === 0 ? <p>No errands available.</p> : (
+          <div>
             {available.map((t) => (
-              <Card key={t.id} className="hover:border-blue-300 transition-all">
-                <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-slate-900 text-base">{t.title}</h3>
-                      {t.min_runner_rating && t.min_runner_rating > 0 && (
-                        <Badge variant="warning">★ {t.min_runner_rating}+ Rating</Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 truncate">
-                      📍 {t.pickup_location} → 📦 {t.delivery_location}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
-                    <div className="text-left sm:text-right">
-                      <span className="font-mono text-green-600 text-lg font-bold block leading-none">
-                        {formatCurrency(Number(t.total_fee) * 0.8)}
-                      </span>
-                      <span className="text-[10px] text-slate-400">80% Payout</span>
-                    </div>
-                    <Button 
-                      variant="primary" 
-                      size="sm"
-                      onClick={() => accept(t.id)} 
-                      isLoading={actionLoading === t.id}
-                      className="font-bold text-xs"
-                    >
-                      Accept
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={t.id} style={{ border: '1px solid black', padding: '10px', margin: '10px 0' }}>
+                <h3>{t.title}</h3>
+                <p>Pickup: {t.pickup_location} → Delivery: {t.delivery_location}</p>
+                <p>Payout: {formatCurrency(Number(t.total_fee) * 0.8)}</p>
+                <button onClick={() => accept(t.id)} disabled={actionLoading === t.id}>Accept</button>
+              </div>
             ))}
           </div>
         )}

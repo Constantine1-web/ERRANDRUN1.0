@@ -3,14 +3,8 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
-import { Mail, Eye, EyeOff } from 'lucide-react';
-import { RunnerLogo } from '@/components/RunnerLogo';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card, CardContent } from '@/components/ui/Card';
 
 function SignupForm() {
   const searchParams = useSearchParams();
@@ -119,212 +113,43 @@ function SignupForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md"
-        >
-          <Card className="text-center p-6 shadow-md border-slate-200">
-            <CardContent className="pt-6 pb-6">
-              <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
-                <Mail className="w-7 h-7" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Confirm your email</h2>
-              <p className="text-slate-600 mb-6 text-sm">
-                We've sent a confirmation link to <strong className="text-slate-900">{formData.email}</strong>. Click it to activate your account.
-              </p>
-              <Link href="/login" className="block w-full">
-                <Button className="w-full" variant="primary">
-                  Back to Sign In
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <div style={{ padding: '80px 20px', textAlign: 'center' }}>
+        <h2>Confirm your email</h2>
+        <p>We sent a confirmation link to <strong>{formData.email}</strong></p>
+        <Link href="/login">Back to Sign In</Link>
       </div>
     );
   }
 
+  // ── STRIPPED: Awaiting redesign ──
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center px-4 py-12 relative">
-      <Link
-        href="/"
-        className="absolute top-6 left-6 text-slate-500 hover:text-slate-900 transition-colors flex items-center gap-1.5 text-sm font-medium"
-      >
-        ← Back to Home
-      </Link>
-
-      <motion.div
-        className="max-w-md w-full"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="text-center mb-6">
-          <Link href="/" className="inline-flex items-center gap-2 mb-2">
-            <RunnerLogo className="w-9 h-9" animate={false} />
-            <span className="text-2xl font-black text-slate-900 tracking-tight">
-              Errand<span className="text-blue-600">Run</span>
-            </span>
-          </Link>
-          <p className="text-sm text-slate-500">Create your campus account</p>
-        </div>
-
-        {/* Role Toggle */}
-        <div className="flex bg-slate-100 p-1 rounded-xl mb-5 border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setUserRole('user')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-              userRole === 'user' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Student Requester
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserRole('runner')}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-              userRole === 'runner' ? 'bg-white text-green-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Campus Runner
-          </button>
-        </div>
-
-        <Card className="shadow-md border-slate-200">
-          <CardContent className="p-6 sm:p-8">
-            <form onSubmit={handleSignup} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Full Name
-                </label>
-                <Input
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  disabled={loading}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  University Email
-                </label>
-                <Input
-                  type="email"
-                  placeholder="student@uniuyo.edu.ng"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  disabled={loading}
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Reg Number
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="21/ENG/012"
-                    value={formData.studentId}
-                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                    disabled={loading}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Phone Number
-                  </label>
-                  <Input
-                    type="tel"
-                    placeholder="08012345678"
-                    value={formData.phoneNumber}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    disabled={loading}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="Min 6 characters"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    disabled={loading}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Repeat password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    disabled={loading}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="lg"
-                className="w-full font-bold mt-2"
-                isLoading={loading}
-              >
-                Create {userRole === 'runner' ? 'Runner' : 'Requester'} Account
-              </Button>
-            </form>
-
-            <p className="text-center text-xs text-slate-500 mt-5">
-              Already have an account?{' '}
-              <Link href="/login" className="text-blue-600 font-semibold hover:underline">
-                Sign in
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
-      </motion.div>
+    <div style={{ maxWidth: '400px', margin: '80px auto', padding: '20px' }}>
+      <h1>Create Account</h1>
+      <div style={{ display: 'flex', gap: '8px', margin: '16px 0' }}>
+        <button onClick={() => setUserRole('user')} style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '6px', background: userRole === 'user' ? '#2563EB' : '#fff', color: userRole === 'user' ? '#fff' : '#333', cursor: 'pointer' }}>Requester</button>
+        <button onClick={() => setUserRole('runner')} style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '6px', background: userRole === 'runner' ? '#2563EB' : '#fff', color: userRole === 'runner' ? '#fff' : '#333', cursor: 'pointer' }}>Runner</button>
+      </div>
+      <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <input placeholder="Full Name" value={formData.fullName} onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px' }} />
+        <input type="email" placeholder="Email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px' }} />
+        <input placeholder="Reg Number (e.g. 21/ENG/012)" value={formData.studentId} onChange={(e) => setFormData({ ...formData, studentId: e.target.value })} style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px' }} />
+        <input placeholder="Phone Number" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px' }} />
+        <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px' }} />
+        <input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirm Password" value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '6px' }} />
+        <button type="submit" disabled={loading} style={{ padding: '10px', background: '#2563EB', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+          {loading ? 'Creating account...' : 'Sign Up'}
+        </button>
+      </form>
+      <p style={{ marginTop: '16px', fontSize: '14px', color: '#666' }}>
+        Already have an account? <Link href="/login">Sign in</Link>
+      </p>
     </div>
   );
 }
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">Loading...</div>}>
+    <Suspense fallback={<div style={{ padding: '80px 20px', textAlign: 'center' }}>Loading...</div>}>
       <SignupForm />
     </Suspense>
   );

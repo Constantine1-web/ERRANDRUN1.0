@@ -1,18 +1,12 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Zap, MapPin, DollarSign, Trophy, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
 import { RunnerGuard } from '@/components/guards/RunnerGuard';
 import { formatCurrency } from '@/utils/pricing';
 import toast from 'react-hot-toast';
-
-import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
-import { Input } from '@/components/ui/Input';
 
 interface ErrandTask {
   id: string;
@@ -205,216 +199,88 @@ export default function RunnerDashboard() {
     }
   };
 
+  // ── STRIPPED: Awaiting redesign ──
   return (
     <RunnerGuard>
-      <div className="max-w-5xl mx-auto px-4 py-6 md:py-8 space-y-6">
+      <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+        <h1>Runner Marketplace</h1>
+        <div>Level {runnerLevel} Runner</div>
         
-        {/* Header with Duty Switch */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Badge variant="success" className="text-xs">Level {runnerLevel} Runner</Badge>
-              <span className="text-xs text-slate-400">• University of Uyo</span>
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Runner Marketplace</h1>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Duty Status</span>
-            <button
-              onClick={toggleDuty}
-              disabled={toggleLoading}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                runnerStatus === 'online'
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-              }`}
-            >
-              <span className={`w-2 h-2 rounded-full ${runnerStatus === 'online' ? 'bg-white animate-pulse' : 'bg-slate-400'}`} />
-              {runnerStatus === 'online' ? 'ONLINE (Accepting)' : 'OFFLINE'}
-            </button>
-          </div>
+        <div>
+          <button onClick={toggleDuty} disabled={toggleLoading}>
+            {runnerStatus === 'online' ? 'ONLINE (Accepting)' : 'OFFLINE'}
+          </button>
+          {statusMessage && <p>{statusMessage}</p>}
         </div>
 
-        {statusMessage && (
-          <div className="p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-xs">
-            {statusMessage}
-          </div>
-        )}
-
-        {/* 1. Earnings Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-5">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Wallet Balance</p>
-              <p className="text-3xl font-black text-green-600 font-mono">{formatCurrency(walletBalance)}</p>
-              <div className="mt-3 flex items-center gap-2">
-                <Input 
-                  type="number"
-                  placeholder="Min ₦2,000"
-                  value={withdrawAmount || ''}
-                  onChange={(e) => setWithdrawAmount(Number(e.target.value))}
-                  className="h-8 text-xs"
-                />
-                <Button size="sm" variant="outline" onClick={handleWithdraw} className="shrink-0 text-xs font-bold">
-                  Payout
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-5">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Lifetime Earnings</p>
-              <p className="text-3xl font-black text-slate-900 font-mono">{formatCurrency(financialMetrics.runnerEarnings)}</p>
-              <p className="text-xs text-slate-400 mt-3">From completed campus deliveries</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-5">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Runs Completed</p>
-              <p className="text-3xl font-black text-slate-900 font-mono">{financialMetrics.completedCount}</p>
-              <p className="text-xs text-slate-400 mt-3">Total successful handoffs</p>
-            </CardContent>
-          </Card>
+        <div>
+          <h3>Wallet Balance: {formatCurrency(walletBalance)}</h3>
+          <input type="number" value={withdrawAmount || ''} onChange={(e) => setWithdrawAmount(Number(e.target.value))} placeholder="Min ₦2,000" />
+          <button onClick={handleWithdraw}>Payout</button>
+        </div>
+        
+        <div>
+          <h3>Lifetime Earnings: {formatCurrency(financialMetrics.runnerEarnings)}</h3>
+          <h3>Runs Completed: {financialMetrics.completedCount}</h3>
         </div>
 
-        {/* Active Task Banner */}
         {currentActiveTask && (
-          <Card className="border-2 border-blue-300 bg-blue-50/60 shadow-sm">
-            <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="info">Active Assignment</Badge>
-                  <span className="text-xs text-slate-500">In Progress</span>
-                </div>
-                <h3 className="font-bold text-slate-900 text-lg">{currentActiveTask.title}</h3>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  📍 {currentActiveTask.pickup_location} → 📦 {currentActiveTask.delivery_location}
-                </p>
-              </div>
-              <Link href={`/dashboard/runner/accepted/${currentActiveTask.id}`}>
-                <Button variant="primary" size="md" className="gap-2 font-bold whitespace-nowrap">
-                  Open Mission View <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <div>
+            <h3>Active Assignment: {currentActiveTask.title}</h3>
+            <p>Pickup: {currentActiveTask.pickup_location}</p>
+            <p>Dropoff: {currentActiveTask.delivery_location}</p>
+            <Link href={`/dashboard/runner/accepted/${currentActiveTask.id}`}>
+              <button>Open Mission View</button>
+            </Link>
+          </div>
         )}
 
-        {/* 2. Marketplace Section */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Run Errands & Earn</h2>
-              <p className="text-slate-500 text-xs mt-0.5">Available tasks posted by students nearby.</p>
-            </div>
-
-            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
-              <button
-                onClick={() => setViewMode('available')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  viewMode === 'available' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
-              >
-                Available ({availableErrands.length})
-              </button>
-              <button
-                onClick={() => setViewMode('history')}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                  viewMode === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
-              >
-                History ({historyErrands.length})
-              </button>
-            </div>
-          </div>
-
-          {loading ? (
-            <Card className="p-10 text-center">
-              <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin mx-auto mb-2" />
-              <p className="text-slate-500 text-xs">Scanning available tasks...</p>
-            </Card>
-          ) : viewMode === 'available' ? (
-            availableErrands.length === 0 ? (
-              <Card className="p-10 text-center">
-                <Zap className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <h3 className="font-bold text-slate-800 text-sm">No tasks currently waiting</h3>
-                <p className="text-slate-400 text-xs mt-1">Keep your status Online to receive instant alerts when a student posts.</p>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {availableErrands.map((task) => {
-                  const payout = Number(task.total_fee) * 0.8;
-                  return (
-                    <Card key={task.id} className="hover:border-blue-300 hover:shadow-sm transition-all">
-                      <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline">{task.category}</Badge>
-                            {task.priority === 'urgent' && <Badge variant="warning">Urgent</Badge>}
-                            <span className="text-[11px] text-slate-400">
-                              {new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <h3 className="font-bold text-slate-900 text-base leading-snug">{task.title}</h3>
-                          <div className="text-xs text-slate-500 space-y-0.5">
-                            <p className="truncate">📍 Pickup: <strong className="text-slate-700">{task.pickup_location}</strong></p>
-                            <p className="truncate">📦 Dropoff: <strong className="text-slate-700">{task.delivery_location}</strong></p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-slate-100">
-                          <div className="text-left sm:text-right">
-                            <p className="text-lg font-black text-green-600 font-mono leading-none">{formatCurrency(payout)}</p>
-                            <span className="text-[10px] text-slate-400">Your 80% Payout</span>
-                          </div>
-                          <Button
-                            variant="primary"
-                            size="md"
-                            className="font-bold whitespace-nowrap"
-                            disabled={accepting === task.id || runnerStatus !== 'online'}
-                            isLoading={accepting === task.id}
-                            onClick={() => handleAccept(task.id)}
-                          >
-                            Accept Errand
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )
-          ) : (
-            /* History view */
-            historyErrands.length === 0 ? (
-              <Card className="p-8 text-center text-slate-500 text-xs">
-                No completed errand history yet.
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                {historyErrands.map((task) => (
-                  <Card key={task.id}>
-                    <CardContent className="p-4 flex items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="success">Completed</Badge>
-                          <span className="text-[11px] text-slate-400">{new Date(task.created_at).toLocaleDateString()}</span>
-                        </div>
-                        <h4 className="font-bold text-slate-900 text-sm">{task.title}</h4>
-                      </div>
-                      <span className="font-mono font-bold text-green-600 text-sm">
-                        +{formatCurrency(Number(task.runner_amount || task.total_fee * 0.8))}
-                      </span>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )
-          )}
+        <div>
+          <button onClick={() => setViewMode('available')}>Available ({availableErrands.length})</button>
+          <button onClick={() => setViewMode('history')}>History ({historyErrands.length})</button>
         </div>
+
+        {loading ? (
+          <p>Scanning tasks...</p>
+        ) : viewMode === 'available' ? (
+          availableErrands.length === 0 ? (
+            <p>No tasks currently waiting</p>
+          ) : (
+            <div>
+              {availableErrands.map((task) => {
+                const payout = Number(task.total_fee) * 0.8;
+                return (
+                  <div key={task.id} style={{ border: '1px solid gray', margin: '10px 0', padding: '10px' }}>
+                    <h4>{task.title}</h4>
+                    <p>Pickup: {task.pickup_location}</p>
+                    <p>Dropoff: {task.delivery_location}</p>
+                    <p>Payout: {formatCurrency(payout)}</p>
+                    <button 
+                      disabled={accepting === task.id || runnerStatus !== 'online'}
+                      onClick={() => handleAccept(task.id)}
+                    >
+                      {accepting === task.id ? 'Accepting...' : 'Accept Errand'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          historyErrands.length === 0 ? (
+            <p>No completed errand history yet.</p>
+          ) : (
+            <div>
+              {historyErrands.map((task) => (
+                <div key={task.id} style={{ border: '1px solid gray', margin: '10px 0', padding: '10px' }}>
+                  <h4>{task.title}</h4>
+                  <p>Completed on: {new Date(task.created_at).toLocaleDateString()}</p>
+                  <p>Earned: +{formatCurrency(Number(task.runner_amount || task.total_fee * 0.8))}</p>
+                </div>
+              ))}
+            </div>
+          )
+        )}
       </div>
     </RunnerGuard>
   );
