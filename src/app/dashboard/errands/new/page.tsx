@@ -600,42 +600,38 @@ function ErrandStudioContent() {
 
       {/* ── MAP PICKER MODAL ── */}
       {mapModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-scaleIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-600" />
-                <h3 className="font-bold text-base text-slate-900">
-                  Select {mapModalOpen === 'pickup' ? 'Pickup Location' : 'Delivery Location'} on Map
-                </h3>
-              </div>
-              <button
-                onClick={() => setMapModalOpen(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold text-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden border border-slate-200">
-              <MapPicker
-                onSelect={(lat: number, lng: number, address: string) => {
-                  if (mapModalOpen === 'pickup') {
-                    setPickupLat(lat);
-                    setPickupLng(lng);
-                    setPickupLocation(address);
-                  } else {
-                    setDeliveryLat(lat);
-                    setDeliveryLng(lng);
-                    setDeliveryLocation(address);
-                  }
-                  setMapModalOpen(null);
-                  toast.success('Location pinpointed!');
-                }}
-              />
-            </div>
-          </div>
-        </div>
+        <MapPicker
+          title={`Pinpoint ${mapModalOpen === 'pickup' ? 'Pickup Location' : 'Delivery Destination'}`}
+          initialLat={mapModalOpen === 'pickup' ? pickupLat : deliveryLat}
+          initialLng={mapModalOpen === 'pickup' ? pickupLng : deliveryLng}
+          onCancel={() => setMapModalOpen(null)}
+          onConfirm={(lat: number, lng: number, address: string) => {
+            if (mapModalOpen === 'pickup') {
+              setPickupLat(lat);
+              setPickupLng(lng);
+              setPickupLocation(address);
+            } else {
+              setDeliveryLat(lat);
+              setDeliveryLng(lng);
+              setDeliveryLocation(address);
+            }
+            setMapModalOpen(null);
+            toast.success('Campus location locked!');
+          }}
+          onSelect={(lat: number, lng: number, address: string) => {
+            if (mapModalOpen === 'pickup') {
+              setPickupLat(lat);
+              setPickupLng(lng);
+              setPickupLocation(address);
+            } else {
+              setDeliveryLat(lat);
+              setDeliveryLng(lng);
+              setDeliveryLocation(address);
+            }
+            setMapModalOpen(null);
+            toast.success('Campus location locked!');
+          }}
+        />
       )}
 
     </div>
