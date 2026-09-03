@@ -1,11 +1,11 @@
 import React from 'react';
 import { CenteredPageLoader } from '@/components/CenteredPageLoader';
 
-export default function Loading() {
+export default function DashboardLoading() {
   return (
     <CenteredPageLoader
       text="ERRANDRUN"
-      subtext="Loading campus dispatch grid…"
+      subtext="Syncing campus telemetry & active missions…"
     />
   );
 }

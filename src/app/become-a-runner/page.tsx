@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Radio, ArrowRight, ShieldCheck, DollarSign, Clock, Bike, CheckCircle2 } from 'lucide-react';
 import { RunnerLogo } from '@/components/RunnerLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function BecomeARunnerPage() {
   return (
@@ -13,7 +14,8 @@ export default function BecomeARunnerPage() {
             <span className="font-black text-slate-900 text-lg tracking-tight">ERRANDRUN</span>
           </Link>
           <div className="flex items-center gap-3 text-xs font-bold">
-            <Link href="/login" className="text-slate-600 hover:text-slate-900">Sign In</Link>
+            <ThemeToggle variant="icon" />
+            <Link href="/login" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Sign In</Link>
             <Link href="/signup?role=runner" className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl">
               Apply to Run
             </Link>

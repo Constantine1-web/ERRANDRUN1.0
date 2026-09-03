@@ -1,19 +1,21 @@
 import Link from 'next/link';
 import { Compass, ArrowRight, ShieldCheck, Utensils, Printer, Users, Package } from 'lucide-react';
 import { RunnerLogo } from '@/components/RunnerLogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function RequestErrandPage() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col antialiased">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F17] text-slate-900 dark:text-white flex flex-col antialiased transition-colors">
       {/* Header */}
-      <header className="bg-white/90 backdrop-blur-md border-b border-slate-200">
+      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <RunnerLogo className="w-8 h-8 text-blue-600" animate={false} />
-            <span className="font-black text-slate-900 text-lg tracking-tight">ERRANDRUN</span>
+            <RunnerLogo className="w-8 h-8 text-blue-600 dark:text-blue-400" animate={false} />
+            <span className="font-black text-slate-900 dark:text-white text-lg tracking-tight">ERRANDRUN</span>
           </Link>
           <div className="flex items-center gap-3 text-xs font-bold">
-            <Link href="/login" className="text-slate-600 hover:text-slate-900">Sign In</Link>
+            <ThemeToggle variant="icon" />
+            <Link href="/login" className="text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">Sign In</Link>
             <Link href="/signup?role=user" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl">
               Get Started
             </Link>

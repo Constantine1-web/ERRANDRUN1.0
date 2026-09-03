@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { RunnerLogo } from '@/components/RunnerLogo';
 import { Button } from '@/components/ui/Button';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { motion } from 'framer-motion';
 
 function SignupForm() {
   const searchParams = useSearchParams();
@@ -149,18 +151,33 @@ function SignupForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2">
-        <Link href="/" className="inline-flex items-center gap-2">
-          <RunnerLogo className="w-8 h-8 text-blue-600" animate={false} />
-          <span className="font-black text-slate-900 text-xl tracking-tight">ERRANDRUN</span>
-        </Link>
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Create Campus Account</h1>
-        <p className="text-xs text-slate-500">Join verified students delegating and running errands.</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F17] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative transition-colors overflow-hidden">
+      {/* ── THEME TOGGLE (Top Right on every page) ── */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+        <ThemeToggle variant="icon" />
       </div>
 
-      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 sm:px-8 rounded-3xl border border-slate-200/90 shadow-sm space-y-5">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-2"
+      >
+        <Link href="/" className="inline-flex items-center gap-2 group">
+          <RunnerLogo className="w-8 h-8 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" animate={false} />
+          <span className="font-black text-slate-900 dark:text-white text-xl tracking-tight">ERRANDRUN</span>
+        </Link>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Create Campus Account</h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Join verified students delegating and running errands.</p>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.08, ease: 'easeOut' }}
+        className="mt-6 sm:mx-auto sm:w-full sm:max-w-md"
+      >
+        <div className="bg-white dark:bg-slate-900 py-8 px-6 sm:px-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-5 transition-colors">
           
           {/* Role Switcher */}
           <div className="space-y-1.5">
@@ -312,7 +329,7 @@ function SignupForm() {
             </Link>
           </p>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

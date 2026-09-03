@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { CenteredPageLoader } from '@/components/CenteredPageLoader';
 
 interface ErrandDetail {
   id: string;
@@ -127,9 +128,10 @@ export default function AcceptedMissionPage() {
 
   if (loading) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center text-xs text-slate-400">
-        Booting Mission Console…
-      </div>
+      <CenteredPageLoader
+        text="ERRANDRUN"
+        subtext="Booting On-Foot Mission Console…"
+      />
     );
   }
 

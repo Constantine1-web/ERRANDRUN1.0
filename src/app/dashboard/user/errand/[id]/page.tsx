@@ -13,6 +13,7 @@ import { useErrandTracking } from '@/hooks/useRealtimeErrands';
 import type { Errand } from '@/types';
 import { formatCurrency } from '@/utils/pricing';
 import toast from 'react-hot-toast';
+import { CenteredPageLoader } from '@/components/CenteredPageLoader';
 import {
   MapPin,
   Clock,
@@ -307,9 +308,10 @@ export default function ErrandDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center text-xs text-slate-400">
-        Loading Flight Tracker…
-      </div>
+      <CenteredPageLoader
+        text="ERRANDRUN"
+        subtext="Tracking live mission & GPS flight telemetry…"
+      />
     );
   }
 
