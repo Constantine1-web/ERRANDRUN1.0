@@ -146,7 +146,7 @@ function ErrandStudioContent() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 md:py-8 space-y-6 animate-fadeIn">
 
       {/* ── STUDIO HEADER ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
@@ -157,13 +157,13 @@ function ErrandStudioContent() {
               Guided Errand Studio
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Dispatch an Errand
           </h1>
         </div>
 
         {/* Step Stepper Indicator */}
-        <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
           {[
             { num: 1, label: 'What' },
             { num: 2, label: 'Where' },
