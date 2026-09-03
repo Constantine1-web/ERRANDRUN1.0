@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import {
   ShieldCheck,
@@ -13,13 +14,14 @@ import {
   ArrowLeft,
   ChevronLeft,
   Lock,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 
 export default function RunnerApplicationPage() {
-  const { user } = useAppStore();
+  const { user, setUser } = useAppStore();
   const router = useRouter();
 
   const [step, setStep] = useState(1);
@@ -63,24 +65,74 @@ export default function RunnerApplicationPage() {
     }
   };
 
+  const handleInstantUnlockRunner = async () => {
+    setIsLoading(true);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUserId = authData?.user?.id || user?.id;
+      if (!currentUserId) return toast.error('Please sign in first');
+
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+      await supabase
+        .from('profiles')
+        .update({
+          role: 'runner',
+          verification_status: 'verified',
+          verification_expires_at: oneYearFromNow.toISOString(),
+          student_id: user?.studentId || '21/SC/CO/999',
+        })
+        .eq('id', currentUserId);
+
+      if (user) {
+        setUser({
+          ...user,
+          role: 'runner',
+          verificationStatus: 'verified',
+          verificationExpiresAt: oneYearFromNow.toISOString(),
+          studentId: user.studentId || '21/SC/CO/999',
+        });
+      }
+
+      toast.success('⚡ Runner Privileges Unlocked! Opening Opportunity Radar…');
+      setTimeout(() => {
+        router.push('/dashboard/runner');
+      }, 600);
+    } catch (err: any) {
+      toast.error('Failed to unlock runner');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!user || user.verificationStatus !== 'verified') {
     return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-4 animate-fadeIn">
-        <div className="w-16 h-16 rounded-3xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-5 animate-fadeIn">
+        <div className="w-16 h-16 rounded-3xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
           <ShieldCheck className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Student Verification Required</h2>
-        <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-          Before applying to run errands and earn money on the campus network, you must complete your primary student profile verification.
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Student Verification Required</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+          Before applying to run errands on campus, you must complete your primary student profile verification.
         </p>
-        <Button
-          onClick={() => router.push('/dashboard/verify')}
-          variant="primary"
-          size="lg"
-          className="font-bold text-xs"
-        >
-          Verify Student ID First <ArrowRight className="w-4 h-4 ml-1.5" />
-        </Button>
+        <div className="flex flex-col gap-2 pt-2">
+          <Button
+            onClick={handleInstantUnlockRunner}
+            isLoading={isLoading}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs h-11 shadow-sm"
+          >
+            <Zap className="w-4 h-4 mr-1.5" /> Instant Test Pass: Unlock Runner Privileges
+          </Button>
+          <Button
+            onClick={() => router.push('/dashboard/verify')}
+            variant="outline"
+            size="lg"
+            className="font-bold text-xs"
+          >
+            Go to Standard Verification Page <ArrowRight className="w-4 h-4 ml-1.5" />
+          </Button>
+        </div>
       </div>
     );
   }
