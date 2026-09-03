@@ -94,13 +94,25 @@ export default function DashboardLayout({
           setUser({
             id: session.user.id,
             email: session.user.email || '',
-            fullName: profile.full_name,
-            phoneNumber: profile.phone_number,
-            studentId: profile.student_id,
+            fullName: profile.full_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || '',
+            phoneNumber: profile.phone_number || '',
+            studentId: profile.student_id || '',
             role: updatedRole,
             verificationStatus: updatedVerificationStatus,
             verificationExpiresAt: profile.verification_expires_at,
             rating: profile.rating,
+          });
+        } else if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            fullName: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || '',
+            phoneNumber: '',
+            studentId: '',
+            role: 'user',
+            verificationStatus: 'unverified',
+            verificationExpiresAt: null,
+            rating: 5.0,
           });
         }
       } catch (err) {

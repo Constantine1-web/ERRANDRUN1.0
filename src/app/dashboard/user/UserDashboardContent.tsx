@@ -29,11 +29,47 @@ import { Button } from '@/components/ui/Button';
 export default function UserDashboardContent() {
   const { user } = useAppStore();
   const router = useRouter();
+  const [userName, setUserName] = useState<string>(user?.fullName || '');
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [activeErrands, setActiveErrands] = useState<any[]>([]);
   const [loadingErrands, setLoadingErrands] = useState(true);
   const [topUpAmount, setTopUpAmount] = useState<number>(2000);
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+
+  // Sync user name from store and resolve from Supabase
+  useEffect(() => {
+    if (user?.fullName) {
+      setUserName(user.fullName);
+    }
+  }, [user?.fullName]);
+
+  useEffect(() => {
+    const resolveUser = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', authUser.id)
+            .maybeSingle();
+
+          const resolved =
+            profile?.full_name ||
+            authUser.user_metadata?.full_name ||
+            authUser.user_metadata?.name ||
+            authUser.email?.split('@')[0] ||
+            '';
+
+          if (resolved) setUserName(resolved);
+        }
+      } catch (err) {
+        console.error('Failed to resolve user name:', err);
+      }
+    };
+
+    resolveUser();
+  }, []);
 
   // Fetch Wallet & Active Errands
   useEffect(() => {
@@ -151,7 +187,7 @@ export default function UserDashboardContent() {
       <section className="space-y-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-            Hi, {user?.fullName?.split(' ')[0] || 'Student'} 👋
+            Hello, {userName || user?.fullName || 'there'} 👋
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             What can our student runners handle for you today?

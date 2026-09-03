@@ -34,14 +34,13 @@ export function calculatePricing(
   weatherSurgeApplied: boolean = false,
   isBulkyItem: boolean = false
 ): PricingBreakdown {
-  // Ensure minimum distance of 1km for calculation
-  const effectiveDistance = Math.max(1, distanceKm);
-  
-  // Rate is strictly 800 Naira per KM
-  const baseFee = Math.round(effectiveDistance * 800);
+  // Base fee is strictly 800 Naira
+  const baseFee = 800;
 
-  // We no longer need a separate distance surcharge because base fee IS the distance fee
-  const distanceSurcharge = 0;
+  // Distance surcharge: standard campus perimeter (up to 1.5km) is covered by base fee.
+  // Additional distance beyond 1.5km adds ₦250/km.
+  const extraDistance = Math.max(0, distanceKm - 1.5);
+  const distanceSurcharge = Math.round(extraDistance * 250);
 
   // Queue complexity fee (flat 500 Naira if applicable)
   const queueComplexityFee = hasQueueComplexity ? QUEUE_COMPLEXITY_FEE : 0;
@@ -50,12 +49,12 @@ export function calculatePricing(
   const bulkyItemSurcharge = isBulkyItem ? BULKY_ITEM_SURCHARGE : 0;
 
   // Weather surge (10% on top of base fee)
-  const weatherSurge = weatherSurgeApplied ? baseFee * (WEATHER_SURGE - 1) : 0;
+  const weatherSurge = weatherSurgeApplied ? Math.round(baseFee * (WEATHER_SURGE - 1)) : 0;
 
   // Check for Rush Hour (8am-10am and 4pm-6pm)
   const hour = new Date().getHours();
   const isRushHour = (hour >= 8 && hour < 10) || (hour >= 16 && hour < 18);
-  const rushHourSurge = isRushHour ? baseFee * (RUSH_HOUR_SURGE - 1) : 0;
+  const rushHourSurge = isRushHour ? Math.round(baseFee * (RUSH_HOUR_SURGE - 1)) : 0;
 
   // Get urgency multiplier
   const urgencyMultiplier = URGENCY_MULTIPLIERS[priority];
@@ -63,17 +62,14 @@ export function calculatePricing(
   // Calculate subtotal before multiplier
   const subtotal = baseFee + distanceSurcharge + queueComplexityFee + bulkyItemSurcharge + weatherSurge + rushHourSurge;
 
-  // Apply urgency multiplier
-  const totalFeeBeforePlatformFee = subtotal * urgencyMultiplier;
+  // Total customer pays
+  const totalFee = Math.round(subtotal * urgencyMultiplier);
 
-  // Calculate platform fee (20% of total)
-  const platformFee = totalFeeBeforePlatformFee * PLATFORM_FEE_PERCENTAGE;
+  // Platform fee is 20% of the total fee
+  const platformFee = Math.round(totalFee * PLATFORM_FEE_PERCENTAGE);
 
-  // Total fee after platform deduction
-  const totalFee = totalFeeBeforePlatformFee + platformFee;
-
-  // Runner amount (80% of total before platform fee)
-  const runnerAmount = totalFeeBeforePlatformFee;
+  // Runner amount (80% of total fee)
+  const runnerAmount = totalFee - platformFee;
 
   return {
     baseFee: Math.round(baseFee),
@@ -83,9 +79,9 @@ export function calculatePricing(
     bulkyItemSurcharge: Math.round(bulkyItemSurcharge),
     rushHourSurge: Math.round(rushHourSurge),
     urgencyMultiplier,
-    totalFee: Math.round(totalFee),
-    platformFee: Math.round(platformFee),
-    runnerAmount: Math.round(runnerAmount),
+    totalFee,
+    platformFee,
+    runnerAmount,
   };
 }
 
