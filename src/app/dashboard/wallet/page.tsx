@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import { useAppStore } from '@/lib/store';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '@/utils/pricing';
@@ -95,7 +96,7 @@ function WalletContent() {
     const verifyDeposit = async () => {
       setVerifying(true);
       try {
-        const response = await fetch(`/api/payments?reference=${encodeURIComponent(paymentReference)}`);
+        const response = await authFetch(`/api/payments?reference=${encodeURIComponent(paymentReference)}`);
         const result = await response.json();
         if (result?.success) {
           toast.success('Deposit confirmed! Funds credited to your wallet.');
@@ -126,11 +127,9 @@ function WalletContent() {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/payments', {
+      const response = await authFetch('/api/payments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user?.id,
           amount,
           email: user?.email,
           errandId: null,
@@ -158,10 +157,9 @@ function WalletContent() {
 
     setWithdrawing(true);
     try {
-      const res = await fetch('/api/wallet/withdraw', {
+      const res = await authFetch('/api/wallet/withdraw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id, amount: withdrawAmount }),
+        body: JSON.stringify({ amount: withdrawAmount }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Withdrawal failed');

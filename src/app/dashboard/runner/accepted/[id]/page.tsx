@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { formatCurrency } from '@/utils/pricing';
@@ -97,11 +98,9 @@ export default function AcceptedMissionPage() {
 
     setSubmitting(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const response = await fetch('/api/tracking/complete', {
+      const response = await authFetch('/api/tracking/complete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ errandId, runnerId: userData?.user?.id, pin }),
+        body: JSON.stringify({ errandId, pin }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to verify PIN');

@@ -1,76 +1,97 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
+import { AdminDisputeResolveSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { errandId, runnerPayout, customerRefund, addRunnerStrike, addCustomerStrike, adminNotes } = body;
+    const authCheck = await requireAdmin(req);
+    if (authCheck.response) return authCheck.response;
 
-    if (!errandId) {
-      return NextResponse.json({ success: false, error: 'errandId is required' }, { status: 400 });
+    const ip = getClientIp(req);
+    const rate = checkRateLimit(`admin-resolve:${ip}`, 30, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
+    const body = await req.json();
+    const parseResult = AdminDisputeResolveSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid dispute resolution payload', details: parseResult.error.errors },
+        { status: 400 }
+      );
     }
 
-    // 1. Fetch errand and dispute
-    const { data: errand, error: fetchError } = await supabase
-      .from('errands')
-      .select('*, disputes(*)')
-      .eq('id', errandId)
+    const { disputeId, resolutionType, resolutionAmount, adminNotes, addRunnerStrike, addCustomerStrike } = parseResult.data;
+
+    // 1. Fetch dispute and linked errand
+    const { data: dispute, error: fetchDisputeError } = await adminSupabase
+      .from('disputes')
+      .select('*, errands(*)')
+      .eq('id', disputeId)
       .single();
 
-    if (fetchError || !errand) {
-      return NextResponse.json({ success: false, error: 'Errand not found' }, { status: 404 });
+    if (fetchDisputeError || !dispute) {
+      return NextResponse.json({ success: false, error: 'Dispute record not found' }, { status: 404 });
+    }
+
+    const errand = dispute.errands;
+    if (!errand) {
+      return NextResponse.json({ success: false, error: 'Linked errand not found' }, { status: 404 });
     }
 
     // 2. Process Runner Strike
     if (addRunnerStrike && errand.runner_id) {
-      const { data: runnerProfile } = await supabase.from('profiles').select('strikes').eq('id', errand.runner_id).single();
+      const { data: runnerProfile } = await adminSupabase
+        .from('profiles')
+        .select('strikes')
+        .eq('id', errand.runner_id)
+        .single();
       const currentStrikes = runnerProfile?.strikes || 0;
-      await supabase.from('profiles').update({ strikes: currentStrikes + 1 }).eq('id', errand.runner_id);
+      await adminSupabase.from('profiles').update({ strikes: currentStrikes + 1 }).eq('id', errand.runner_id);
     }
 
     // 3. Process Customer Strike
-    if (addCustomerStrike && errand.user_id) {
-      const { data: customerProfile } = await supabase.from('profiles').select('strikes').eq('id', errand.user_id).single();
+    if (addCustomerStrike && errand.requester_id) {
+      const { data: customerProfile } = await adminSupabase
+        .from('profiles')
+        .select('strikes')
+        .eq('id', errand.requester_id)
+        .single();
       const currentStrikes = customerProfile?.strikes || 0;
-      await supabase.from('profiles').update({ strikes: currentStrikes + 1 }).eq('id', errand.user_id);
+      await adminSupabase.from('profiles').update({ strikes: currentStrikes + 1 }).eq('id', errand.requester_id);
     }
 
-    // 4. Resolve the errand status (mark as resolved)
-    // Here we can mark it as 'completed' or 'cancelled' depending on if anyone was paid, but let's use 'resolved'
-    const newStatus = runnerPayout > 0 ? 'completed' : 'cancelled';
+    // 4. Resolve the errand status
+    const payout = Number(resolutionAmount || 0);
+    const newStatus = payout > 0 ? 'completed' : 'cancelled';
 
-    await supabase
+    await adminSupabase
       .from('errands')
       .update({
         status: newStatus,
-        runner_amount: runnerPayout,
-        // Calculate platform fee if any, or 0 if refunded
-        platform_fee: errand.total_fee - runnerPayout - customerRefund
+        runner_amount: payout,
+        platform_fee: Math.max(0, Number(errand.total_fee || 0) - payout),
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', errandId);
+      .eq('id', errand.id);
 
-    // 5. Update dispute record if it exists
-    if (errand.disputes && errand.disputes.length > 0) {
-      await supabase
-        .from('disputes')
-        .update({
-          status: 'resolved',
-          resolution_notes: adminNotes,
-          resolved_at: new Date().toISOString()
-        })
-        .eq('errand_id', errandId);
-    }
-
-    // NOTE: Actual wallet transfers will happen here once the wallet logic is fully built
-    // For now, this just resolves the contract state perfectly.
+    // 5. Update dispute record
+    await adminSupabase
+      .from('disputes')
+      .update({
+        status: 'resolved',
+        resolution_type: resolutionType,
+        resolution_amount: payout,
+        admin_notes: adminNotes ? String(adminNotes).slice(0, 1000) : `Resolved by admin: ${authCheck.auth.user.email}`,
+        resolved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', disputeId);
 
     return NextResponse.json({ success: true, message: 'Dispute resolved successfully' });
   } catch (error: any) {
     console.error('Dispute resolution error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

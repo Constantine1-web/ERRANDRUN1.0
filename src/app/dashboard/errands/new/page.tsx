@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import { calculatePricing, calculateDistance, estimateQueueComplexity, formatCurrency } from '@/utils/pricing';
 import type { ErrandCategory, ErrandPriority } from '@/types';
 import toast from 'react-hot-toast';
@@ -152,9 +153,8 @@ function ErrandBookingContent() {
         min_runner_rating: priority === 'urgent' ? 4.5 : 0,
       };
 
-      const res = await fetch('/api/errands/create', {
+      const res = await authFetch('/api/errands/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 

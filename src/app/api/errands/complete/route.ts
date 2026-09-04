@@ -1,55 +1,48 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
+/**
+ * Direct completion endpoint is strictly restricted to Administrators.
+ * Standard errand deliveries must be completed via /api/tracking/complete using the customer's 4-digit Delivery PIN.
+ */
 export async function POST(request: NextRequest) {
   try {
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
+
     const body = await request.json();
     const { errandId } = body;
 
-    if (!errandId) {
-      return NextResponse.json({ error: 'errandId is required' }, { status: 400 });
+    if (!errandId || typeof errandId !== 'string') {
+      return NextResponse.json({ success: false, error: 'errandId is required' }, { status: 400 });
     }
 
-    const { data: errand, error: fetchError } = await supabase
+    const { data: errand, error: fetchError } = await adminSupabase
       .from('errands')
       .select('id, status, runner_id, runner_amount')
       .eq('id', errandId)
       .single();
 
     if (fetchError || !errand) {
-      console.error('Errand fetch error:', fetchError);
-      return NextResponse.json({ error: 'Errand not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Errand not found' }, { status: 404 });
     }
 
     if (errand.status === 'completed') {
-      return NextResponse.json({ error: 'Errand already completed' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Errand already completed' }, { status: 400 });
     }
 
-    if (errand.status === 'payment_pending' || errand.status === 'unassigned') {
-      return NextResponse.json(
-        { error: 'Cannot confirm completion until a runner is assigned and delivery has started' },
-        { status: 400 }
-      );
-    }
-
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from('errands')
-      .update({ status: 'completed', actual_completion_time: new Date().toISOString() })
+      .update({ status: 'completed', actual_completion_time: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', errandId);
 
     if (updateError) {
-      console.error('Errand completion update failed:', updateError);
-      return NextResponse.json({ error: 'Failed to complete errand' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to complete errand' }, { status: 500 });
     }
 
-    // Credit Runner Wallet
-    if (errand.runner_id && errand.runner_amount > 0) {
-      // Get current wallet balance
-      const { data: wallet } = await supabase
+    // Credit Runner Wallet if assigned
+    if (errand.runner_id && Number(errand.runner_amount) > 0) {
+      const { data: wallet } = await adminSupabase
         .from('wallets')
         .select('id, balance, total_earned')
         .eq('user_id', errand.runner_id)
@@ -57,34 +50,27 @@ export async function POST(request: NextRequest) {
         
       if (wallet) {
         const newBalance = Number(wallet.balance) + Number(errand.runner_amount);
-        const newTotalEarned = Number(wallet.total_earned) + Number(errand.runner_amount);
-        
-        await supabase
+        const newTotalEarned = Number(wallet.total_earned || 0) + Number(errand.runner_amount);
+        await adminSupabase
           .from('wallets')
-          .update({ 
-            balance: newBalance, 
-            total_earned: newTotalEarned, 
-            last_updated: new Date().toISOString() 
-          })
+          .update({ balance: newBalance, total_earned: newTotalEarned, last_updated: new Date().toISOString() })
           .eq('id', wallet.id);
-          
-        await supabase
-          .from('wallet_transactions')
-          .insert({
-            wallet_id: wallet.id,
-            transaction_type: 'credit',
-            amount: errand.runner_amount,
-            reference_id: errand.id,
-            reference_type: 'errand_completion',
-            description: `Earnings for completed errand`,
-            balance_after: newBalance
-          });
+
+        await adminSupabase.from('transactions').insert({
+          user_id: errand.runner_id,
+          amount: errand.runner_amount,
+          type: 'payout',
+          status: 'success',
+          reference: errand.id,
+          description: `Admin manual completion payout for errand #${errand.id.slice(0, 8)}`,
+          created_at: new Date().toISOString(),
+        });
       }
     }
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Errand completion route error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: true, message: 'Errand completed by administrator.' });
+  } catch (error: any) {
+    console.error('Errand admin completion error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

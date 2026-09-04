@@ -1,98 +1,113 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { adminSupabase, requireAuth } from '@/lib/serverAuth';
+import { CancelErrandSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { errandId, userId, reason } = body;
+    const authCheck = await requireAuth(request);
+    if (authCheck.response) return authCheck.response;
 
-    if (!errandId || !userId) {
-      return NextResponse.json({ error: 'errandId and userId are required' }, { status: 400 });
+    const callerId = authCheck.auth.user.id;
+    const isAdmin = authCheck.auth.profile?.role === 'admin';
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`cancel-errand:${callerId || ip}`, 20, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
+    const body = await request.json();
+    const parseResult = CancelErrandSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid cancellation request', details: parseResult.error.errors },
+        { status: 400 }
+      );
     }
 
+    const { errandId, reason } = parseResult.data;
+
     // 1. Fetch errand
-    const { data: errand, error: fetchError } = await supabase
+    const { data: errand, error: fetchError } = await adminSupabase
       .from('errands')
       .select('*')
       .eq('id', errandId)
       .single();
 
     if (fetchError || !errand) {
-      return NextResponse.json({ error: 'Errand not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Errand not found' }, { status: 404 });
     }
 
-    if (errand.requester_id !== userId) {
-      return NextResponse.json({ error: 'Only the requester can cancel this errand' }, { status: 403 });
+    // 2. Authorization check: Only requester or admin can cancel
+    if (errand.requester_id !== callerId && !isAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You do not own this errand request' },
+        { status: 403 }
+      );
     }
 
     if (errand.status === 'completed' || errand.status === 'cancelled') {
-      return NextResponse.json({ error: `Cannot cancel an errand with status: ${errand.status}` }, { status: 400 });
-    }
-
-    if (errand.status === 'assigned' || errand.status === 'in_progress') {
       return NextResponse.json(
-        { error: 'A runner is already fulfilling this task. Please file a dispute or contact support to cancel.' },
+        { success: false, error: `Cannot cancel an errand with status: ${errand.status}` },
         { status: 400 }
       );
     }
 
-    // 2. Mark errand as cancelled
-    const { error: updateError } = await supabase
+    if (errand.status === 'assigned' || errand.status === 'in_progress') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'A runner is actively fulfilling this task. Please submit a dispute to resolve cancellation.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 3. Mark errand as cancelled
+    const { error: updateError } = await adminSupabase
       .from('errands')
       .update({
         status: 'cancelled',
-        notes: reason ? `Cancelled by requester: ${reason}` : 'Cancelled by requester',
+        notes: reason ? `Cancelled by requester: ${reason.slice(0, 300)}` : 'Cancelled by requester',
         updated_at: new Date().toISOString(),
       })
       .eq('id', errandId);
 
     if (updateError) {
       console.error('Errand cancel update error:', updateError);
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to update errand status' }, { status: 500 });
     }
 
-    // 3. If the errand was unassigned (meaning payment had been completed), refund the total_fee to requester wallet
-    if (errand.status === 'unassigned' && errand.total_fee > 0) {
-      const { data: wallet } = await supabase
+    // 4. Refund total_fee to requester wallet if the errand was unassigned
+    if (errand.status === 'unassigned' && Number(errand.total_fee) > 0) {
+      const { data: wallet } = await adminSupabase
         .from('wallets')
-        .select('*')
-        .eq('user_id', userId)
+        .select('id, balance')
+        .eq('user_id', errand.requester_id)
         .single();
 
       if (wallet) {
-        const newBalance = Number(wallet.balance) + Number(errand.total_fee);
-        await supabase
+        const refundedBalance = Number(wallet.balance) + Number(errand.total_fee);
+        await adminSupabase
           .from('wallets')
-          .update({
-            balance: newBalance,
-            last_updated: new Date().toISOString(),
-          })
+          .update({ balance: refundedBalance, last_updated: new Date().toISOString() })
           .eq('id', wallet.id);
 
-        await supabase.from('wallet_transactions').insert([
-          {
-            wallet_id: wallet.id,
-            transaction_type: 'credit',
-            amount: errand.total_fee,
-            reference_id: errand.id,
-            reference_type: 'refund',
-            description: `Refund for cancelled errand #${errand.id.substring(0, 8)}`,
-            balance_after: newBalance,
-          },
-        ]);
+        await adminSupabase.from('transactions').insert({
+          user_id: errand.requester_id,
+          amount: errand.total_fee,
+          type: 'refund',
+          status: 'success',
+          reference: errand.id,
+          description: `Refund for cancelled errand #${errand.id.slice(0, 8)}`,
+          created_at: new Date().toISOString(),
+        });
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Errand cancelled successfully. Refund credited to your wallet.',
-    });
+    return NextResponse.json({ success: true, message: 'Errand cancelled and escrow refunded successfully' });
   } catch (error: any) {
-    console.error('Cancel errand error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Cancel errand exception:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

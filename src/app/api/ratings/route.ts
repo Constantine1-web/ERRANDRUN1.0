@@ -1,47 +1,99 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase, requireAuth } from '@/lib/serverAuth';
+import { RatingSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+/**
+ * GET: Fetch ratings for an errand
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const errandId = searchParams.get('errandId');
+
+    if (!errandId) {
+      return NextResponse.json({ success: false, error: 'errandId query parameter required' }, { status: 400 });
+    }
+
+    const { data: ratings, error } = await adminSupabase
+      .from('ratings')
+      .select(`
+        *,
+        rater:rater_id (id, full_name, avatar_url)
+      `)
+      .eq('errand_id', errandId);
+
+    if (error) {
+      return NextResponse.json({ success: false, error: 'Failed to fetch ratings' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, ratings });
+  } catch (error: any) {
+    console.error('Rating fetch error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  }
+}
 
 /**
  * POST: Submit a rating for an errand
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { errandId, raterId, rateeId, rating, review, categories } = body;
+    const authCheck = await requireAuth(request);
+    if (authCheck.response) return authCheck.response;
 
-    if (!errandId || !raterId || !rateeId || !rating) {
+    const raterId = authCheck.auth.user.id;
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`rate-errand:${raterId || ip}`, 10, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
+    const body = await request.json();
+    const parseResult = RatingSchema.safeParse(body);
+
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: errandId, raterId, rateeId, rating' },
+        { success: false, error: 'Invalid rating payload', details: parseResult.error.errors },
         { status: 400 }
       );
     }
 
-    const numRating = Number(rating);
-    if (isNaN(numRating) || numRating < 1 || numRating > 5) {
-      return NextResponse.json({ error: 'Rating must be a number between 1 and 5' }, { status: 400 });
-    }
+    const { errandId, rating, review, categories } = parseResult.data;
 
-    // 1. Verify errand is completed
-    const { data: errand, error: errandError } = await supabase
+    // 1. Verify errand is completed and caller was a legitimate party
+    const { data: errand, error: errandError } = await adminSupabase
       .from('errands')
-      .select('id, status')
+      .select('id, requester_id, runner_id, status')
       .eq('id', errandId)
       .single();
 
     if (errandError || !errand) {
-      return NextResponse.json({ error: 'Errand not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Errand not found' }, { status: 404 });
     }
 
     if (errand.status !== 'completed') {
-      return NextResponse.json({ error: 'Can only rate completed errands' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'You can only rate completed errands' }, { status: 400 });
     }
 
-    // 2. Insert into ratings table (upsert if already exists for this errand & rater)
-    const { data: ratingRecord, error: insertError } = await supabase
+    // Determine the ratee
+    let rateeId: string | null = null;
+    if (raterId === errand.requester_id) {
+      rateeId = errand.runner_id;
+    } else if (raterId === errand.runner_id) {
+      rateeId = errand.requester_id;
+    } else {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You were not a participant in this errand' },
+        { status: 403 }
+      );
+    }
+
+    if (!rateeId) {
+      return NextResponse.json({ success: false, error: 'No counterparty found to rate' }, { status: 400 });
+    }
+
+    // 2. Insert or update rating
+    const { data: ratingRecord, error: insertError } = await adminSupabase
       .from('ratings')
       .upsert(
         [
@@ -49,9 +101,10 @@ export async function POST(request: NextRequest) {
             errand_id: errandId,
             rater_id: raterId,
             ratee_id: rateeId,
-            rating: numRating,
+            rating,
             review: review || null,
             categories: categories || null,
+            created_at: new Date().toISOString(),
           },
         ],
         { onConflict: 'errand_id,rater_id' }
@@ -60,69 +113,29 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('Error saving rating:', insertError);
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
+      console.error('Rating insert error:', insertError);
+      return NextResponse.json({ success: false, error: 'Failed to record rating' }, { status: 500 });
     }
 
-    // 3. Recalculate average rating for the ratee profile
-    const { data: allRatings, error: fetchRatingsError } = await supabase
+    // 3. Update the average rating on the ratee's profile
+    const { data: allRatings } = await adminSupabase
       .from('ratings')
       .select('rating')
       .eq('ratee_id', rateeId);
 
-    if (!fetchRatingsError && allRatings && allRatings.length > 0) {
-      const sum = allRatings.reduce((acc, curr) => acc + Number(curr.rating), 0);
-      const avg = Number((sum / allRatings.length).toFixed(2));
+    if (allRatings && allRatings.length > 0) {
+      const avg = allRatings.reduce((sum, r) => sum + Number(r.rating), 0) / allRatings.length;
+      const roundedAvg = Math.round(avg * 10) / 10;
 
-      await supabase
+      await adminSupabase
         .from('profiles')
-        .update({
-          rating: avg,
-          total_ratings: allRatings.length,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ rating: roundedAvg, total_ratings: allRatings.length })
         .eq('id', rateeId);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: ratingRecord,
-      message: 'Rating submitted successfully',
-    });
+    return NextResponse.json({ success: true, rating: ratingRecord });
   } catch (error: any) {
-    console.error('Rating submission error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-/**
- * GET: Fetch rating for an errand or ratee
- */
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const errandId = searchParams.get('errandId');
-    const rateeId = searchParams.get('rateeId');
-
-    let query = supabase.from('ratings').select('*');
-
-    if (errandId) {
-      query = query.eq('errand_id', errandId);
-    } else if (rateeId) {
-      query = query.eq('ratee_id', rateeId).order('created_at', { ascending: false });
-    } else {
-      return NextResponse.json({ error: 'Provide errandId or rateeId parameter' }, { status: 400 });
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    console.error('Fetch ratings error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Rating submission exception:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

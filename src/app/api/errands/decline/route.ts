@@ -1,39 +1,53 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { adminSupabase, requireRunner } from '@/lib/serverAuth';
+import { DeclineErrandSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { errandId, runnerId } = body || {};
+    const authCheck = await requireRunner(req);
+    if (authCheck.response) return authCheck.response;
 
-    if (!errandId || !runnerId) {
-      return NextResponse.json({ success: false, error: 'errandId and runnerId required' }, { status: 400 });
+    const runnerId = authCheck.auth.user.id;
+
+    const ip = getClientIp(req);
+    const rate = checkRateLimit(`decline-errand:${runnerId || ip}`, 20, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
+    const body = await req.json();
+    const parseResult = DeclineErrandSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid decline payload', details: parseResult.error.errors },
+        { status: 400 }
+      );
     }
 
+    const { errandId } = parseResult.data;
+
     // Verify the errand is currently assigned to this runner
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing, error: fetchError } = await adminSupabase
       .from('errands')
       .select('id, runner_id, status')
       .eq('id', errandId)
       .single();
 
-    if (fetchError) {
-      console.error('Failed to fetch errand before decline:', fetchError);
-      return NextResponse.json({ success: false, error: 'Failed to fetch errand' }, { status: 500 });
+    if (fetchError || !existing) {
+      return NextResponse.json({ success: false, error: 'Errand not found' }, { status: 404 });
     }
 
-    if (!existing || existing.runner_id !== runnerId) {
-      return NextResponse.json({ success: false, error: 'Errand not assigned to this runner' }, { status: 403 });
+    if (existing.runner_id !== runnerId) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden: You are not assigned to this errand' },
+        { status: 403 }
+      );
     }
 
-    // Clear runner assignment and mark as unassigned
-    const { error: updateError } = await supabase
+    // Reset errand to unassigned
+    const { error: updateError } = await adminSupabase
       .from('errands')
-      .update({ runner_id: null, status: 'unassigned' })
+      .update({ runner_id: null, status: 'unassigned', updated_at: new Date().toISOString() })
       .eq('id', errandId);
 
     if (updateError) {
@@ -41,8 +55,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to update errand' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
-  } catch (err) {
+    return NextResponse.json({ success: true, message: 'Errand unassigned successfully' });
+  } catch (err: any) {
     console.error('Decline errand error:', err);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }

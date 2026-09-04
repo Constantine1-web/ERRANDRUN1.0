@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MapPin, Clock, AlertCircle, Bike, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import { useAppStore } from '@/lib/store';
 import { formatCurrency } from '@/utils/pricing';
 import { Button } from '@/components/ui/Button';
@@ -40,7 +41,7 @@ export default function RunnerTasksPage() {
 
       setLoading(true);
       try {
-        const assignedRes = await fetch(`/api/runner/tasks?runnerId=${user.id}`);
+        const assignedRes = await authFetch('/api/runner/tasks');
         const assignedJson = await assignedRes.json();
         setAssigned(assignedJson.tasks || []);
 
@@ -161,10 +162,9 @@ export default function RunnerTasksPage() {
     setActionLoading(id);
     setMessage(null);
     try {
-      const res = await fetch('/api/errands/accept', {
+      const res = await authFetch('/api/errands/accept', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ errandId: id, runnerId: user.id }),
+        body: JSON.stringify({ errandId: id }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Accept failed');
@@ -187,10 +187,9 @@ export default function RunnerTasksPage() {
     setActionLoading(id);
     setMessage(null);
     try {
-      const res = await fetch('/api/errands/decline', {
+      const res = await authFetch('/api/errands/decline', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ errandId: id, runnerId: user.id }),
+        body: JSON.stringify({ errandId: id }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Decline failed');

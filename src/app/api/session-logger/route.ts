@@ -1,52 +1,50 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+import { adminSupabase } from '@/lib/serverAuth';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
-    // Initialize Supabase with service role key for server-side operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`session-log:${ip}`, 60, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
 
     const body = await request.json();
     const { sessionId, logoutAt, durationSeconds } = body;
 
-    if (!sessionId) {
-      return NextResponse.json({ error: 'Missing sessionId' }, { status: 400 });
+    if (!sessionId || typeof sessionId !== 'string') {
+      return NextResponse.json({ success: false, error: 'Missing or invalid sessionId' }, { status: 400 });
     }
 
+    const duration = typeof durationSeconds === 'number' && durationSeconds >= 0 ? Math.floor(durationSeconds) : null;
+    const logout = logoutAt && typeof logoutAt === 'string' ? logoutAt : new Date().toISOString();
+
     // Non-blocking update to sessions table
-    const { error } = await supabase
+    const { error } = await adminSupabase
       .from('sessions')
       .update({
-        logout_at: logoutAt,
-        duration_seconds: durationSeconds,
+        logout_at: logout,
+        duration_seconds: duration,
       })
       .eq('id', sessionId);
 
     if (error) {
-      console.error('Session logging error:', error);
-      // Return success anyway - we don't want to block the user experience
-      return NextResponse.json({ success: true, warning: 'Logging occurred with non-blocking update' });
+      console.warn('Session logging update non-fatal warning:', error.message);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Unexpected error in session logger:', error);
-    // Always return success to avoid blocking the user
-    return NextResponse.json({ success: true, warning: 'Unexpected error caught but handled gracefully' });
+    return NextResponse.json({ success: true, warning: 'Handled gracefully' });
   }
 }
 
-// Handle keepalive requests (navigator.sendBeacon compatibility)
+// Handle keepalive requests with restricted headers
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
 }

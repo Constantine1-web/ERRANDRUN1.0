@@ -1,14 +1,18 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`admin-stats:${ip}`, 30, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
     // 1. Total & completed errands
-    const { data: errands, error: errandsError } = await supabase
+    const { data: errands, error: errandsError } = await adminSupabase
       .from('errands')
       .select('id, status, total_fee, platform_fee, runner_amount, created_at');
 
@@ -23,7 +27,7 @@ export async function GET() {
     const totalRunnerPayouts = completedErrands.reduce((sum, e) => sum + Number(e.runner_amount || 0), 0);
 
     // 2. Verified runners count
-    const { count: runnerCount, error: runnerError } = await supabase
+    const { count: runnerCount, error: runnerError } = await adminSupabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('role', 'runner');
@@ -31,7 +35,7 @@ export async function GET() {
     if (runnerError) throw runnerError;
 
     // 3. Pending applications count
-    const { count: pendingAppsCount, error: pendingError } = await supabase
+    const { count: pendingAppsCount, error: pendingError } = await adminSupabase
       .from('runner_apps')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'pending');
@@ -39,7 +43,7 @@ export async function GET() {
     if (pendingError) throw pendingError;
 
     // 4. Total users count
-    const { count: userCount, error: userError } = await supabase
+    const { count: userCount, error: userError } = await adminSupabase
       .from('profiles')
       .select('*', { count: 'exact', head: true });
 
@@ -60,7 +64,7 @@ export async function GET() {
       },
     });
   } catch (error: any) {
-    console.error('Admin stats error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    console.error('Admin stats fetch error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

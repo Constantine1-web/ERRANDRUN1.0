@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import { useAppStore } from '@/lib/store';
 import { RunnerGuard } from '@/components/guards/RunnerGuard';
 import { formatCurrency } from '@/utils/pricing';
@@ -103,7 +104,7 @@ export default function RunnerOpportunityRadar() {
       }
 
       setLoading(true);
-      fetch('/api/errands/auto-release', { method: 'POST' }).catch(console.error);
+      authFetch('/api/errands/auto-release', { method: 'POST' }).catch(console.error);
       setStatusMessage(null);
 
       const profilePromise = supabase
@@ -206,10 +207,9 @@ export default function RunnerOpportunityRadar() {
     setStatusMessage(null);
 
     try {
-      const response = await fetch('/api/errands/accept', {
+      const response = await authFetch('/api/errands/accept', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ errandId: taskId, runnerId: user.id }),
+        body: JSON.stringify({ errandId: taskId }),
       });
 
       const result = await response.json();
@@ -239,10 +239,9 @@ export default function RunnerOpportunityRadar() {
     }
 
     try {
-      const res = await fetch('/api/wallet/withdraw', {
+      const res = await authFetch('/api/wallet/withdraw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id, amount: withdrawAmount })
+        body: JSON.stringify({ amount: withdrawAmount })
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to request payout');

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import { useAppStore } from '@/lib/store';
 import { usePaystackPayment } from 'react-paystack';
 import { formatCurrency } from '@/utils/pricing';
@@ -122,10 +123,9 @@ export default function UserDashboardContent() {
 
   const handlePaystackSuccess = (reference: any) => {
     toast.loading('Verifying deposit...', { id: 'topup' });
-    fetch('/api/wallet/verify', {
+    authFetch('/api/wallet/verify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference: reference.reference, userId: user?.id })
+      body: JSON.stringify({ reference: reference.reference })
     })
       .then(res => res.json())
       .then(data => {

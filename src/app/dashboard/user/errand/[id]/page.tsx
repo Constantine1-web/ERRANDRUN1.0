@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import { MapContainer, Marker, Polyline, TileLayer, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -131,7 +132,7 @@ export default function ErrandDetailPage() {
     }
 
     if (errand.status === 'completed') {
-      fetch(`/api/ratings?errandId=${errand.id}`)
+      authFetch(`/api/ratings?errandId=${errand.id}`)
         .then((res) => res.json())
         .then((res) => {
           if (res.success && res.data && res.data.length > 0) {
@@ -141,7 +142,7 @@ export default function ErrandDetailPage() {
         .catch(console.error);
     }
 
-    fetch(`/api/disputes?errandId=${errand.id}`)
+    authFetch(`/api/disputes?errandId=${errand.id}`)
       .then((res) => res.json())
       .then((res) => {
         if (res.success && res.data) {
@@ -156,7 +157,7 @@ export default function ErrandDetailPage() {
     if (!paymentReference) return;
     const verifyPayment = async () => {
       try {
-        const response = await fetch(`/api/payments?reference=${encodeURIComponent(paymentReference)}`);
+        const response = await authFetch(`/api/payments?reference=${encodeURIComponent(paymentReference)}`);
         const result = await response.json();
         if (result?.success) {
           toast.success('Payment confirmed! Errand is now live.');
@@ -176,17 +177,9 @@ export default function ErrandDetailPage() {
 
     try {
       setCancellingErrand(true);
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      if (!userId) {
-        toast.error('Please sign in');
-        return;
-      }
-
-      const res = await fetch('/api/errands/cancel', {
+      const res = await authFetch('/api/errands/cancel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ errandId: errand.id, userId, reason: cancelReason }),
+        body: JSON.stringify({ errandId: errand.id, reason: cancelReason }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to cancel errand');
@@ -208,19 +201,10 @@ export default function ErrandDetailPage() {
 
     try {
       setSubmittingDispute(true);
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-      if (!userId) {
-        toast.error('Please sign in');
-        return;
-      }
-
-      const res = await fetch('/api/disputes', {
+      const res = await authFetch('/api/disputes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           errandId: errand.id,
-          initiatorId: userId,
           reason: disputeReason,
           description: disputeDescription,
         }),
@@ -246,23 +230,12 @@ export default function ErrandDetailPage() {
 
     try {
       setSubmittingRating(true);
-      const { data: userData } = await supabase.auth.getUser();
-      const raterId = userData?.user?.id;
-      if (!raterId) {
-        toast.error('Please sign in');
-        return;
-      }
-
-      const res = await fetch('/api/ratings', {
+      const res = await authFetch('/api/ratings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           errandId: errand.id,
-          raterId,
-          rateeId: errand.runner_id,
           rating: selectedStars,
           review: reviewComment,
-          tags: selectedTags,
         }),
       });
       const data = await res.json();

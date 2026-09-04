@@ -1,19 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-/**
- * GET: Fetch all runner applications with associated profiles
- */
 export async function GET(request: NextRequest) {
   try {
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`admin-runners:${ip}`, 60, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    let query = supabase
+    let query = adminSupabase
       .from('runner_apps')
       .select(`
         id,
@@ -47,122 +48,98 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching runner apps:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to fetch runner applications' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Admin runner apps error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
-/**
- * POST: Review application (Approve or Reject)
- */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { appId, userId, action, adminNotes } = body;
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
 
-    if (!appId || !userId || !action) {
+    const body = await request.json();
+    const { applicationId, action, notes } = body;
+
+    if (!applicationId || typeof applicationId !== 'string' || !action) {
       return NextResponse.json(
-        { error: 'appId, userId, and action (approve | reject) are required' },
+        { success: false, error: 'Missing applicationId or action' },
         { status: 400 }
       );
     }
 
-    if (action !== 'approve' && action !== 'reject') {
-      return NextResponse.json({ error: 'Invalid action. Must be approve or reject' }, { status: 400 });
+    if (!['approve', 'deny'].includes(action)) {
+      return NextResponse.json({ success: false, error: 'Action must be approve or deny' }, { status: 400 });
     }
 
-    if (action === 'approve') {
-      // Fetch capacity dynamically using the new route logic
-      // 1. Get current settings
-      const { data: settingData, error: settingError } = await supabase
-        .from('platform_settings')
-        .select('setting_value')
-        .eq('setting_key', 'runner_limit')
-        .single();
+    // 1. Fetch the application to get user_id
+    const { data: app, error: fetchError } = await adminSupabase
+      .from('runner_apps')
+      .select('id, user_id, status')
+      .eq('id', applicationId)
+      .single();
 
-      let settings = { max_active_runners: 50, dynamic_ratio_enabled: true, users_per_runner: 5 };
-      if (!settingError && settingData) {
-        settings = { ...settings, ...settingData.setting_value };
-      }
-
-      // 2. Count active verified runners
-      const { count: runnersCount, error: countError } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('role', 'runner')
-        .eq('verification_status', 'verified');
-
-      if (countError) throw countError;
-      
-      let currentLimit = settings.max_active_runners;
-      
-      // 3. If dynamic ratio is enabled, calculate limit
-      if (settings.dynamic_ratio_enabled) {
-        const { count: usersCount, error: usersCountError } = await supabase
-          .from('profiles')
-          .select('id', { count: 'exact', head: true })
-          .eq('role', 'user');
-          
-        if (!usersCountError && usersCount !== null) {
-          const dynamicLimit = Math.max(10, Math.floor(usersCount / settings.users_per_runner));
-          currentLimit = Math.min(settings.max_active_runners, dynamicLimit);
-        }
-      }
-
-      if ((runnersCount || 0) >= currentLimit) {
-        return NextResponse.json(
-          { error: `Cannot approve runner: Platform has reached its current maximum runner capacity of ${currentLimit}.` },
-          { status: 403 }
-        );
-      }
+    if (fetchError || !app) {
+      return NextResponse.json({ success: false, error: 'Application not found' }, { status: 404 });
     }
 
-    const newAppStatus = action === 'approve' ? 'approved' : 'denied';
-    const newProfileStatus = action === 'approve' ? 'verified' : 'rejected';
-    const newProfileRole = action === 'approve' ? 'runner' : 'user';
+    const newStatus = action === 'approve' ? 'approved' : 'denied';
 
-    // 1. Update runner_apps record
-    const { error: appError } = await supabase
+    // 2. Update runner_apps record
+    const { error: appUpdateError } = await adminSupabase
       .from('runner_apps')
       .update({
-        status: newAppStatus,
-        admin_notes: adminNotes || null,
-        campus_record_checked: action === 'approve',
+        status: newStatus,
+        admin_notes: notes ? String(notes).slice(0, 500) : null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', appId);
+      .eq('id', applicationId);
 
-    if (appError) {
-      console.error('Error updating runner app:', appError);
-      return NextResponse.json({ error: appError.message }, { status: 500 });
+    if (appUpdateError) {
+      console.error('Failed to update runner application:', appUpdateError);
+      return NextResponse.json({ success: false, error: 'Failed to update application' }, { status: 500 });
     }
 
-    // 2. Update profiles record
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        role: newProfileRole,
-        verification_status: newProfileStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+    // 3. Update user profile role and verification status
+    if (action === 'approve') {
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
-    if (profileError) {
-      console.error('Error updating profile:', profileError);
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
+      const { error: profileError } = await adminSupabase
+        .from('profiles')
+        .update({
+          role: 'runner',
+          verification_status: 'verified',
+          verification_expires_at: oneYearFromNow.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', app.user_id);
+
+      if (profileError) {
+        console.error('Failed to elevate profile role to runner:', profileError);
+        return NextResponse.json({ success: false, error: 'Failed to update user profile' }, { status: 500 });
+      }
+    } else {
+      await adminSupabase
+        .from('profiles')
+        .update({
+          verification_status: 'rejected',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', app.user_id);
     }
 
     return NextResponse.json({
       success: true,
-      message: `Runner application has been ${newAppStatus}. Profile role set to ${newProfileRole}.`,
+      message: `Runner application ${newStatus} successfully`,
     });
   } catch (error: any) {
-    console.error('Runner vetting error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Admin runner action error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,52 +1,67 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase } from '@/lib/serverAuth';
 import crypto from 'crypto';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || '';
 
 export async function POST(request: NextRequest) {
   try {
+    if (!paystackSecretKey) {
+      console.error('PAYSTACK_SECRET_KEY is missing. Webhook rejected for security.');
+      return NextResponse.json({ error: 'Gateway configuration error' }, { status: 500 });
+    }
+
     const rawBody = await request.text();
     const signature = request.headers.get('x-paystack-signature');
 
-    // 1. Verify HMAC-SHA512 signature
-    if (paystackSecretKey) {
-      const hash = crypto
-        .createHmac('sha512', paystackSecretKey)
-        .update(rawBody)
-        .digest('hex');
+    if (!signature) {
+      return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 });
+    }
 
-      if (hash !== signature) {
-        console.warn('Paystack webhook signature mismatch');
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-      }
+    // 1. Verify HMAC-SHA512 signature in constant time (prevents timing attacks)
+    const expectedSignature = crypto
+      .createHmac('sha512', paystackSecretKey)
+      .update(rawBody)
+      .digest('hex');
+
+    const signatureBuffer = Buffer.from(signature, 'utf8');
+    const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
+
+    if (
+      signatureBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+    ) {
+      console.warn('Invalid Paystack webhook signature detected');
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
     const event = JSON.parse(rawBody);
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 2. Handle successful charge
+    // 2. Handle charge.success
     if (event.event === 'charge.success') {
       const data = event.data;
-      const reference = data.reference;
-      const amountNaira = data.amount / 100; // Paystack sends kobo
+      const reference = data?.reference;
+      const amountNaira = Number(data?.amount) / 100; // Paystack sends kobo
 
-      const { data: payment, error: paymentError } = await supabase
+      if (!reference || isNaN(amountNaira) || amountNaira <= 0) {
+        return NextResponse.json({ received: true, note: 'Malformed charge data' });
+      }
+
+      // Check if payment record exists
+      const { data: payment, error: paymentError } = await adminSupabase
         .from('payments')
         .select('*')
         .eq('reference', reference)
-        .single();
+        .maybeSingle();
 
-      if (paymentError || !payment) {
-        console.warn(`Payment with reference ${reference} not found in database`);
-        return NextResponse.json({ received: true, note: 'Payment record not found' });
+      // If payment already completed, return immediately (Idempotency)
+      if (payment && payment.status === 'completed') {
+        return NextResponse.json({ received: true, note: 'Payment already processed' });
       }
 
-      if (payment.status !== 'completed') {
+      if (payment) {
         // Mark payment as completed
-        await supabase
+        await adminSupabase
           .from('payments')
           .update({
             status: 'completed',
@@ -56,23 +71,21 @@ export async function POST(request: NextRequest) {
 
         // A. If payment was for an errand, activate the errand to 'unassigned'
         if (payment.errand_id) {
-          await supabase
+          await adminSupabase
             .from('errands')
             .update({ status: 'unassigned', updated_at: new Date().toISOString() })
             .eq('id', payment.errand_id);
-        }
-
-        // B. If payment was a wallet top-up, credit the user's wallet
-        if (!payment.errand_id) {
-          const { data: wallet } = await supabase
+        } else {
+          // B. Credit User Wallet
+          const { data: wallet } = await adminSupabase
             .from('wallets')
-            .select('*')
+            .select('id, balance, total_spent')
             .eq('user_id', payment.user_id)
-            .single();
+            .maybeSingle();
 
           if (wallet) {
-            const newBalance = Number(wallet.balance) + Number(amountNaira);
-            await supabase
+            const newBalance = Number(wallet.balance) + amountNaira;
+            await adminSupabase
               .from('wallets')
               .update({
                 balance: newBalance,
@@ -80,17 +93,24 @@ export async function POST(request: NextRequest) {
               })
               .eq('id', wallet.id);
 
-            await supabase.from('wallet_transactions').insert([
-              {
-                wallet_id: wallet.id,
-                transaction_type: 'credit',
+            // Record transaction idempotently
+            const { data: existingTx } = await adminSupabase
+              .from('transactions')
+              .select('id')
+              .eq('reference', reference)
+              .maybeSingle();
+
+            if (!existingTx) {
+              await adminSupabase.from('transactions').insert({
+                user_id: payment.user_id,
                 amount: amountNaira,
-                reference_id: payment.id,
-                reference_type: 'payment',
-                description: `Deposit via Paystack Webhook - Ref: ${reference}`,
-                balance_after: newBalance,
-              },
-            ]);
+                type: 'topup',
+                status: 'success',
+                reference,
+                description: 'Paystack Automated Webhook Top-up',
+                created_at: new Date().toISOString(),
+              });
+            }
           }
         }
       }
@@ -98,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error('Paystack webhook error:', error);
-    return NextResponse.json({ error: 'Webhook processing error' }, { status: 500 });
+    console.error('Webhook processing exception:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

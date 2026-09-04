@@ -1,56 +1,117 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase, requireAuth } from '@/lib/serverAuth';
+import { DisputeSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+/**
+ * GET: Fetch disputes for a specific errand
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const authCheck = await requireAuth(request);
+    if (authCheck.response) return authCheck.response;
+
+    const callerId = authCheck.auth.user.id;
+    const isAdmin = authCheck.auth.profile?.role === 'admin';
+
+    const { searchParams } = new URL(request.url);
+    const errandId = searchParams.get('errandId');
+
+    if (!errandId) {
+      return NextResponse.json({ success: false, error: 'errandId is required' }, { status: 400 });
+    }
+
+    // Verify errand party or admin
+    const { data: errand, error: errandError } = await adminSupabase
+      .from('errands')
+      .select('id, requester_id, runner_id')
+      .eq('id', errandId)
+      .single();
+
+    if (errandError || !errand) {
+      return NextResponse.json({ success: false, error: 'Errand not found' }, { status: 404 });
+    }
+
+    if (errand.requester_id !== callerId && errand.runner_id !== callerId && !isAdmin) {
+      return NextResponse.json({ success: false, error: 'Forbidden: You are not a party to this errand' }, { status: 403 });
+    }
+
+    const { data: disputes, error } = await adminSupabase
+      .from('disputes')
+      .select('*')
+      .eq('errand_id', errandId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ success: false, error: 'Failed to fetch disputes' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, disputes });
+  } catch (error: any) {
+    console.error('Dispute fetch exception:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  }
+}
 
 /**
  * POST: File a dispute on an errand
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { errandId, initiatorId, reason, description } = body;
+    const authCheck = await requireAuth(request);
+    if (authCheck.response) return authCheck.response;
 
-    if (!errandId || !initiatorId || !reason || !description) {
+    const initiatorId = authCheck.auth.user.id;
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`file-dispute:${initiatorId || ip}`, 5, 15 * 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
+    const body = await request.json();
+    const parseResult = DisputeSchema.safeParse(body);
+
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: errandId, initiatorId, reason, description' },
+        { success: false, error: 'Validation failed', details: parseResult.error.errors },
         { status: 400 }
       );
     }
 
-    // 1. Fetch the errand to verify parties
-    const { data: errand, error: errandError } = await supabase
+    const { errandId, reason, description } = parseResult.data;
+
+    // 1. Fetch errand and verify parties
+    const { data: errand, error: errandError } = await adminSupabase
       .from('errands')
       .select('id, requester_id, runner_id, status')
       .eq('id', errandId)
       .single();
 
     if (errandError || !errand) {
-      return NextResponse.json({ error: 'Errand not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Errand not found' }, { status: 404 });
     }
 
     // Determine respondent
-    let respondentId = errand.runner_id;
+    let respondentId: string | null = null;
     if (initiatorId === errand.runner_id) {
       respondentId = errand.requester_id;
-    } else if (initiatorId !== errand.requester_id) {
+    } else if (initiatorId === errand.requester_id) {
+      respondentId = errand.runner_id;
+    } else {
       return NextResponse.json(
-        { error: 'Only the requester or assigned runner can file a dispute on this errand' },
+        { success: false, error: 'Forbidden: Only the requester or assigned runner can file a dispute' },
         { status: 403 }
       );
     }
 
     if (!respondentId) {
       return NextResponse.json(
-        { error: 'Cannot file a dispute on an unassigned errand' },
+        { success: false, error: 'Cannot file a dispute on an unassigned errand' },
         { status: 400 }
       );
     }
 
     // 2. Insert into disputes table
-    const { data: dispute, error: disputeError } = await supabase
+    const { data: dispute, error: disputeError } = await adminSupabase
       .from('disputes')
       .insert([
         {
@@ -60,62 +121,26 @@ export async function POST(request: NextRequest) {
           reason,
           description,
           status: 'open',
+          created_at: new Date().toISOString(),
         },
       ])
       .select()
       .single();
 
     if (disputeError) {
-      console.error('Error inserting dispute:', disputeError);
-      return NextResponse.json({ error: disputeError.message }, { status: 500 });
+      console.error('Failed to create dispute:', disputeError);
+      return NextResponse.json({ success: false, error: 'Failed to file dispute' }, { status: 500 });
     }
 
-    // 3. Mark errand as disputed if not already completed
-    if (errand.status !== 'completed' && errand.status !== 'cancelled') {
-      await supabase
-        .from('errands')
-        .update({ status: 'disputed', updated_at: new Date().toISOString() })
-        .eq('id', errandId);
-    }
+    // 3. Mark errand as disputed
+    await adminSupabase
+      .from('errands')
+      .update({ status: 'disputed', updated_at: new Date().toISOString() })
+      .eq('id', errandId);
 
-    return NextResponse.json({
-      success: true,
-      data: dispute,
-      message: 'Dispute submitted. Our admin team will investigate and arbitrate.',
-    });
+    return NextResponse.json({ success: true, dispute });
   } catch (error: any) {
-    console.error('Dispute filing error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-/**
- * GET: Fetch dispute for an errand
- */
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const errandId = searchParams.get('errandId');
-
-    if (!errandId) {
-      return NextResponse.json({ error: 'errandId is required' }, { status: 400 });
-    }
-
-    const { data: dispute, error } = await supabase
-      .from('disputes')
-      .select('*')
-      .eq('errand_id', errandId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, data: dispute || null });
-  } catch (error: any) {
-    console.error('Fetch dispute error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('File dispute exception:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

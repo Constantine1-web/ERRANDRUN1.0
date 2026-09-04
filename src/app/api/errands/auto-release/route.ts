@@ -1,16 +1,17 @@
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase } from '@/lib/serverAuth';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`auto-release:${ip}`, 6, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
     // 1. Find all errands that are 'assigned' but haven't progressed to 'in_progress' for over 2 hours
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
 
-    const { data: expiredErrands, error: fetchError } = await supabase
+    const { data: expiredErrands, error: fetchError } = await adminSupabase
       .from('errands')
       .select('id')
       .eq('status', 'assigned')
@@ -25,17 +26,17 @@ export async function POST() {
       return NextResponse.json({ success: true, message: 'No expired errands found', releasedCount: 0 });
     }
 
-    const expiredIds = expiredErrands.map(e => e.id);
+    const expiredIds = expiredErrands.map((e) => e.id);
 
     // 2. Reset them to 'unassigned' and clear runner data
-    const { error: updateError } = await supabase
+    const { error: updateError } = await adminSupabase
       .from('errands')
       .update({
         status: 'unassigned',
         runner_id: null,
         runner_amount: 0,
         platform_fee: 0,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .in('id', expiredIds);
 
@@ -50,4 +51,3 @@ export async function POST() {
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
-

@@ -1,16 +1,31 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient'; // Service role client
+import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
+import { AdminProcessPayoutSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const { transactionId } = await req.json();
+    const authCheck = await requireAdmin(req);
+    if (authCheck.response) return authCheck.response;
 
-    if (!transactionId) {
-      return NextResponse.json({ error: 'Transaction ID is required' }, { status: 400 });
+    const ip = getClientIp(req);
+    const rate = checkRateLimit(`admin-payouts:${ip}`, 30, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
+    const body = await req.json();
+    const parseResult = AdminProcessPayoutSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid payout request payload', details: parseResult.error.errors },
+        { status: 400 }
+      );
     }
 
-    // 1. Fetch transaction and verify it's pending
-    const { data: tx, error: txError } = await supabase
+    const { transactionId } = parseResult.data;
+
+    // 1. Fetch transaction and verify it's pending withdrawal
+    const { data: tx, error: txError } = await adminSupabase
       .from('transactions')
       .select('*, profiles(bank_name, account_number, account_name, full_name, id)')
       .eq('id', transactionId)
@@ -19,33 +34,34 @@ export async function POST(req: Request) {
       .single();
 
     if (txError || !tx) {
-      return NextResponse.json({ error: 'Pending transaction not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Pending withdrawal transaction not found' }, { status: 404 });
     }
 
     const runner = tx.profiles;
     
-    if (!runner.account_number || !runner.bank_name) {
-      return NextResponse.json({ error: 'Runner has not provided bank details' }, { status: 400 });
+    if (!runner?.account_number || !runner?.bank_name) {
+      return NextResponse.json({ success: false, error: 'Runner has not provided complete bank details' }, { status: 400 });
     }
 
-    // In a real production environment, you would call Paystack Transfer API here:
-    // 1. Create Transfer Recipient (POST https://api.paystack.co/transferrecipient)
-    // 2. Initiate Transfer (POST https://api.paystack.co/transfer)
-    
-    // For V1 / Dev, we will simulate the Paystack call success
-    // await simulatePaystackTransfer(tx.amount, runner);
-
-    // Update transaction to success
-    const { error: updateError } = await supabase
+    // 2. Update transaction to success atomically
+    const { error: updateError } = await adminSupabase
       .from('transactions')
-      .update({ status: 'success', description: 'Withdrawal Processed (Automated API)' })
-      .eq('id', transactionId);
+      .update({
+        status: 'success',
+        description: `Withdrawal processed by admin (${authCheck.auth.user.email})`,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', transactionId)
+      .eq('status', 'pending');
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Failed to update payout transaction:', updateError);
+      return NextResponse.json({ success: false, error: 'Failed to process payout transaction' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, message: 'Payout processed successfully' });
   } catch (error: any) {
-    console.error('Payout error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    console.error('Payout processing error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

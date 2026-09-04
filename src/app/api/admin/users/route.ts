@@ -1,16 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
+import { AdminUserUpdateSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function GET(request: NextRequest) {
   try {
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`admin-users:${ip}`, 60, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
 
-    let query = supabase
+    let query = adminSupabase
       .from('profiles')
       .select(`
         *,
@@ -26,39 +31,47 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Admin users fetch error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to fetch user profiles' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Admin users error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, role, verificationStatus } = body;
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+    const body = await request.json();
+    const parseResult = AdminUserUpdateSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid user update payload', details: parseResult.error.errors },
+        { status: 400 }
+      );
     }
+
+    const { userId, role, verificationStatus } = parseResult.data;
 
     const updates: any = { updated_at: new Date().toISOString() };
     if (role) updates.role = role;
     if (verificationStatus) updates.verification_status = verificationStatus;
 
-    const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+    const { error } = await adminSupabase.from('profiles').update(updates).eq('id', userId);
 
     if (error) {
       console.error('Admin user update error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to update user profile' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'User profile updated successfully' });
   } catch (error: any) {
-    console.error('Admin user update error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Admin user update exception:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

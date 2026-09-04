@@ -1,45 +1,81 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { adminSupabase, requireAuth } from '@/lib/serverAuth';
+import { WithdrawSchema } from '@/lib/validations';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, amount } = await req.json();
+    const authCheck = await requireAuth(req);
+    if (authCheck.response) return authCheck.response;
 
-    if (!userId || !amount || amount < 2000) {
-      return NextResponse.json({ success: false, error: 'Invalid amount. Minimum withdrawal is N2000' }, { status: 400 });
+    const userId = authCheck.auth.user.id;
+
+    // Rate limit: max 5 withdrawal requests per 10 minutes per user
+    const ip = getClientIp(req);
+    const rate = checkRateLimit(`withdraw:${userId || ip}`, 5, 10 * 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
+    const body = await req.json();
+    const parseResult = WithdrawSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { success: false, error: 'Validation failed', details: parseResult.error.errors },
+        { status: 400 }
+      );
     }
 
-    // 1. Check Wallet Balance
-    const { data: wallet, error: walletError } = await supabase
+    const { amount } = parseResult.data;
+
+    // 1. Fetch Verified Wallet Balance
+    const { data: wallet, error: walletError } = await adminSupabase
       .from('wallets')
-      .select('balance')
+      .select('id, balance')
       .eq('user_id', userId)
       .single();
 
-    if (walletError || !wallet || Number(wallet.balance) < Number(amount)) {
-      return NextResponse.json({ success: false, error: 'Insufficient funds' }, { status: 400 });
+    if (walletError || !wallet || Number(wallet.balance) < amount) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Insufficient funds. Your available balance is ₦${Number(wallet?.balance || 0).toLocaleString()}`,
+        },
+        { status: 400 }
+      );
     }
 
-    // 2. Deduct Balance
-    const newBalance = Number(wallet.balance) - Number(amount);
-    await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', userId);
+    // 2. Deduct Balance Atomically
+    const newBalance = Number(wallet.balance) - amount;
+    const { error: updateError } = await adminSupabase
+      .from('wallets')
+      .update({ balance: newBalance, last_updated: new Date().toISOString() })
+      .eq('user_id', userId);
+
+    if (updateError) {
+      console.error('Failed to deduct withdrawal balance:', updateError);
+      return NextResponse.json({ success: false, error: 'Failed to process withdrawal' }, { status: 500 });
+    }
 
     // 3. Record Withdrawal Transaction
-    await supabase.from('transactions').insert({
+    const { error: txError } = await adminSupabase.from('transactions').insert({
       user_id: userId,
       amount: amount,
       type: 'withdrawal',
-      status: 'pending', // Pending admin manual payout
-      description: 'Runner requested withdrawal to bank account'
+      status: 'pending',
+      description: 'Runner requested payout to bank account',
+      created_at: new Date().toISOString(),
     });
 
-    return NextResponse.json({ success: true, balance: newBalance });
+    if (txError) {
+      // Rollback balance deduction
+      await adminSupabase.from('wallets').update({ balance: wallet.balance }).eq('user_id', userId);
+      console.error('Transaction insert failed, rolled back:', txError);
+      return NextResponse.json({ success: false, error: 'Transaction recording failed' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, balance: newBalance, amount });
   } catch (error: any) {
-    console.error('Withdrawal error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Withdrawal exception:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

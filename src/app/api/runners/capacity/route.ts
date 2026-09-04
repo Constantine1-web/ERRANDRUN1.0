@@ -1,10 +1,15 @@
-import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient'; // Service role client
+import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase } from '@/lib/serverAuth';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`capacity-check:${ip}`, 30, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
     // 1. Get current settings
-    const { data: settingData, error: settingError } = await supabase
+    const { data: settingData, error: settingError } = await adminSupabase
       .from('platform_settings')
       .select('setting_value')
       .eq('setting_key', 'runner_limit')
@@ -16,7 +21,7 @@ export async function GET() {
     }
 
     // 2. Count active verified runners
-    const { count: runnersCount, error: countError } = await supabase
+    const { count: runnersCount, error: countError } = await adminSupabase
       .from('profiles')
       .select('id', { count: 'exact', head: true })
       .eq('role', 'runner')
@@ -28,14 +33,13 @@ export async function GET() {
     
     // 3. If dynamic ratio is enabled, calculate limit based on total standard users
     if (settings.dynamic_ratio_enabled) {
-      const { count: usersCount, error: usersCountError } = await supabase
+      const { count: usersCount, error: usersCountError } = await adminSupabase
         .from('profiles')
         .select('id', { count: 'exact', head: true })
         .eq('role', 'user');
         
       if (!usersCountError && usersCount !== null) {
         const dynamicLimit = Math.max(10, Math.floor(usersCount / settings.users_per_runner));
-        // Use the smaller of the two limits as the absolute cap, or dynamic limit alone
         currentLimit = Math.min(settings.max_active_runners, dynamicLimit);
       }
     }
@@ -48,10 +52,9 @@ export async function GET() {
       currentRunners,
       limit: currentLimit,
       isAtCapacity,
-      settings
     });
   } catch (error: any) {
     console.error('Runner Capacity Check Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to verify capacity' }, { status: 500 });
   }
 }

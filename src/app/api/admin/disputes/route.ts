@@ -1,16 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function GET(request: NextRequest) {
   try {
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`admin-disputes:${ip}`, 60, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    let query = supabase
+    let query = adminSupabase
       .from('disputes')
       .select(`
         *,
@@ -28,46 +32,47 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Admin disputes fetch error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to fetch disputes' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Admin disputes error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
+
     const body = await request.json();
     const { disputeId, resolutionType, resolutionAmount, adminNotes, status } = body;
 
-    if (!disputeId) {
-      return NextResponse.json({ error: 'disputeId is required' }, { status: 400 });
+    if (!disputeId || typeof disputeId !== 'string') {
+      return NextResponse.json({ success: false, error: 'disputeId is required' }, { status: 400 });
     }
 
     const updates: any = {
       status: status || 'resolved',
       resolution_type: resolutionType || 'no_action',
-      resolution_amount: resolutionAmount ? Number(resolutionAmount) : null,
-      admin_notes: adminNotes || null,
+      resolution_amount: resolutionAmount !== undefined && resolutionAmount !== null ? Number(resolutionAmount) : null,
+      admin_notes: adminNotes ? String(adminNotes).slice(0, 1000) : null,
       resolved_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('disputes').update(updates).eq('id', disputeId);
+    const { error } = await adminSupabase.from('disputes').update(updates).eq('id', disputeId);
 
     if (error) {
       console.error('Admin dispute update error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to update dispute' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'Dispute updated successfully' });
   } catch (error: any) {
-    console.error('Admin dispute resolution error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Admin dispute update exception:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

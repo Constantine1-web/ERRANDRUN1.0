@@ -9,6 +9,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import toast from 'react-hot-toast';
 import { useErrandTracking } from '@/hooks/useRealtimeErrands';
 import {
@@ -91,12 +92,10 @@ export default function RunnerTrackDynamicPage() {
         return;
       }
 
-      const response = await fetch('/api/tracking', {
+      const response = await authFetch('/api/tracking', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           errandId,
-          runnerId,
           statusUpdate: message,
           currentLocation: lat && lng ? { lat: Number(lat), lng: Number(lng) } : null,
           runnerNotes: notes,
@@ -146,10 +145,9 @@ export default function RunnerTrackDynamicPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch('/api/tracking/complete', {
+      const response = await authFetch('/api/tracking/complete', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ errandId, runnerId: (await supabase.auth.getUser()).data.user?.id, pin }),
+        body: JSON.stringify({ errandId, pin }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
@@ -173,14 +171,13 @@ export default function RunnerTrackDynamicPage() {
 
     try {
       setSubmitting(true);
-      const res = await fetch('/api/tracking/dispute', {
+      const res = await authFetch('/api/tracking/dispute', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           errandId,
-          runnerId: (await supabase.auth.getUser()).data.user?.id,
           reason,
-          location: { lat: Number(lat), lng: Number(lng) },
+          lat: Number(lat),
+          lng: Number(lng),
         }),
       });
       const data = await res.json();

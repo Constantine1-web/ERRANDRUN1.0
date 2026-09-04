@@ -1,16 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function GET(request: NextRequest) {
   try {
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`admin-errands:${ip}`, 60, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    let query = supabase
+    let query = adminSupabase
       .from('errands')
       .select(`
         *,
@@ -27,29 +31,32 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Admin errands fetch error:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Failed to fetch errands' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Admin errands error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const authCheck = await requireAdmin(request);
+    if (authCheck.response) return authCheck.response;
+
     const body = await request.json();
     const { errandId, action, notes } = body;
 
-    if (!errandId || !action) {
-      return NextResponse.json({ error: 'errandId and action are required' }, { status: 400 });
+    if (!errandId || typeof errandId !== 'string' || !action) {
+      return NextResponse.json({ success: false, error: 'errandId and action are required' }, { status: 400 });
     }
 
     if (action === 'cancel') {
-      const { error } = await supabase
+      const { error } = await adminSupabase
         .from('errands')
-        .update({ status: 'cancelled', notes: notes || 'Cancelled by admin', updated_at: new Date().toISOString() })
+        .update({ status: 'cancelled', notes: notes ? String(notes).slice(0, 500) : 'Cancelled by admin', updated_at: new Date().toISOString() })
         .eq('id', errandId);
 
       if (error) throw error;
@@ -57,28 +64,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'complete') {
-      const { error } = await supabase
+      const { error } = await adminSupabase
         .from('errands')
         .update({ status: 'completed', actual_completion_time: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq('id', errandId);
 
       if (error) throw error;
-      return NextResponse.json({ success: true, message: 'Errand manually marked completed.' });
+      return NextResponse.json({ success: true, message: 'Errand marked complete by admin.' });
     }
 
-    if (action === 'unassign') {
-      const { error } = await supabase
-        .from('errands')
-        .update({ status: 'unassigned', runner_id: null, updated_at: new Date().toISOString() })
-        .eq('id', errandId);
-
-      if (error) throw error;
-      return NextResponse.json({ success: true, message: 'Runner unassigned. Errand returned to open pool.' });
-    }
-
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
   } catch (error: any) {
     console.error('Admin errand update error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
+import { authFetch } from '@/lib/apiClient';
 import { formatCurrency } from '@/utils/pricing';
 import {
   ShieldCheck,
@@ -186,7 +187,7 @@ export default function AdminDashboard() {
   const fetchStats = useCallback(async () => {
     try {
       setLoadingStats(true);
-      const res = await fetch('/api/admin/stats');
+      const res = await authFetch('/api/admin/stats');
       const data = await res.json();
       if (data.success) setStats(data.stats);
     } catch (err) {
@@ -199,7 +200,7 @@ export default function AdminDashboard() {
   const fetchApplications = useCallback(async () => {
     try {
       setLoadingApps(true);
-      const res = await fetch(`/api/admin/runners?status=${appStatusFilter}`);
+      const res = await authFetch(`/api/admin/runners?status=${appStatusFilter}`);
       const data = await res.json();
       if (data.success) setApplications(data.data || []);
     } catch {
@@ -212,7 +213,7 @@ export default function AdminDashboard() {
   const fetchErrands = useCallback(async () => {
     try {
       setLoadingErrands(true);
-      const res = await fetch(`/api/admin/errands?status=${errandStatusFilter}`);
+      const res = await authFetch(`/api/admin/errands?status=${errandStatusFilter}`);
       const data = await res.json();
       if (data.success) setErrands(data.data || []);
     } catch {
@@ -225,7 +226,7 @@ export default function AdminDashboard() {
   const fetchDisputes = useCallback(async () => {
     try {
       setLoadingDisputes(true);
-      const res = await fetch('/api/admin/disputes');
+      const res = await authFetch('/api/admin/disputes');
       const data = await res.json();
       if (data.success) setDisputes(data.data || []);
     } catch {
@@ -249,10 +250,9 @@ export default function AdminDashboard() {
     try {
       setProcessingId(app.id);
       const notes = adminNotes[app.id] || '';
-      const res = await fetch('/api/admin/runners', {
+      const res = await authFetch('/api/admin/runners', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appId: app.id, userId: app.user_id, action, adminNotes: notes }),
+        body: JSON.stringify({ applicationId: app.id, action: action === 'approve' ? 'approve' : 'deny', notes }),
       });
       const result = await res.json();
       if (!res.ok || !result.success) throw new Error(result.error || 'Review failed');
@@ -267,9 +267,8 @@ export default function AdminDashboard() {
 
   const handleErrandAction = async (errandId: string, action: 'cancel' | 'complete' | 'unassign') => {
     try {
-      const res = await fetch('/api/admin/errands', {
+      const res = await authFetch('/api/admin/errands', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ errandId, action }),
       });
       const data = await res.json();
@@ -284,9 +283,8 @@ export default function AdminDashboard() {
   const handleProcessPayout = async (transactionId: string) => {
     setProcessingPayoutId(transactionId);
     try {
-      const res = await fetch('/api/admin/payouts/process', {
+      const res = await authFetch('/api/admin/payouts/process', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transactionId }),
       });
       const data = await res.json();
@@ -302,12 +300,10 @@ export default function AdminDashboard() {
 
   const handleResolveDispute = async (d: DisputeRecord, action: 'refund' | 'payout_runner' | 'no_action') => {
     try {
-      const res = await fetch('/api/admin/disputes/resolve', {
+      const res = await authFetch('/api/admin/disputes/resolve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           disputeId: d.id,
-          errandId: d.errand_id,
           resolutionType: action,
           adminNotes: disputeNotes[d.id] || '',
         }),

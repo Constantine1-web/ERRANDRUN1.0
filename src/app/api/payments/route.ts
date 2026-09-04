@@ -1,59 +1,76 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { adminSupabase, requireAuth } from '@/lib/serverAuth';
+import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 import axios from 'axios';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || '';
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, amount, email, errandId, metadata } = body;
+    const authCheck = await requireAuth(request);
+    if (authCheck.response) return authCheck.response;
 
-    if (!userId || !amount || !email) {
+    const userId = authCheck.auth.user.id;
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`payment-init:${userId || ip}`, 10, 60 * 1000);
+    if (!rate.allowed) return rateLimitExceededResponse(rate.resetTime);
+
+    const body = await request.json();
+    const { amount, email, errandId, metadata } = body;
+
+    const numAmount = Number(amount);
+    if (isNaN(numAmount) || numAmount < 100 || numAmount > 1000000) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, amount, email' },
+        { success: false, error: 'Invalid amount. Minimum is ₦100 and maximum is ₦1,000,000' },
         { status: 400 }
       );
     }
 
-    // Initialize Supabase
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const payerEmail = email || authCheck.auth.user.email;
+    if (!payerEmail || typeof payerEmail !== 'string') {
+      return NextResponse.json({ success: false, error: 'Valid email is required' }, { status: 400 });
+    }
 
-    // Create payment record in database first
-    const { data: payment, error: dbError } = await supabase
+    if (!paystackSecretKey) {
+      console.error('PAYSTACK_SECRET_KEY is not set');
+      return NextResponse.json({ success: false, error: 'Payment gateway not configured' }, { status: 500 });
+    }
+
+    // 1. Create pending payment record in database
+    const { data: payment, error: dbError } = await adminSupabase
       .from('payments')
       .insert([
         {
           user_id: userId,
-          errand_id: errandId,
-          amount,
+          errand_id: errandId || null,
+          amount: numAmount,
           payment_method: 'paystack',
           status: 'pending',
+          created_at: new Date().toISOString(),
         },
       ])
       .select()
       .single();
 
-    if (dbError) {
-      console.error('Database error:', dbError);
-      return NextResponse.json({ error: 'Failed to create payment record' }, { status: 500 });
+    if (dbError || !payment) {
+      console.error('Payment record insert error:', dbError);
+      return NextResponse.json({ success: false, error: 'Failed to initialize payment record' }, { status: 500 });
     }
 
-    // Initialize Paystack payment
+    // 2. Initialize Paystack payment
     try {
       const response = await axios.post(
         'https://api.paystack.co/transaction/initialize',
         {
-          email,
-          amount: Math.round(amount * 100), // Paystack uses kobo (100 kobo = 1 naira)
+          email: payerEmail,
+          amount: Math.round(numAmount * 100), // Kobo
           metadata: {
             userId,
             paymentId: payment.id,
-            errandId,
-            ...metadata,
+            errandId: errandId || null,
+            ...(typeof metadata === 'object' ? metadata : {}),
           },
           channels: ['card', 'bank_transfer', 'ussd'],
           callback_url: errandId
@@ -68,12 +85,10 @@ export async function POST(request: NextRequest) {
         }
       );
 
-      // Update payment with Paystack reference
-      await supabase
+      // Store reference
+      await adminSupabase
         .from('payments')
-        .update({
-          reference: response.data.data.reference,
-        })
+        .update({ reference: response.data.data.reference })
         .eq('id', payment.id);
 
       return NextResponse.json({
@@ -81,65 +96,51 @@ export async function POST(request: NextRequest) {
         data: response.data.data,
         paymentId: payment.id,
       });
-    } catch (paystackError) {
-      console.error('Paystack error:', paystackError);
-
-      // Update payment status to failed
-      await supabase.from('payments').update({ status: 'failed' }).eq('id', payment.id);
-
-      return NextResponse.json(
-        { error: 'Failed to initialize Paystack payment' },
-        { status: 500 }
-      );
+    } catch (paystackError: any) {
+      console.error('Paystack initialize error:', paystackError?.response?.data || paystackError);
+      await adminSupabase.from('payments').update({ status: 'failed' }).eq('id', payment.id);
+      return NextResponse.json({ success: false, error: 'Failed to initialize payment with Paystack' }, { status: 502 });
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Payment initialization error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
 /**
- * Verify Paystack payment
+ * GET: Verify Paystack payment with reference
  */
 export async function GET(request: NextRequest) {
   try {
+    const authCheck = await requireAuth(request);
+    if (authCheck.response) return authCheck.response;
+
     const { searchParams } = new URL(request.url);
     const reference = searchParams.get('reference');
 
     if (!reference) {
-      return NextResponse.json(
-        { error: 'Missing reference parameter' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'Missing reference parameter' }, { status: 400 });
     }
 
-    // Verify with Paystack
-    const response = await axios.get(
-      `https://api.paystack.co/transaction/verify/${reference}`,
-      {
-        headers: {
-          Authorization: `Bearer ${paystackSecretKey}`,
-        },
-      }
-    );
+    if (!paystackSecretKey) {
+      return NextResponse.json({ success: false, error: 'Payment gateway configuration error' }, { status: 500 });
+    }
 
-    const paystackData = response.data.data;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const response = await axios.get(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: { Authorization: `Bearer ${paystackSecretKey}` },
+    });
 
-    // Update payment status in database
-    if (paystackData.status === 'success') {
-      const { data: payment } = await supabase
+    const paystackData = response.data?.data;
+
+    if (paystackData?.status === 'success') {
+      const { data: payment } = await adminSupabase
         .from('payments')
         .select('*')
         .eq('reference', reference)
-        .single();
+        .maybeSingle();
 
       if (payment && payment.status !== 'completed') {
-        // Update payment status
-        await supabase
+        await adminSupabase
           .from('payments')
           .update({
             status: 'completed',
@@ -147,59 +148,32 @@ export async function GET(request: NextRequest) {
           })
           .eq('id', payment.id);
 
-        // Mark errand confirmed when payment completes
         if (payment.errand_id) {
-          await supabase
+          await adminSupabase
             .from('errands')
             .update({ status: 'unassigned' })
             .eq('id', payment.errand_id);
-        }
-
-        // Credit user wallet if not from an errand
-        if (!payment.errand_id) {
-          const wallet = await supabase
+        } else {
+          // Credit wallet
+          const { data: wallet } = await adminSupabase
             .from('wallets')
-            .select('*')
+            .select('id, balance')
             .eq('user_id', payment.user_id)
-            .single();
+            .maybeSingle();
 
-          if (wallet.data) {
-            const newBalance = Number(wallet.data.balance) + Number(payment.amount);
-            await supabase
-              .from('wallets')
-              .update({
-                balance: newBalance,
-                total_spent: Number(wallet.data.total_spent || 0),
-                last_updated: new Date().toISOString(),
-              })
-              .eq('id', wallet.data.id);
-
-            // Add wallet transaction
-            await supabase.from('wallet_transactions').insert([
-              {
-                wallet_id: wallet.data.id,
-                transaction_type: 'credit',
-                amount: payment.amount,
-                reference_id: payment.id,
-                reference_type: 'payment',
-                description: `Deposit via Paystack - Reference: ${reference}`,
-                balance_after: newBalance,
-              },
-            ]);
+          if (wallet) {
+            const newBal = Number(wallet.balance) + Number(payment.amount);
+            await adminSupabase.from('wallets').update({ balance: newBal }).eq('id', wallet.id);
           }
         }
       }
+
+      return NextResponse.json({ success: true, data: paystackData });
     }
 
-    return NextResponse.json({
-      success: paystackData.status === 'success',
-      data: paystackData,
-    });
-  } catch (error) {
-    console.error('Payment verification error:', error);
-    return NextResponse.json(
-      { error: 'Failed to verify payment' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Payment verification failed' }, { status: 400 });
+  } catch (error: any) {
+    console.error('Payment verify GET error:', error);
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
