@@ -62,5 +62,15 @@
     "postcss": "^8.4.30",
     "prettier": "^3.0.3",
     "supabase": "^1.92.0"
+  },
+  "overrides": {
+    "react-leaflet": {
+      "react": "",
+      "react-dom": "-dom"
+    },
+    "@react-leaflet/core": {
+      "react": "",
+      "react-dom": "-dom"
+    }
   }
 }
