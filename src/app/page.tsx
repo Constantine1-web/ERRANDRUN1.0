@@ -194,17 +194,31 @@ export default function LandingPage() {
             <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-[2px] bg-slate-100 dark:bg-slate-800 -z-10"></div>
             
             {[
-              { num: '01', title: 'Request', desc: 'Tell us what you need and where it needs to go.', icon: MapPin },
+              { num: '01', title: 'Request', desc: 'Tell us what you need and where it needs to go.', icon: MapPin, image: '/step1-3d.jpg' },
               { num: '02', title: 'Get Matched', desc: 'A nearby verified Runner accepts your errand.', icon: Users },
               { num: '03', title: 'Get It Done', desc: 'Track the progress until your errand reaches you.', icon: CheckCircle2 }
             ].map((step, i) => (
-              <div key={i} className="bg-slate-50 dark:bg-[#121824] rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative text-center">
-                <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-600/30 font-bold text-lg relative">
+              <div key={i} className="bg-slate-50 dark:bg-[#121824] rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative text-center overflow-hidden flex flex-col items-center">
+                {/* Embedded subtle image with blended edges */}
+                {step.image && (
+                  <div className="absolute inset-0 z-0 opacity-20 dark:opacity-30 mix-blend-overlay dark:mix-blend-screen pointer-events-none flex justify-center items-center">
+                    <img 
+                      src={step.image} 
+                      alt={step.title} 
+                      className="w-full h-full object-cover scale-150" 
+                      style={{ 
+                        maskImage: 'radial-gradient(circle at center, black 10%, transparent 70%)', 
+                        WebkitMaskImage: 'radial-gradient(circle at center, black 10%, transparent 70%)' 
+                      }} 
+                    />
+                  </div>
+                )}
+                <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-600/30 font-bold text-lg relative z-10">
                   <step.icon className="w-5 h-5" />
                   <div className="absolute -top-2 -left-2 w-6 h-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full flex items-center justify-center text-[10px] font-black">{step.num}</div>
                 </div>
-                <h3 className="text-xl font-bold mb-2">{step.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">{step.desc}</p>
+                <h3 className="text-xl font-bold mb-2 relative z-10">{step.title}</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 relative z-10">{step.desc}</p>
               </div>
             ))}
           </div>
