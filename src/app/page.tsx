@@ -112,8 +112,8 @@ export default function LandingPage() {
       <section className="relative pt-32 pb-24 px-4 sm:px-6 bg-slate-50 dark:bg-[#040810] text-slate-900 dark:text-slate-100 overflow-hidden">
         {/* Subtle UNIUYO Background Image */}
         <div 
-          className="absolute inset-0 z-0 opacity-10 dark:opacity-[0.07] pointer-events-none mix-blend-multiply dark:mix-blend-screen bg-center bg-cover bg-no-repeat"
-          style={{ backgroundImage: "url('/uniuyo-bg.png')" }}
+          className="absolute inset-0 z-0 opacity-[0.07] dark:opacity-[0.03] pointer-events-none mix-blend-multiply dark:mix-blend-screen bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/uniuyo-logo.webp')", backgroundSize: '700px' }}
         ></div>
         
         {/* Abstract Gradients */}
@@ -142,10 +142,9 @@ export default function LandingPage() {
 
           <div className="w-full max-w-lg mx-auto lg:mr-0 z-10 mt-8 lg:mt-0 relative">
             <div className="relative rounded-[2rem] overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-2xl aspect-[4/3] bg-slate-100 dark:bg-slate-800">
-              {/* Better contextual image: Student on phone receiving delivery / on campus */}
               <img 
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1000" 
-                alt="Students using campus app" 
+                src="/uniuyo-bg.png" 
+                alt="University Campus Building" 
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex flex-col justify-end p-8 text-white">
