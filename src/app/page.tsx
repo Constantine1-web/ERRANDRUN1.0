@@ -156,17 +156,6 @@ export default function LandingPage() {
                 <p className="text-sm text-slate-200 mt-1 drop-shadow-md">Let fellow students handle the run.</p>
               </div>
             </div>
-            
-            {/* Decorative Floating Card */}
-            <div className="absolute -bottom-6 -left-6 bg-white/90 dark:bg-[#121824]/90 backdrop-blur-xl p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 dark:border-slate-700 flex items-center gap-4 animate-bounce" style={{ animationDuration: '4s' }}>
-              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                <Package className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Food Pickup Picked Up</p>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400">Arriving at Hall 6 in 5 mins</p>
-              </div>
-            </div>
           </div>
         </div>
 
