@@ -196,7 +196,7 @@ export default function LandingPage() {
             {[
               { num: '01', title: 'Request', desc: 'Tell us what you need and where it needs to go.', icon: MapPin, image: '/step1-3d.jpg' },
               { num: '02', title: 'Get Matched', desc: 'A nearby verified Runner accepts your errand.', icon: Users, image: '/step2-3d.jpg' },
-              { num: '03', title: 'Get It Done', desc: 'Track the progress until your errand reaches you.', icon: CheckCircle2 }
+              { num: '03', title: 'Get It Done', desc: 'Track the progress until your errand reaches you.', icon: CheckCircle2, image: '/step3-3d.jpg' }
             ].map((step, i) => (
               <div key={i} className="bg-slate-50 dark:bg-[#121824] rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative text-center overflow-hidden flex flex-col items-center">
                 {/* Embedded subtle image with blended edges */}
