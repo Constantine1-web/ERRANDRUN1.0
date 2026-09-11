@@ -110,56 +110,62 @@ export default function LandingPage() {
 
       {/* ── 2. HERO SECTION ── */}
       <section className="relative pt-32 pb-24 px-4 sm:px-6 bg-slate-50 dark:bg-[#040810] text-slate-900 dark:text-slate-100 overflow-hidden">
-        {/* Abstract Campus Map Background */}
-        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, currentColor 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
-        <div className="absolute top-1/4 right-0 w-[800px] h-[600px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[120px] pointer-events-none -z-10"></div>
-        <div className="absolute bottom-0 left-1/4 w-[600px] h-[400px] bg-emerald-400/20 dark:bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none -z-10"></div>
+        {/* Subtle UNIUYO Background Image */}
+        <div 
+          className="absolute inset-0 z-0 opacity-10 dark:opacity-[0.07] pointer-events-none mix-blend-multiply dark:mix-blend-screen bg-center bg-cover bg-no-repeat"
+          style={{ backgroundImage: "url('/uniuyo-bg.png')" }}
+        ></div>
+        
+        {/* Abstract Gradients */}
+        <div className="absolute top-1/4 right-0 w-[800px] h-[600px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+        <div className="absolute bottom-0 left-1/4 w-[600px] h-[400px] bg-emerald-400/20 dark:bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center relative z-10">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <h1 className="text-4xl sm:text-5xl lg:text-[4rem] font-black tracking-tight leading-[1.05] pb-2 text-slate-900 dark:text-white">
+            <h1 className="text-4xl sm:text-5xl lg:text-[4rem] font-black tracking-tight leading-[1.05] pb-2 text-slate-900 dark:text-white drop-shadow-sm">
               Your campus errands,<br/>
               handled in minutes.
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
-              ERRANDRUN is your dedicated campus logistics network. Whether you need <span className="text-blue-600 dark:text-blue-400">food picked up</span>, documents delivered from the faculty, items bought, or <span className="text-emerald-600 dark:text-emerald-400">someone to stand-in for clearance queues</span>, simply request a verified student Runner and get it done without leaving your room.
+              ERRANDRUN is your dedicated campus logistics network. Whether you need <span className="text-blue-600 dark:text-blue-400 font-semibold">food picked up</span>, documents delivered from the faculty, items bought, or <span className="text-emerald-600 dark:text-emerald-400 font-semibold">someone to stand-in for clearance queues</span>, simply request a verified student Runner and get it done without leaving your room.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 w-full justify-center lg:justify-start">
               <Link href="/request-errand" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white px-8 py-3.5 rounded-full font-bold text-sm shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all flex items-center justify-center gap-2 group">
                 Request an Errand <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link href="/become-a-runner" className="w-full sm:w-auto bg-transparent border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 text-slate-700 dark:text-white px-8 py-3.5 rounded-full font-bold text-sm transition-all flex items-center justify-center">
+              <Link href="/become-a-runner" className="w-full sm:w-auto bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 text-slate-700 dark:text-white px-8 py-3.5 rounded-full font-bold text-sm transition-all flex items-center justify-center">
                 Become a Runner
               </Link>
             </div>
           </div>
 
           <div className="w-full max-w-lg mx-auto lg:mr-0 z-10 mt-8 lg:mt-0 relative">
-            <div className="relative rounded-[2rem] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl aspect-[4/3]">
+            <div className="relative rounded-[2rem] overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-2xl aspect-[4/3] bg-slate-100 dark:bg-slate-800">
+              {/* Better contextual image: Student on phone receiving delivery / on campus */}
               <img 
-                src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1000" 
-                alt="University Campus Building" 
+                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1000" 
+                alt="Students using campus app" 
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent flex flex-col justify-end p-8 text-white">
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent flex flex-col justify-end p-8 text-white">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Live on Campus</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse border border-white/20"></span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-300 drop-shadow-md">Active Runners Nearby</span>
                 </div>
-                <h3 className="text-xl font-bold">Connecting students daily.</h3>
-                <p className="text-sm text-slate-300 mt-1">Hundreds of successful runs and counting.</p>
+                <h3 className="text-xl font-bold drop-shadow-md">Your time is precious.</h3>
+                <p className="text-sm text-slate-200 mt-1 drop-shadow-md">Let fellow students handle the run.</p>
               </div>
             </div>
             
             {/* Decorative Floating Card */}
-            <div className="absolute -bottom-6 -left-6 bg-white dark:bg-[#121824] p-4 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 animate-bounce" style={{ animationDuration: '3s' }}>
-              <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="w-5 h-5" />
+            <div className="absolute -bottom-6 -left-6 bg-white/90 dark:bg-[#121824]/90 backdrop-blur-xl p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-200 dark:border-slate-700 flex items-center gap-4 animate-bounce" style={{ animationDuration: '4s' }}>
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <Package className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Errand Completed</p>
-                <p className="text-[10px] text-slate-500">Delivered to Hall 6 in 12 mins</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Food Pickup Picked Up</p>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400">Arriving at Hall 6 in 5 mins</p>
               </div>
             </div>
           </div>
