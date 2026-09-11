@@ -201,7 +201,7 @@ export default function LandingPage() {
               <div key={i} className="bg-slate-50 dark:bg-[#121824] rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative text-center overflow-hidden flex flex-col items-center">
                 {/* Embedded subtle image with blended edges */}
                 {step.image && (
-                  <div className="absolute inset-0 z-0 opacity-20 dark:opacity-30 mix-blend-overlay dark:mix-blend-screen pointer-events-none flex justify-center items-center">
+                  <div className="absolute inset-0 z-0 opacity-5 dark:opacity-10 mix-blend-overlay dark:mix-blend-screen pointer-events-none flex justify-center items-center">
                     <img 
                       src={step.image} 
                       alt={step.title} 
