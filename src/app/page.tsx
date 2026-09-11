@@ -41,11 +41,6 @@ export default function LandingPage() {
   const [calcQueue, setCalcQueue] = useState(false);
   const dynamicDemoPrice = calculatePricing(calcCategory as any, 'normal', calcDistance, calcQueue, false);
 
-  // Login Form State
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-
   // FAQ State
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
@@ -54,34 +49,6 @@ export default function LandingPage() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const handleQuickLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) return toast.error('Please enter both email and password.');
-    setLoginLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error(error.message);
-      setLoginLoading(false);
-    } else {
-      toast.success('Login successful!');
-      window.location.href = data.user?.user_metadata?.role === 'runner' ? '/dashboard/runner' : '/dashboard/user';
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      toast.error(err.message || 'Error signing in with Google');
-    }
-  };
 
   const categories = [
     { id: 'food_delivery', label: 'Food & Drinks', icon: Utensils, desc: 'Pick up meals, snacks and drinks.' },
@@ -150,17 +117,12 @@ export default function LandingPage() {
 
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center relative z-10">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold mb-6 tracking-wide uppercase">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Campus Grid Online: UniUyo
-            </div>
-
             <h1 className="text-4xl sm:text-5xl lg:text-[4rem] font-black tracking-tight leading-[1.05] pb-2 text-slate-900 dark:text-white">
               Your campus errands,<br/>
               handled in minutes.
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
-              Need <span className="text-blue-600 dark:text-blue-400">food picked up</span>, documents delivered, items bought, or <span className="text-emerald-600 dark:text-emerald-400">something handled across campus?</span> Request a Runner and get it done without leaving where you are.
+              ERRANDRUN is your dedicated campus logistics network. Whether you need <span className="text-blue-600 dark:text-blue-400">food picked up</span>, documents delivered from the faculty, items bought, or <span className="text-emerald-600 dark:text-emerald-400">someone to stand-in for clearance queues</span>, simply request a verified student Runner and get it done without leaving your room.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center gap-4 w-full justify-center lg:justify-start">
@@ -173,53 +135,31 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="w-full max-w-md mx-auto lg:mr-0 z-10 mt-8 lg:mt-0">
-            <div className="bg-white/80 dark:bg-[#121824]/80 backdrop-blur-xl rounded-[2rem] p-8 sm:p-10 border border-slate-200 dark:border-slate-800 shadow-2xl relative">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white">Sign In</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Access your dashboard</p>
+          <div className="w-full max-w-lg mx-auto lg:mr-0 z-10 mt-8 lg:mt-0 relative">
+            <div className="relative rounded-[2rem] overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl aspect-[4/3]">
+              <img 
+                src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&q=80&w=1000" 
+                alt="University Campus Building" 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent flex flex-col justify-end p-8 text-white">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Live on Campus</span>
+                </div>
+                <h3 className="text-xl font-bold">Connecting students daily.</h3>
+                <p className="text-sm text-slate-300 mt-1">Hundreds of successful runs and counting.</p>
               </div>
-              <form onSubmit={handleQuickLogin} className="space-y-4">
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-                    <input type="email" required className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-[#080B12] border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all" placeholder="Student Email" value={email} onChange={e => setEmail(e.target.value)} />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
-                    <input type="password" required className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-[#080B12] border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-                  </div>
-                </div>
-                <button type="submit" disabled={loginLoading} className="w-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-[#040810] font-black py-3.5 rounded-xl transition-colors mt-2">
-                  {loginLoading ? 'Loading...' : 'Sign In'}
-                </button>
-              </form>
-
-              <div className="mt-6">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-slate-50 dark:bg-[#121824] text-slate-500">or</span>
-                  </div>
-                </div>
-                
-                <button 
-                  onClick={handleGoogleLogin} 
-                  type="button" 
-                  className="mt-6 w-full flex items-center justify-center gap-3 bg-white dark:bg-[#080B12] border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-white font-bold py-3.5 rounded-xl transition-colors"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                  </svg>
-                  Continue with Google
-                </button>
+            </div>
+            
+            {/* Decorative Floating Card */}
+            <div className="absolute -bottom-6 -left-6 bg-white dark:bg-[#121824] p-4 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 flex items-center gap-4 animate-bounce" style={{ animationDuration: '3s' }}>
+              <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Errand Completed</p>
+                <p className="text-[10px] text-slate-500">Delivered to Hall 6 in 12 mins</p>
               </div>
             </div>
           </div>
