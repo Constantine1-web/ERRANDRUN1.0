@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
       .eq('user_id', requesterId);
 
     if (balanceError) {
-      console.error('Wallet deduction error:', balanceError);
+      console.warn('Wallet deduction error:', balanceError);
       return NextResponse.json({ success: false, error: 'Failed to process escrow hold' }, { status: 500 });
     }
 
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
     if (errandError || !errand) {
       // Rollback escrow deduction on insert failure
       await adminSupabase.from('wallets').update({ balance: wallet.balance }).eq('user_id', requesterId);
-      console.error('Errand insert error, balance rolled back:', errandError);
+      console.warn('Errand insert error, balance rolled back:', errandError);
       return NextResponse.json({ success: false, error: 'Failed to create errand' }, { status: 500 });
     }
 
@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       totalFee,
     });
   } catch (error: any) {
-    console.error('Errand creation exception:', error);
+    console.warn('Errand creation exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

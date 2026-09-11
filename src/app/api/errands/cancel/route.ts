@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       .eq('id', errandId);
 
     if (updateError) {
-      console.error('Errand cancel update error:', updateError);
+      console.warn('Errand cancel update error:', updateError);
       return NextResponse.json({ success: false, error: 'Failed to update errand status' }, { status: 500 });
     }
 
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Errand cancelled and escrow refunded successfully' });
   } catch (error: any) {
-    console.error('Cancel errand exception:', error);
+    console.warn('Cancel errand exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

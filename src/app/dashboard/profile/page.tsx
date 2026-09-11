@@ -44,8 +44,8 @@ export default function ProfilePage() {
         if (error) throw error;
         setProfile(data);
         setFormData(data);
-      } catch (error) {
-        console.error('Failed to fetch profile:', error);
+      } catch (error: any) {
+        console.warn('Failed to fetch profile:', error?.message || error);
       } finally {
         setLoading(false);
       }
@@ -74,7 +74,7 @@ export default function ProfilePage() {
       setEditing(false);
       toast.success('Profile updated successfully');
     } catch (error) {
-      console.error('Failed to update profile:', error);
+      console.warn('Failed to update profile:', error);
       toast.error('Failed to update profile');
     } finally {
       setLoading(false);
@@ -170,10 +170,10 @@ export default function ProfilePage() {
                 <h2 className="text-2xl font-black text-white truncate">
                   {profile?.full_name || 'Campus Student'}
                 </h2>
-                <div className="flex items-center gap-2 text-xs font-mono text-blue-200">
-                  <span>Matric: {profile?.student_id || 'Not Set'}</span>
-                  <span>•</span>
-                  <span className="capitalize">{profile?.role || 'user'} Account</span>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-mono text-blue-200">
+                  <span className="truncate">Matric: {profile?.student_id || 'Not Set'}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="capitalize truncate">{profile?.role || 'user'} Account</span>
                 </div>
                 {profile?.rating ? (
                   <div className="flex items-center gap-1.5 text-amber-400 text-xs font-bold pt-1">

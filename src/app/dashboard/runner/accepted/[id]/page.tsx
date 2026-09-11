@@ -56,7 +56,7 @@ export default function AcceptedMissionPage() {
         .single();
 
       if (fetchError) {
-        console.error(fetchError);
+        console.warn(fetchError);
         setError('Unable to load task details.');
       } else {
         setErrand(data);
@@ -202,7 +202,7 @@ export default function AcceptedMissionPage() {
         <div
           className={`p-4 rounded-2xl border text-center transition-all ${
             phase === 'delivery'
-              ? 'border-emerald-600 bg-emerald-50 text-emerald-900 ring-2 ring-emerald-500'
+              ? 'border-emerald-600 bg-runner-celadon/20 text-emerald-900 ring-2 ring-emerald-500'
               : phase === 'completed'
               ? 'border-emerald-600 bg-emerald-100 text-emerald-900'
               : 'border-slate-200 bg-white text-slate-400'
@@ -246,7 +246,7 @@ export default function AcceptedMissionPage() {
       {phase === 'delivery' && (
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Final Step</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-runner-dark dark:text-runner-celadon">Final Step</span>
             <h2 className="text-lg font-bold text-slate-900">2. Deliver & Verify Secret PIN</h2>
             <p className="text-xs text-slate-500">
               Meet the customer, hand over the items, and ask them for their 4-digit Delivery PIN.
@@ -254,7 +254,7 @@ export default function AcceptedMissionPage() {
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-start gap-3">
-            <MapPin className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <MapPin className="w-5 h-5 text-runner-dark dark:text-runner-celadon shrink-0 mt-0.5" />
             <div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Delivery Destination</span>
               <span className="text-base font-bold text-slate-900">{errand.delivery_location}</span>
@@ -264,7 +264,7 @@ export default function AcceptedMissionPage() {
           {/* 4-Digit PIN Input Box */}
           <div className="space-y-2 text-center pt-2">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-center gap-1.5">
-              <KeyRound className="w-4 h-4 text-emerald-600" />
+              <KeyRound className="w-4 h-4 text-runner-dark dark:text-runner-celadon" />
               Enter Customer 4-Digit PIN
             </label>
             <input
@@ -273,7 +273,7 @@ export default function AcceptedMissionPage() {
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
               placeholder="••••"
-              className="w-48 h-16 mx-auto text-center font-mono text-3xl font-black tracking-[0.3em] rounded-2xl border-2 border-emerald-400 bg-emerald-50/40 text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+              className="w-48 h-16 mx-auto text-center font-mono text-3xl font-black tracking-[0.3em] rounded-2xl border-2 border-emerald-400 bg-runner-celadon/20/40 text-slate-900 focus:outline-none focus:ring-4 focus:ring-emerald-200"
             />
           </div>
 
@@ -283,7 +283,7 @@ export default function AcceptedMissionPage() {
             disabled={pin.length !== 4 || submitting}
             isLoading={submitting}
             onClick={handleCompleteErrand}
-            className="w-full h-14 text-base font-black shadow-md bg-emerald-600 hover:bg-emerald-700"
+            className="w-full h-14 text-base font-black shadow-md bg-runner-dark hover:bg-runner-dark/90"
           >
             Verify PIN & Release {formatCurrency(payout)} Payout
           </Button>
@@ -293,7 +293,7 @@ export default function AcceptedMissionPage() {
       {/* ── STAGE 3: MISSION COMPLETE CELEBRATION ── */}
       {phase === 'completed' && (
         <div className="bg-white rounded-3xl p-8 border border-slate-200 text-center space-y-4 shadow-sm animate-scaleIn">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-runner-dark dark:text-runner-celadon flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-black text-slate-900">Mission Accomplished!</h2>

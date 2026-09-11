@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const settings = data ? data.setting_value : { max_active_runners: 50, dynamic_ratio_enabled: true, users_per_runner: 5 };
     return NextResponse.json({ success: true, settings });
   } catch (error: any) {
-    console.error('Settings GET Error:', error);
+    console.warn('Settings GET Error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
     return NextResponse.json({ success: true, settings: sanitizedSettings });
   } catch (error: any) {
-    console.error('Settings POST Error:', error);
+    console.warn('Settings POST Error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

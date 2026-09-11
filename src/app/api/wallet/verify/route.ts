@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!paystackSecretKey) {
-      console.error('PAYSTACK_SECRET_KEY is not configured on server');
+      console.warn('PAYSTACK_SECRET_KEY is not configured on server');
       return NextResponse.json({ success: false, error: 'Payment gateway configuration error' }, { status: 500 });
     }
 
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, balance: newBalance, amount });
   } catch (error: any) {
-    console.error('Wallet verification exception:', error);
+    console.warn('Wallet verification exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

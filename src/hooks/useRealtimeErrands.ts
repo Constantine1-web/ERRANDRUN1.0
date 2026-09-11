@@ -107,7 +107,7 @@ export function useErrandTracking(errandId?: string) {
         if (error) throw error;
         setTracking(data || []);
       } catch (err) {
-        console.error('Failed to fetch tracking:', err);
+        console.warn('Failed to fetch tracking:', err);
       } finally {
         setLoading(false);
       }
@@ -160,7 +160,7 @@ export function useRealtimeProfile(userId?: string) {
         if (error) throw error;
         setProfile(data);
       } catch (err) {
-        console.error('Failed to fetch profile:', err);
+        console.warn('Failed to fetch profile:', err);
       } finally {
         setLoading(false);
       }

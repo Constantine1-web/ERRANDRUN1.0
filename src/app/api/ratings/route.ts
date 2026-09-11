@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, ratings });
   } catch (error: any) {
-    console.error('Rating fetch error:', error);
+    console.warn('Rating fetch error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('Rating insert error:', insertError);
+      console.warn('Rating insert error:', insertError);
       return NextResponse.json({ success: false, error: 'Failed to record rating' }, { status: 500 });
     }
 
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, rating: ratingRecord });
   } catch (error: any) {
-    console.error('Rating submission exception:', error);
+    console.warn('Rating submission exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

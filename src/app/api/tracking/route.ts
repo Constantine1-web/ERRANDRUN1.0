@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     ]).select().single();
 
     if (error) {
-      console.error('Tracking telemetry insert error:', error);
+      console.warn('Tracking telemetry insert error:', error);
       return NextResponse.json({ success: false, error: 'Failed to record tracking update' }, { status: 500 });
     }
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, tracking: data });
   } catch (error: any) {
-    console.error('Tracking update exception:', error);
+    console.warn('Tracking update exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

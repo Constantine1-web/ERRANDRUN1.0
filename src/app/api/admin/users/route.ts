@@ -30,13 +30,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Admin users fetch error:', error);
+      console.warn('Admin users fetch error:', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch user profiles' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Admin users error:', error);
+    console.warn('Admin users error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -65,13 +65,13 @@ export async function POST(request: NextRequest) {
     const { error } = await adminSupabase.from('profiles').update(updates).eq('id', userId);
 
     if (error) {
-      console.error('Admin user update error:', error);
+      console.warn('Admin user update error:', error);
       return NextResponse.json({ success: false, error: 'Failed to update user profile' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'User profile updated successfully' });
   } catch (error: any) {
-    console.error('Admin user update exception:', error);
+    console.warn('Admin user update exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

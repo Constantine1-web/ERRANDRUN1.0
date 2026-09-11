@@ -146,7 +146,7 @@ export default function VerificationPage() {
         .eq('id', currentUserId);
 
       if (error) {
-        console.error('Bypass error:', error);
+        console.warn('Bypass error:', error);
       }
 
       if (user) {

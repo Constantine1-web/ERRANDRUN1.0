@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       runnerAmount: payoutAmount,
     });
   } catch (error: any) {
-    console.error('Delivery completion error:', error);
+    console.warn('Delivery completion error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

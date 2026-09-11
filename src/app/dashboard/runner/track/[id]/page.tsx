@@ -109,7 +109,7 @@ export default function RunnerTrackDynamicPage() {
         toast.success('Location update broadcasted to customer!');
       }
     } catch (error) {
-      console.error(error);
+      console.warn(error);
       toast.error('Unable to send tracking update');
     } finally {
       setSubmitting(false);

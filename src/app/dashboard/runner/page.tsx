@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import {
   Radio,
+  Search,
   MapPin,
   Clock,
   ArrowRight,
@@ -27,6 +28,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { ErrandCard } from '@/components/ui/ErrandCard';
 
 interface ErrandTask {
   id: string;
@@ -172,203 +174,166 @@ export default function RunnerOpportunityRadar() {
     return () => {
       channel.unsubscribe();
     };
-  }, [user, setActiveTask]);
+  }, [user]);
 
   const toggleDuty = async () => {
-    if (!user?.id) return;
-    const nextStatus = runnerStatus === 'online' ? 'offline' : 'online';
-
-    if (nextStatus === 'offline' && activeErrands.length > 0) {
-      const confirmed = window.confirm('You have active tasks in flight. Going offline will pause receiving new tasks. Continue?');
-      if (!confirmed) return;
-    }
-
+    if (!user) return;
     setToggleLoading(true);
-    setStatusMessage(null);
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ runner_status: nextStatus })
-      .eq('id', user.id);
-
-    if (error) {
-      toast.error('Unable to toggle duty status');
-    } else {
-      setRunnerStatus(nextStatus);
-      toast.success(nextStatus === 'online' ? '🟢 You are Online & visible to customers' : '⚪ You are Offline');
+    const newStatus = runnerStatus === 'online' ? 'offline' : 'online';
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ runner_status: newStatus })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      setRunnerStatus(newStatus);
+      toast.success(newStatus === 'online' ? 'You are now online' : 'You are now offline');
+    } catch (err) {
+      toast.error('Failed to update status');
+    } finally {
+      setToggleLoading(false);
     }
-
-    setToggleLoading(false);
   };
 
-  const handleAccept = async (taskId: string) => {
-    if (!user?.id) return;
-    setAccepting(taskId);
-    setStatusMessage(null);
-
+  const handleAccept = async (errandId: string) => {
+    if (runnerStatus !== 'online') {
+      toast.error('You must be online to accept errands');
+      return;
+    }
+    
+    setAccepting(errandId);
     try {
-      const response = await authFetch('/api/errands/accept', {
+      const res = await authFetch('/api/errands/accept', {
         method: 'POST',
-        body: JSON.stringify({ errandId: taskId }),
+        body: JSON.stringify({ errandId })
       });
-
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        toast.error(result.error || 'Failed to claim errand');
-        setAccepting(null);
-        return;
-      }
-
-      toast.success('Bounty claimed! Opening mission console…');
-      router.push(`/dashboard/runner/accepted/${taskId}`);
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to accept errand');
+      
+      toast.success('Errand accepted successfully!');
+      router.push(`/dashboard/runner/accepted/${errandId}`);
     } catch (err: any) {
-      toast.error(err?.message || 'Error accepting errand');
+      toast.error(err.message);
+    } finally {
       setAccepting(null);
     }
   };
 
   const handleWithdrawalRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (withdrawAmount < 2000) {
-      toast.error('Minimum withdrawal is ₦2,000');
-      return;
-    }
-    if (withdrawAmount > walletBalance) {
-      toast.error('Insufficient wallet balance');
-      return;
-    }
-
+    if (withdrawAmount < 2000 || withdrawAmount > walletBalance) return;
+    
     try {
       const res = await authFetch('/api/wallet/withdraw', {
         method: 'POST',
         body: JSON.stringify({ amount: withdrawAmount })
       });
+      
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to request payout');
-
-      toast.success('Payout request submitted to campus treasury!');
+      if (!res.ok) throw new Error(data.error || 'Failed to process withdrawal');
+      
+      toast.success('Withdrawal request submitted successfully');
+      setIsWithdrawOpen(false);
       setWalletBalance(prev => prev - withdrawAmount);
       setWithdrawAmount(0);
-      setIsWithdrawOpen(false);
     } catch (err: any) {
-      toast.error(err?.message || 'Withdrawal failed');
+      toast.error(err.message);
     }
   };
 
-  const currentActiveTask = activeErrands[0];
-
   return (
     <RunnerGuard>
-      <div className="py-6 sm:py-8 space-y-6 animate-fadeIn">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-fadeIn max-w-7xl mx-auto">
 
-        {/* ── TOP UBER DRIVER-STYLE DUTY TOGGLE ── */}
-        <section className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/90 dark:border-slate-800 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className={`w-2.5 h-2.5 rounded-full ${runnerStatus === 'online' ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
-              <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                {runnerStatus === 'online' ? 'Active on Campus Grid' : 'Status: Offline'}
+        {/* ── RUNNER HERO CONSOLE ── */}
+        {/* ── RUNNER HERO CONSOLE ── */}
+        <section className="bg-white dark:bg-[#111827] rounded-2xl p-5 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-sm flex items-start justify-between gap-4">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${runnerStatus === 'online' ? 'bg-[#00A859] animate-ping' : 'bg-[#00A859]'}`} />
+              <span className="text-[11px] font-bold text-[#00A859]">
+                {runnerStatus === 'online' ? 'You are Online' : 'You are Offline'}
               </span>
             </div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
               Runner Console
             </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-[200px] sm:max-w-none">
+              {runnerStatus === 'online' 
+                ? 'You are active and visible to students.' 
+                : 'Go online to start receiving student errand requests.'}
+            </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {/* Big Uber-style GO ONLINE Button */}
+          <div className="flex items-center">
             <button
               onClick={toggleDuty}
               disabled={toggleLoading}
-              className={`flex-1 sm:flex-initial px-6 py-3.5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md transition-all ${
                 runnerStatus === 'online'
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30 ring-2 ring-emerald-400/30'
-                  : 'bg-slate-900 hover:bg-slate-800 text-white'
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                  : 'bg-[#00A859] hover:bg-green-700 text-white'
               }`}
             >
-              <Power className="w-4 h-4" />
-              {runnerStatus === 'online' ? 'GO OFFLINE' : 'GO ONLINE'}
+              <Power className="w-6 h-6" />
             </button>
-
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => setIsWithdrawOpen(true)}
-              className="text-xs font-bold border-slate-300 dark:border-slate-700 h-12"
-            >
-              <Wallet className="w-4 h-4 text-emerald-600 mr-1" />
-              Cash Out
-            </Button>
           </div>
         </section>
 
-        {/* ── EARNINGS STRIP (Minimalist) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">
-              Available Balance
-            </span>
-            <p className="text-xl sm:text-2xl font-black text-emerald-600 font-mono mt-0.5">
-              {formatCurrency(walletBalance)}
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Active Missions
-            </span>
-            <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
-              {activeErrands.length}
-            </p>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm col-span-2 sm:col-span-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Driver Score
-            </span>
-            <p className="text-xl sm:text-2xl font-black text-blue-600 font-mono mt-0.5">
-              {user?.rating ? `★ ${user.rating.toFixed(1)}` : 'Verified Runner'}
-            </p>
-          </div>
-        </div>
-
-        {/* ── ACTIVE TASK IN-FLIGHT (Deliveroo style) ── */}
-        {currentActiveTask && (
-          <motion.section
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-emerald-600 text-white rounded-3xl p-5 sm:p-6 shadow-xl space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full">
-                Active Mission In Progress
-              </span>
-              <span className="font-mono font-black text-sm">
-                Payout: {formatCurrency(Number(currentActiveTask.total_fee) * 0.8)}
-              </span>
-            </div>
-
+        {/* ── 3-COLUMN EARNINGS STRIP ── */}
+        {/* ── 3-COLUMN EARNINGS STRIP (Mobile Scrollable / Grid) ── */}
+        <section className="grid grid-cols-3 gap-2 sm:gap-6">
+          {/* Available Balance */}
+          <div className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px]">
             <div>
-              <h3 className="text-lg font-black">{currentActiveTask.title}</h3>
-              <p className="text-xs text-emerald-100 mt-1">
-                📍 {currentActiveTask.pickup_location} ➔ 📦 {currentActiveTask.delivery_location}
+              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Available Balance</p>
+              <h2 className="text-sm sm:text-3xl font-black text-[#00A859] font-mono mt-0.5">
+                {formatCurrency(walletBalance)}
+              </h2>
+              <p className="text-[8px] sm:text-[11px] text-slate-400 mt-1 truncate">Withdraw anytime</p>
+            </div>
+            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-green-50 dark:bg-green-900/20 text-[#00A859] flex items-center justify-center">
+              <Wallet className="w-3 h-3 sm:w-6 sm:h-6" />
+            </div>
+          </div>
+
+          {/* Active Missions */}
+          <div className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px]">
+            <div>
+              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Active Missions</p>
+              <h2 className="text-sm sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+                {activeErrands.length}
+              </h2>
+              <p className="text-[8px] sm:text-[11px] text-slate-400 mt-1 leading-tight">
+                {activeErrands.length > 0 ? 'In progress' : 'No active missions'}
               </p>
             </div>
-
-            <div className="pt-2 border-t border-white/20 flex justify-end">
-              <Link
-                href={`/dashboard/runner/accepted/${currentActiveTask.id}`}
-                className="bg-white text-emerald-800 hover:bg-emerald-50 px-5 py-2.5 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-md"
-              >
-                Open Mission Console <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
+              <Radio className="w-3 h-3 sm:w-6 sm:h-6" />
             </div>
-          </motion.section>
-        )}
+          </div>
 
-        {/* ── OPEN BOUNTIES FEED (Uber Driver Requests) ── */}
+          {/* Driver Score */}
+          <div className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px]">
+            <div>
+              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Driver Score</p>
+              <h2 className="text-sm sm:text-3xl font-black text-blue-600 font-mono mt-0.5">
+                ★ {user?.rating ? user.rating.toFixed(1) : '5.0'}
+              </h2>
+              <p className="text-[8px] sm:text-[11px] text-slate-400 mt-1 truncate">Excellent</p>
+            </div>
+            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center">
+              <TrendingUp className="w-3 h-3 sm:w-6 sm:h-6" />
+            </div>
+          </div>
+        </section>
+
+        {/* ── AVAILABLE BOUNTIES FEED ── */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                 Available Bounties
@@ -380,16 +345,16 @@ export default function RunnerOpportunityRadar() {
               </p>
             </div>
 
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
+            <div className="flex w-full sm:w-auto bg-white dark:bg-[#111827] p-1 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 shadow-sm">
               <button
                 onClick={() => setViewMode('available')}
-                className={`px-3 py-1 rounded-lg ${viewMode === 'available' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${viewMode === 'available' ? 'bg-green-50 text-[#00A859] dark:bg-green-900/20' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
               >
                 Nearby ({availableErrands.length})
               </button>
               <button
                 onClick={() => setViewMode('history')}
-                className={`px-3 py-1 rounded-lg ${viewMode === 'history' ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400'}`}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-lg transition-colors ${viewMode === 'history' ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
               >
                 Completed ({historyErrands.length})
               </button>
@@ -398,111 +363,54 @@ export default function RunnerOpportunityRadar() {
 
           {viewMode === 'available' ? (
             availableErrands.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 border border-slate-200/80 dark:border-slate-800 text-center space-y-3 shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto animate-pulse">
-                  <Radio className="w-6 h-6" />
+              <div className="bg-white dark:bg-[#111827] rounded-2xl pt-12 pb-6 border border-slate-200 dark:border-slate-800 text-center space-y-4 shadow-sm relative overflow-hidden flex flex-col items-center">
+                <div className="w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 text-[#00A859] flex items-center justify-center mb-2 z-10 relative">
+                  <div className="absolute inset-0 rounded-full animate-ping bg-green-100 dark:bg-green-900/30"></div>
+                  <Search className="w-6 h-6 z-10" />
                 </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Scanning for Requests…</h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  New student errands broadcast live onto this feed as soon as they are submitted.
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white z-10 relative">Looking for requests...</h3>
+                <p className="text-xs text-slate-500 max-w-[200px] z-10 relative">
+                  We'll notify you when new errands are available.
                 </p>
+                <div className="w-full mt-8 flex justify-center opacity-40">
+                  <svg viewBox="0 0 400 50" className="w-full h-12 text-[#00A859] fill-current">
+                    <path d="M0,25 C50,0 100,50 150,25 C200,0 250,50 300,25 C350,0 400,25 400,25 L400,50 L0,50 Z" opacity="0.3"></path>
+                  </svg>
+                </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                {availableErrands.map((task) => {
-                  const netPayout = Number(task.total_fee) * 0.8;
-                  const isClaiming = accepting === task.id;
-
-                  return (
-                    <div
-                      key={task.id}
-                      className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-2 flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                            {task.category.replace('_', ' ')}
-                          </span>
-                          {task.priority === 'urgent' && (
-                            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                              ⚡ Express (+20%)
-                            </span>
-                          )}
-                        </div>
-
-                        <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
-                          {task.title}
-                        </h3>
-
-                        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
-                          <p className="flex items-center gap-1.5 truncate">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                            From: {task.pickup_location}
-                          </p>
-                          <p className="flex items-center gap-1.5 truncate">
-                            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
-                            To: {task.delivery_location}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Right: Net Payout & One-tap Accept Button */}
-                      <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-                        <div className="text-left sm:text-right">
-                          <span className="text-xl sm:text-2xl font-black text-emerald-600 font-mono block">
-                            {formatCurrency(netPayout)}
-                          </span>
-                          <span className="text-[10px] text-slate-400 uppercase font-semibold">Your Payout</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={runnerStatus !== 'online'}
-                            onClick={() => {
-                              setCounterModalTask(task);
-                              setCounterAmount(Math.round(netPayout + 300));
-                            }}
-                            className="font-bold text-xs h-11 px-3 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-                          >
-                            Counter
-                          </Button>
-                          <Button
-                            size="md"
-                            variant="success"
-                            isLoading={isClaiming}
-                            disabled={runnerStatus !== 'online'}
-                            onClick={() => handleAccept(task.id)}
-                            className="font-black text-xs h-11 px-4 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
-                          >
-                            {runnerStatus !== 'online' ? 'Go Online' : 'Accept'}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="space-y-4">
+                {availableErrands.map((task) => (
+                  <ErrandCard
+                    key={task.id}
+                    errand={{ ...task, total_fee: Number(task.total_fee) * 0.8 }}
+                    mode="runner"
+                    onAccept={() => handleAccept(task.id)}
+                    onCounter={() => {
+                      setCounterModalTask(task);
+                      setCounterAmount(Math.round(Number(task.total_fee) * 0.8 + 300));
+                    }}
+                  />
+                ))}
               </div>
             )
           ) : (
             <div className="space-y-3">
               {historyErrands.length === 0 ? (
-                <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+                <div className="bg-white dark:bg-[#111827] rounded-2xl p-12 border border-slate-200 dark:border-slate-800 text-center text-sm text-slate-400 shadow-sm">
                   No completed errands in your log yet.
                 </div>
               ) : (
                 historyErrands.map((h) => (
                   <div
                     key={h.id}
-                    className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
+                    className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 text-sm shadow-sm"
                   >
                     <div className="truncate">
                       <p className="font-bold text-slate-900 dark:text-white truncate">{h.title}</p>
-                      <p className="text-[10px] text-slate-400">{new Date(h.created_at).toLocaleDateString()}</p>
+                      <p className="text-xs text-slate-400 mt-1">{new Date(h.created_at).toLocaleDateString()}</p>
                     </div>
-                    <span className="font-mono font-bold text-emerald-600 text-sm">
+                    <span className="font-mono font-black text-[#00A859] text-base">
                       +{formatCurrency(Number(h.total_fee) * 0.8)}
                     </span>
                   </div>
@@ -510,6 +418,64 @@ export default function RunnerOpportunityRadar() {
               )}
             </div>
           )}
+        
+        </section>
+
+        {/* ── MOBILE BOTTOM ACTIONS ── */}
+        <section className="space-y-4 pt-4 lg:hidden">
+          <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Increase your chances</h3>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-md bg-green-50 dark:bg-green-900/20 text-[#00A859] flex items-center justify-center shrink-0">
+                <Power className="w-3 h-3" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Go Online</p>
+                <p className="text-[10px] text-slate-500">Be available to receive requests</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-md bg-green-50 dark:bg-green-900/20 text-[#00A859] flex items-center justify-center shrink-0">
+                <MapPin className="w-3 h-3" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Stay Near Popular Areas</p>
+                <p className="text-[10px] text-slate-500">Hostels, Cafeterias, Library, Gate</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-md bg-green-50 dark:bg-green-900/20 text-[#00A859] flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-3 h-3" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900 dark:text-white">Complete More Missions</p>
+                <p className="text-[10px] text-slate-500">Improve your score & priority</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 w-full">
+            <button
+              onClick={toggleDuty}
+              disabled={toggleLoading}
+              className={`flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm ${
+                runnerStatus === 'online'
+                  ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                  : 'bg-[#00A859] hover:bg-green-700 text-white'
+              }`}
+            >
+              <Power className="w-4 h-4" />
+              {runnerStatus === 'online' ? 'Go Offline' : 'Go Online'}
+            </button>
+
+            <button
+              onClick={() => setIsWithdrawOpen(true)}
+              className="flex-1 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 bg-white dark:bg-[#111827]"
+            >
+              <Wallet className="w-4 h-4" />
+              Cash Out
+            </button>
+          </div>
         </section>
 
         {/* ── WITHDRAWAL MODAL ── */}
@@ -518,32 +484,32 @@ export default function RunnerOpportunityRadar() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
+              className="bg-white dark:bg-[#111827] rounded-3xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5"
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">Cash Out Earnings</h3>
-                <button onClick={() => setIsWithdrawOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Cash Out Earnings</h3>
+                <button onClick={() => setIsWithdrawOpen(false)} className="text-slate-400 hover:text-slate-600 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-full transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-3 bg-emerald-50 dark:bg-emerald-950 rounded-2xl text-center">
-                <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300 block">Available Balance</span>
-                <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-2xl text-center">
+                <span className="text-[10px] uppercase font-bold text-green-700 dark:text-green-500 block">Available Balance</span>
+                <span className="text-3xl font-black font-mono text-[#00A859] mt-1 block">
                   {formatCurrency(walletBalance)}
                 </span>
               </div>
 
-              <form onSubmit={handleWithdrawalRequest} className="space-y-3">
+              <form onSubmit={handleWithdrawalRequest} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Amount (Min: ₦2,000)</label>
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Amount (Min: ₦2,000)</label>
                   <input
                     type="number"
                     min="2000"
                     max={walletBalance}
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(Number(e.target.value))}
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-base text-slate-900 dark:text-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all mt-2"
                     required
                   />
                 </div>
@@ -552,7 +518,7 @@ export default function RunnerOpportunityRadar() {
                   type="submit"
                   variant="success"
                   disabled={withdrawAmount < 2000 || withdrawAmount > walletBalance}
-                  className="w-full h-12 text-xs sm:text-sm font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+                  className="w-full h-12 text-sm font-black bg-[#00A859] hover:bg-green-700 text-white shadow-sm rounded-xl"
                 >
                   Confirm Payout to Bank
                 </Button>
@@ -567,31 +533,31 @@ export default function RunnerOpportunityRadar() {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
+              className="bg-white dark:bg-[#111827] rounded-3xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Propose Counter Offer</h3>
-                  <p className="text-[11px] text-slate-400">Negotiate a custom fee for this errand</p>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Propose Counter Offer</h3>
+                  <p className="text-xs text-slate-400 mt-1">Negotiate a custom fee for this errand</p>
                 </div>
-                <button onClick={() => setCounterModalTask(null)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setCounterModalTask(null)} className="text-slate-400 hover:text-slate-600 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-full transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-3 bg-blue-50 dark:bg-blue-950/60 rounded-2xl">
-                <span className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-300 block">Current Standard Fee</span>
-                <span className="text-lg font-black font-mono text-slate-900 dark:text-white">
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-2xl">
+                <span className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-400 block">Current Standard Fee</span>
+                <span className="text-2xl font-black font-mono text-slate-900 dark:text-white mt-1 block">
                   {formatCurrency(Number(counterModalTask.total_fee))}
                 </span>
-                <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 truncate">
                   📍 {counterModalTask.pickup_location} ➔ {counterModalTask.delivery_location}
                 </p>
               </div>
 
-              <form onSubmit={handleSendCounter} className="space-y-3">
+              <form onSubmit={handleSendCounter} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
                     Your Proposed Counter Fee (₦)
                   </label>
                   <input
@@ -600,14 +566,14 @@ export default function RunnerOpportunityRadar() {
                     step={100}
                     value={counterAmount}
                     onChange={(e) => setCounterAmount(Number(e.target.value))}
-                    className="w-full h-11 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono font-bold text-base text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mt-2 transition-all"
                     required
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Standard campus fee is ₦800 (1km rate)</p>
+                  <p className="text-[10px] text-slate-500 mt-1.5">Standard campus fee is ₦800 (1km rate)</p>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300">
                     Reason / Note (Optional)
                   </label>
                   <input
@@ -615,16 +581,16 @@ export default function RunnerOpportunityRadar() {
                     placeholder="e.g. Heavy load, rain, or long line"
                     value={counterNote}
                     onChange={(e) => setCounterNote(e.target.value)}
-                    className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 mt-2 transition-all"
                   />
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-3 pt-2">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setCounterModalTask(null)}
-                    className="flex-1 text-xs font-semibold"
+                    className="flex-1 h-12 text-sm font-bold border-slate-200 dark:border-slate-700"
                   >
                     Cancel
                   </Button>
@@ -632,7 +598,7 @@ export default function RunnerOpportunityRadar() {
                     type="submit"
                     variant="primary"
                     isLoading={submittingCounter}
-                    className="flex-1 text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                    className="flex-1 h-12 text-sm font-black bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-xl"
                   >
                     Send Counter
                   </Button>

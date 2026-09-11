@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Dispute resolved successfully' });
   } catch (error: any) {
-    console.error('Dispute resolution error:', error);
+    console.warn('Dispute resolution error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

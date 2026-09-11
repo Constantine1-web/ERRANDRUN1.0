@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       .lt('updated_at', twoHoursAgo);
 
     if (fetchError) {
-      console.error('Auto-release fetch error:', fetchError);
+      console.warn('Auto-release fetch error:', fetchError);
       return NextResponse.json({ success: false, error: 'Failed to fetch expired errands' }, { status: 500 });
     }
 
@@ -41,13 +41,13 @@ export async function POST(request: NextRequest) {
       .in('id', expiredIds);
 
     if (updateError) {
-      console.error('Auto-release update error:', updateError);
+      console.warn('Auto-release update error:', updateError);
       return NextResponse.json({ success: false, error: 'Failed to release errands' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, releasedCount: expiredIds.length });
   } catch (error) {
-    console.error('Auto-release error:', error);
+    console.warn('Auto-release error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

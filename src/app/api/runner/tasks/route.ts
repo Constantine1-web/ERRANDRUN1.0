@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching runner tasks:', error);
+      console.warn('Error fetching runner tasks:', error);
       return NextResponse.json({ success: false, error: 'Unable to load runner tasks' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, tasks: data });
   } catch (error) {
-    console.error('Runner tasks exception:', error);
+    console.warn('Runner tasks exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

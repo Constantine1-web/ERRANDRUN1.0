@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       .eq('user_id', userId);
 
     if (updateError) {
-      console.error('Failed to deduct withdrawal balance:', updateError);
+      console.warn('Failed to deduct withdrawal balance:', updateError);
       return NextResponse.json({ success: false, error: 'Failed to process withdrawal' }, { status: 500 });
     }
 
@@ -69,13 +69,13 @@ export async function POST(req: NextRequest) {
     if (txError) {
       // Rollback balance deduction
       await adminSupabase.from('wallets').update({ balance: wallet.balance }).eq('user_id', userId);
-      console.error('Transaction insert failed, rolled back:', txError);
+      console.warn('Transaction insert failed, rolled back:', txError);
       return NextResponse.json({ success: false, error: 'Transaction recording failed' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, balance: newBalance, amount });
   } catch (error: any) {
-    console.error('Withdrawal exception:', error);
+    console.warn('Withdrawal exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

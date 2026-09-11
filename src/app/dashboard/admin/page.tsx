@@ -191,7 +191,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) setStats(data.stats);
     } catch (err) {
-      console.error('Failed to fetch admin stats', err);
+      console.warn('Failed to fetch admin stats', err);
     } finally {
       setLoadingStats(false);
     }

@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Unexpected error in session logger:', error);
+    console.warn('Unexpected error in session logger:', error);
     return NextResponse.json({ success: true, warning: 'Handled gracefully' });
   }
 }

@@ -51,13 +51,13 @@ export async function POST(req: NextRequest) {
       .eq('id', errandId);
 
     if (updateError) {
-      console.error('Failed to decline errand:', updateError);
+      console.warn('Failed to decline errand:', updateError);
       return NextResponse.json({ success: false, error: 'Failed to update errand' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'Errand unassigned successfully' });
   } catch (err: any) {
-    console.error('Decline errand error:', err);
+    console.warn('Decline errand error:', err);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

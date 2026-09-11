@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       .eq('id', errandId);
 
     if (updateError) {
-      console.error('Failed to update errand status to disputed:', updateError);
+      console.warn('Failed to update errand status to disputed:', updateError);
       return NextResponse.json({ success: false, error: 'Failed to update errand status' }, { status: 500 });
     }
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Dispute filed successfully' });
   } catch (error: any) {
-    console.error('Dispute errand exception:', error);
+    console.warn('Dispute errand exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

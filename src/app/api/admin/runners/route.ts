@@ -47,13 +47,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching runner apps:', error);
+      console.warn('Error fetching runner apps:', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch runner applications' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Admin runner apps error:', error);
+    console.warn('Admin runner apps error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       .eq('id', applicationId);
 
     if (appUpdateError) {
-      console.error('Failed to update runner application:', appUpdateError);
+      console.warn('Failed to update runner application:', appUpdateError);
       return NextResponse.json({ success: false, error: 'Failed to update application' }, { status: 500 });
     }
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         .eq('id', app.user_id);
 
       if (profileError) {
-        console.error('Failed to elevate profile role to runner:', profileError);
+        console.warn('Failed to elevate profile role to runner:', profileError);
         return NextResponse.json({ success: false, error: 'Failed to update user profile' }, { status: 500 });
       }
     } else {
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       message: `Runner application ${newStatus} successfully`,
     });
   } catch (error: any) {
-    console.error('Admin runner action error:', error);
+    console.warn('Admin runner action error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

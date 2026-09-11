@@ -31,13 +31,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Admin disputes fetch error:', error);
+      console.warn('Admin disputes fetch error:', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch disputes' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Admin disputes error:', error);
+    console.warn('Admin disputes error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -66,13 +66,13 @@ export async function POST(request: NextRequest) {
     const { error } = await adminSupabase.from('disputes').update(updates).eq('id', disputeId);
 
     if (error) {
-      console.error('Admin dispute update error:', error);
+      console.warn('Admin dispute update error:', error);
       return NextResponse.json({ success: false, error: 'Failed to update dispute' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'Dispute updated successfully' });
   } catch (error: any) {
-    console.error('Admin dispute update exception:', error);
+    console.warn('Admin dispute update exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, disputes });
   } catch (error: any) {
-    console.error('Dispute fetch exception:', error);
+    console.warn('Dispute fetch exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (disputeError) {
-      console.error('Failed to create dispute:', disputeError);
+      console.warn('Failed to create dispute:', disputeError);
       return NextResponse.json({ success: false, error: 'Failed to file dispute' }, { status: 500 });
     }
 
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, dispute });
   } catch (error: any) {
-    console.error('File dispute exception:', error);
+    console.warn('File dispute exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -67,7 +67,7 @@ export default function ErrandDetailPage() {
         if (error) throw error;
         setErrand(data as Errand);
       } catch (err) {
-        console.error('Failed to load errand', err);
+        console.warn('Failed to load errand', err);
       } finally {
         setLoading(false);
       }
@@ -164,7 +164,7 @@ export default function ErrandDetailPage() {
           setErrand((current) => (current ? { ...current, status: 'unassigned' } : current));
         }
       } catch (error) {
-        console.error('Payment verification failed', error);
+        console.warn('Payment verification failed', error);
       }
     };
     verifyPayment();
@@ -399,13 +399,13 @@ export default function ErrandDetailPage() {
                         isPast
                           ? 'bg-emerald-600 text-white'
                           : isCurrent
-                          ? 'bg-blue-600 text-white shadow-sm ring-4 ring-blue-100'
+                          ? 'bg-student-charcoal text-white shadow-sm ring-4 ring-blue-100'
                           : 'bg-slate-100 text-slate-400 border border-slate-200'
                       }`}
                     >
                       {isPast ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
                     </div>
-                    <span className={`text-xs font-bold ${isCurrent ? 'text-blue-700' : isPast ? 'text-slate-900' : 'text-slate-400'}`}>
+                    <span className={`text-xs font-bold ${isCurrent ? 'text-student-charcoal dark:text-student-icy' : isPast ? 'text-slate-900' : 'text-slate-400'}`}>
                       {s.label}
                     </span>
                   </div>
@@ -460,7 +460,7 @@ export default function ErrandDetailPage() {
 
             {/* Map Telemetry Overlay */}
             <div className="absolute top-3 left-3 z-[400] bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-1.5 shadow-sm">
-              <Radio className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+              <Radio className="w-3.5 h-3.5 text-student-charcoal dark:text-student-icy animate-pulse" />
               Live Route Radar
             </div>
           </div>
@@ -473,7 +473,7 @@ export default function ErrandDetailPage() {
 
             <div className="space-y-3">
               <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-                <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <MapPin className="w-4 h-4 text-student-charcoal dark:text-student-icy shrink-0 mt-0.5" />
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Pickup Location</span>
                   <span className="font-semibold text-slate-900 dark:text-white text-sm">{errand.pickup_location}</span>
@@ -505,7 +505,7 @@ export default function ErrandDetailPage() {
                 {tracking.map((t) => (
                   <div key={t.id} className="py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-student-charcoal"></span>
                       <span className="font-medium text-slate-800">{t.status_update}</span>
                     </div>
                     <span className="text-[10px] text-slate-400 font-mono">
@@ -526,7 +526,7 @@ export default function ErrandDetailPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-300" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-200">
+                <span className="text-[10px] font-black uppercase tracking-widest text-student-icy">
                   Delivery PIN Verification
                 </span>
               </div>
@@ -536,7 +536,7 @@ export default function ErrandDetailPage() {
             </div>
 
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 text-center border border-white/20 space-y-1">
-              <span className="text-[11px] text-blue-200 font-medium">Your 4-Digit Secret Code</span>
+              <span className="text-[11px] text-student-icy font-medium">Your 4-Digit Secret Code</span>
               <div className="flex items-center justify-center gap-3">
                 <span className="font-mono text-4xl sm:text-5xl font-black tracking-[0.25em] text-white select-all">
                   {errand.delivery_pin || '••••'}
@@ -553,7 +553,7 @@ export default function ErrandDetailPage() {
               </div>
             </div>
 
-            <p className="text-[11px] text-blue-100 leading-relaxed text-center">
+            <p className="text-[11px] text-student-icy leading-relaxed text-center">
               ⚠️ Give this PIN to your runner <strong>ONLY</strong> when they arrive and place your item into your hands. This releases their payout.
             </p>
           </div>
@@ -594,7 +594,7 @@ export default function ErrandDetailPage() {
                   href={`tel:${runnerProfile.phone_number}`}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold transition-colors"
                 >
-                  <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <Phone className="w-3.5 h-3.5 text-student-charcoal dark:text-student-icy dark:text-blue-400" />
                   Call Runner ({runnerProfile.phone_number})
                 </a>
               )}
@@ -750,7 +750,7 @@ export default function ErrandDetailPage() {
                     }}
                     className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border transition-all ${
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600'
+                        ? 'bg-student-charcoal text-white border-blue-600'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >

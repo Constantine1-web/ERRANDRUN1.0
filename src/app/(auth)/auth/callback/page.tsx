@@ -28,7 +28,7 @@ export default function AuthCallbackPage() {
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) {
-             console.error('Exchange error:', exchangeError);
+             console.warn('Exchange error:', exchangeError);
              throw exchangeError;
           }
         }
@@ -47,7 +47,7 @@ export default function AuthCallbackPage() {
         toast.success('Successfully signed in!');
         router.push('/dashboard/user');
       } catch (err: any) {
-        console.error('Callback error:', err);
+        console.warn('Callback error:', err);
         setErrorMsg(err.message || 'An error occurred during sign in');
         toast.error('Sign in failed. Please try again.');
         setTimeout(() => router.push('/login'), 3000);

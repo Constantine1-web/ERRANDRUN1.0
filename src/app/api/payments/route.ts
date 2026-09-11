@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!paystackSecretKey) {
-      console.error('PAYSTACK_SECRET_KEY is not set');
+      console.warn('PAYSTACK_SECRET_KEY is not set');
       return NextResponse.json({ success: false, error: 'Payment gateway not configured' }, { status: 500 });
     }
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (dbError || !payment) {
-      console.error('Payment record insert error:', dbError);
+      console.warn('Payment record insert error:', dbError);
       return NextResponse.json({ success: false, error: 'Failed to initialize payment record' }, { status: 500 });
     }
 
@@ -97,12 +97,12 @@ export async function POST(request: NextRequest) {
         paymentId: payment.id,
       });
     } catch (paystackError: any) {
-      console.error('Paystack initialize error:', paystackError?.response?.data || paystackError);
+      console.warn('Paystack initialize error:', paystackError?.response?.data || paystackError);
       await adminSupabase.from('payments').update({ status: 'failed' }).eq('id', payment.id);
       return NextResponse.json({ success: false, error: 'Failed to initialize payment with Paystack' }, { status: 502 });
     }
   } catch (error: any) {
-    console.error('Payment initialization error:', error);
+    console.warn('Payment initialization error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -173,7 +173,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: false, error: 'Payment verification failed' }, { status: 400 });
   } catch (error: any) {
-    console.error('Payment verify GET error:', error);
+    console.warn('Payment verify GET error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

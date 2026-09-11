@@ -52,7 +52,7 @@ export default function ErrandsActivityPage() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Failed to fetch errands:', error);
+        console.warn('Failed to fetch errands:', error);
       } else {
         setErrands(data || []);
       }

@@ -37,7 +37,7 @@ export function useSessionTracker() {
           });
         }
       } catch (error) {
-        console.error('Failed to initialize session:', error);
+        console.warn('Failed to initialize session:', error);
       }
     };
 
@@ -95,7 +95,7 @@ export function useSessionTracker() {
           keepalive: true,
         });
       } catch (error) {
-        console.error('Failed to log session logout:', error);
+        console.warn('Failed to log session logout:', error);
       }
     }
 

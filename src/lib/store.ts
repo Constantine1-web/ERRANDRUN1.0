@@ -35,6 +35,7 @@ interface AppState {
   isLoading: boolean;
   isDarkMode: boolean;
   activeTaskId: string | null;
+  hideBalance: boolean;
   
   // User actions
   setUser: (user: User | null) => void;
@@ -42,6 +43,7 @@ interface AppState {
   setWallet: (wallet: Wallet | null) => void;
   setIsLoading: (loading: boolean) => void;
   setDarkMode: (dark: boolean) => void;
+  setHideBalance: (hide: boolean) => void;
   setActiveTask: (taskId: string | null) => void;
   logout: () => void;
   updateUserProfile: (updates: Partial<User>) => void;
@@ -57,12 +59,14 @@ export const useAppStore = create<AppState>()(
       isLoading: false,
       isDarkMode: true,
       activeTaskId: null,
+      hideBalance: false,
       
       setUser: (user) => set({ user }),
       setSession: (session) => set({ session }),
       setWallet: (wallet) => set({ wallet }),
       setIsLoading: (loading) => set({ isLoading: loading }),
       setDarkMode: (dark) => set({ isDarkMode: dark }),
+      setHideBalance: (hide) => set({ hideBalance: hide }),
       setActiveTask: (taskId) => set({ activeTaskId: taskId }),
       
       logout: () => set({

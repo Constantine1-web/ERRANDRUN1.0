@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       isAtCapacity,
     });
   } catch (error: any) {
-    console.error('Runner Capacity Check Error:', error);
+    console.warn('Runner Capacity Check Error:', error);
     return NextResponse.json({ success: false, error: 'Failed to verify capacity' }, { status: 500 });
   }
 }

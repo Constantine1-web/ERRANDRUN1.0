@@ -24,6 +24,14 @@ const config = {
           800: '#1E40AF',
           900: '#1E3A8A',
         },
+        student: {
+          icy: '#AED5F5',
+          charcoal: '#353A4C',
+        },
+        runner: {
+          celadon: '#AFE1AF',
+          dark: '#023020',
+        },
         brand: {
           green:  '#16A34A',
           yellow: '#D97706',

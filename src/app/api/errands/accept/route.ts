@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       .in('status', ['assigned', 'in_progress']);
 
     if (countError) {
-      console.error('Failed to verify active errands count:', countError);
+      console.warn('Failed to verify active errands count:', countError);
       return NextResponse.json({ success: false, error: 'Failed to verify runner limits' }, { status: 500 });
     }
 
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, errand: updated });
   } catch (error: any) {
-    console.error('Accept errand error:', error);
+    console.warn('Accept errand error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

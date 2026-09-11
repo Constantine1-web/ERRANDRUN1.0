@@ -52,12 +52,12 @@ export default function RunnerTasksPage() {
           .order('created_at', { ascending: false });
 
         if (availErr) {
-          console.error('Failed to fetch available errands', availErr);
+          console.warn('Failed to fetch available errands', availErr);
         } else {
           setAvailable(availData || []);
         }
       } catch (err) {
-        console.error('Failed to load runner tasks page', err);
+        console.warn('Failed to load runner tasks page', err);
       }
       setLoading(false);
     };

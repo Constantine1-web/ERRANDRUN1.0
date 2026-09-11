@@ -24,7 +24,7 @@ export async function authFetch(input: RequestInfo | URL, init: RequestInit = {}
       headers,
     });
   } catch (error) {
-    console.error('authFetch error:', error);
+    console.warn('authFetch error:', error);
     return await fetch(input, init);
   }
 }

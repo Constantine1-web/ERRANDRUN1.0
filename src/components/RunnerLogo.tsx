@@ -56,13 +56,14 @@ export function RunnerLogo({ className = 'w-16 h-16', animate = true, loop = fal
   };
 
   return (
-    <motion.svg
-      viewBox="0 0 100 100"
-      fill="none"
-      className={className}
-      initial={animate ? 'hidden' : 'visible'}
-      animate="visible"
-    >
+    <div className={className}>
+      <motion.svg
+        viewBox="0 0 100 100"
+        fill="none"
+        style={{ width: '100%', height: '100%' }}
+        initial={animate ? 'hidden' : 'visible'}
+        animate="visible"
+      >
       {/* --- SPEED LINES (Brand Sea Green / Emerald) --- */}
       <motion.path
         d="M 5 25 L 30 25"
@@ -161,5 +162,6 @@ export function RunnerLogo({ className = 'w-16 h-16', animate = true, loop = fal
         />
       </motion.g>
     </motion.svg>
+    </div>
   );
 }

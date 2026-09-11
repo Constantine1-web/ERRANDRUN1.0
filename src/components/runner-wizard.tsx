@@ -80,7 +80,7 @@ export function RunnerWizard({ userId, onComplete }: RunnerWizardProps) {
       setDocumentUrl(publicUrl);
       toast.success('Document uploaded successfully');
     } catch (error) {
-      console.error('Upload error:', error);
+      console.warn('Upload error:', error);
       toast.error('Failed to upload document');
     } finally {
       setUploading(false);
@@ -118,7 +118,7 @@ export function RunnerWizard({ userId, onComplete }: RunnerWizardProps) {
       toast.success('Application submitted! Awaiting admin review.');
       onComplete?.();
     } catch (error) {
-      console.error('Submission error:', error);
+      console.warn('Submission error:', error);
       toast.error('Failed to submit application');
     } finally {
       setLoading(false);

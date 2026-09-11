@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
         router.push('/login');
       }, 2000);
     } catch (err: any) {
-      console.error('Password update failed:', err);
+      console.warn('Password update failed:', err);
       toast.error(err?.message || 'Failed to update password');
     } finally {
       setLoading(false);

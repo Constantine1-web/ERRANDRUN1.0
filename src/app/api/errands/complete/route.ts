@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Errand completed by administrator.' });
   } catch (error: any) {
-    console.error('Errand admin completion error:', error);
+    console.warn('Errand admin completion error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

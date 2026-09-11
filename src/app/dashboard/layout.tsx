@@ -18,7 +18,20 @@ import {
   LogOut,
   ArrowRight,
   Zap,
-  Clock
+  Clock,
+  MessageSquare,
+  Heart,
+  HelpCircle,
+  Settings,
+  MapPin,
+  Bell,
+  Menu,
+  ChevronDown,
+  TrendingUp,
+  Power,
+  RadioTower,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { RunnerLogo } from '@/components/RunnerLogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -30,7 +43,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, setUser, logout } = useAppStore();
+  const { user, setUser, logout, hideBalance, setHideBalance } = useAppStore();
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [activeErrand, setActiveErrand] = useState<{ id: string; title: string; status: string } | null>(null);
 
@@ -116,7 +129,7 @@ export default function DashboardLayout({
           });
         }
       } catch (err) {
-        console.error('Session verification error:', err);
+        console.warn('Session verification error:', err);
       }
     };
 
@@ -148,7 +161,7 @@ export default function DashboardLayout({
 
         setActiveErrand(inFlight || null);
       } catch (err) {
-        console.error('Telemetry fetch failed:', err);
+        console.warn('Telemetry fetch failed:', err);
       }
     };
 
@@ -204,8 +217,43 @@ export default function DashboardLayout({
 
   const isRunner = activeMode === 'runner';
 
-  // Consumer App Navigation Tabs
-  const requestNav = [
+  // Desktop Sidebar Links
+  const sidebarLinks = [
+    { label: 'Home', href: '/dashboard/user', icon: Home },
+    { label: 'Activity', href: '/dashboard/errands', icon: Clock },
+    { label: 'Wallet', href: '/dashboard/wallet', icon: Wallet },
+    { label: 'Messages', href: '/dashboard/messages', icon: MessageSquare, badge: 3 },
+    { label: 'Favorites', href: '/dashboard/favorites', icon: Heart },
+    { label: 'Help & Support', href: '/dashboard/support', icon: HelpCircle },
+    { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+  ];
+
+  
+  // Runner Desktop Sidebar Links
+  const runnerSidebarLinks = [
+    { label: 'Runner Console', href: '/dashboard/runner', icon: Radio },
+    { label: 'Radar', href: '/dashboard/runner/radar', icon: RadioTower },
+    { label: 'Tasks', href: '/dashboard/runner/tasks', icon: Package },
+    { label: 'Earnings', href: '/dashboard/runner/earnings', icon: Wallet },
+    { label: 'Performance', href: '/dashboard/runner/performance', icon: TrendingUp },
+    { label: 'Wallet', href: '/dashboard/wallet', icon: Wallet },
+    { label: 'Account', href: '/dashboard/profile', icon: User },
+    { label: 'Help & Support', href: '/dashboard/support', icon: HelpCircle },
+  ];
+
+  const currentSidebarLinks = isRunner ? runnerSidebarLinks : sidebarLinks;
+
+  // Mobile Bottom Nav Links
+  
+  const runnerMobileNav = [
+    { label: 'Radar', href: '/dashboard/runner', icon: RadioTower },
+    { label: 'Tasks', href: '/dashboard/runner/tasks', icon: Package },
+    { label: 'Go Online', href: '/dashboard/runner/online', icon: Zap, isCta: true },
+    { label: 'Earnings', href: '/dashboard/wallet', icon: Wallet },
+    { label: 'Account', href: '/dashboard/profile', icon: User },
+  ];
+
+  const mobileNav = [
     { label: 'Home', href: '/dashboard/user', icon: Home },
     { label: 'Activity', href: '/dashboard/errands', icon: Clock },
     { label: 'Request', href: '/dashboard/errands/new', icon: Plus, isCta: true },
@@ -213,151 +261,214 @@ export default function DashboardLayout({
     { label: 'Account', href: '/dashboard/profile', icon: User },
   ];
 
-  const runnerNav = [
-    { label: 'Radar', href: '/dashboard/runner', icon: Radio },
-    { label: 'Tasks', href: '/dashboard/runner/tasks', icon: Package },
-    { label: 'Go Live', href: '/dashboard/runner/track', icon: Zap, isCta: true },
-    { label: 'Earnings', href: '/dashboard/wallet', icon: Wallet },
-    { label: 'Account', href: '/dashboard/profile', icon: User },
-  ];
-
-  const currentNav = isRunner ? runnerNav : requestNav;
+  const currentMobileNav = isRunner ? runnerMobileNav : mobileNav;
 
   return (
-    <div
-      className={`min-h-screen flex flex-col antialiased transition-colors duration-200 ${
-        isRunner
-          ? 'bg-slate-50 dark:bg-[#070D12] text-slate-900 dark:text-slate-100'
-          : 'bg-[#F8FAFC] dark:bg-[#0B0F17] text-slate-900 dark:text-slate-100'
-      }`}
-    >
-      {/* ── TOP UBER-STYLE HEADER ── */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-3">
-          
-          {/* Brand & Campus Pill */}
-          <div className="flex items-center gap-3">
-            <Link
-              href={isRunner ? '/dashboard/runner' : '/dashboard/user'}
-              className="flex items-center gap-2 group"
-            >
-              <RunnerLogo
-                className={`w-7 h-7 transition-transform group-hover:scale-105 ${
-                  isRunner ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'
-                }`}
-                animate={false}
-              />
-              <span className="font-black text-slate-900 dark:text-white text-base tracking-tight leading-none">
-                ERRANDRUN
-              </span>
-            </Link>
+    <div className="min-h-screen flex antialiased bg-[#F4F7FE] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100">
+      {/* ── DESKTOP SIDEBAR ── */}
+      <aside className="hidden lg:flex flex-col w-64 fixed inset-y-0 left-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50">
+        <div className="p-6">
+          <Link href="/dashboard/user" className="flex items-center gap-2 group">
+            <RunnerLogo className="w-8 h-8 text-blue-600 dark:text-blue-500 transition-transform group-hover:scale-105" animate={false} />
+            <span className="font-black text-xl tracking-tight text-slate-900 dark:text-white">ERRANDRUN</span>
+          </Link>
+        </div>
 
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              <span className={`w-1.5 h-1.5 rounded-full ${isRunner ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-              UniUyo Campus
-            </span>
-          </div>
-
-          {/* Center Mode Switcher (Uber vs Uber Driver toggle) */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-full border border-slate-200/80 dark:border-slate-700 text-xs">
-            <button
-              onClick={() => handleModeSwitch('request')}
-              className={`px-3 sm:px-4 py-1.5 rounded-full font-bold transition-all ${
-                !isRunner
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Request
-            </button>
-            <button
-              onClick={() => handleModeSwitch('runner')}
-              className={`px-3 sm:px-4 py-1.5 rounded-full font-bold transition-all ${
-                isRunner
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Runner
-            </button>
-          </div>
-
-          {/* Right Header Actions */}
-          <div className="flex items-center gap-2">
-            {/* Quick Wallet Pill */}
-            <Link
-              href="/dashboard/wallet"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-mono font-bold text-slate-900 dark:text-white transition-colors"
-            >
-              <span className="text-emerald-600 dark:text-emerald-400">₦</span>
-              <span>{walletBalance !== null ? walletBalance.toLocaleString('en-NG') : '…'}</span>
-            </Link>
-
-            {/* Theme Toggle */}
-            <ThemeToggle variant="icon" />
-
-            {/* User Avatar */}
-            <Link
-              href="/dashboard/profile"
-              className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs shadow-inner"
-            >
-              {user?.fullName?.charAt(0) || <User className="w-3.5 h-3.5" />}
-            </Link>
-
-            {user?.role === 'admin' && (
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+          {currentSidebarLinks.map((link) => {
+            const isActive = pathname === link.href || (link.href === '/dashboard/user' && pathname === '/dashboard');
+            const Icon = link.icon;
+            return (
               <Link
-                href="/dashboard/admin"
-                className="hidden lg:flex p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-xl"
-                title="Admin Ops"
+                key={link.label}
+                href={link.href}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                  isActive 
+                    ? (isRunner ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400') 
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-100'
+                }`}
               >
-                <ShieldCheck className="w-4 h-4" />
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-5 h-5 ${isActive ? (isRunner ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400') : 'text-slate-400 dark:text-slate-500'}`} />
+                  {link.label}
+                </div>
+                {link.badge && (
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+                    {link.badge}
+                  </span>
+                )}
               </Link>
-            )}
+            );
+          })}
+        </nav>
 
-            <button
-              onClick={handleLogout}
-              className="hidden lg:flex p-2 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
-              title="Sign Out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── ACTIVE ERRAND FLOATING TICKER (Deliveroo style) ── */}
-      {activeErrand && (
-        <div className="bg-blue-600 text-white px-4 py-2.5 shadow-sm text-xs font-medium">
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 truncate">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
-              </span>
-              <span className="font-bold text-[10px] uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
-                Active Ride
-              </span>
-              <span className="truncate font-semibold">{activeErrand.title}</span>
+        <div className="p-4 mt-auto">
+          {isRunner ? (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 space-y-3">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">Go Online</h3>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                Start receiving student requests and earn
+              </p>
+              <button 
+                className="w-full py-2.5 rounded-xl bg-[#00A859] hover:bg-green-700 text-white text-xs font-bold transition-colors flex items-center justify-center gap-2"
+              >
+                <Power className="w-4 h-4" /> Go Online
+              </button>
             </div>
-            <Link
-              href={`/dashboard/user/errand/${activeErrand.id}`}
-              className="flex items-center gap-1 font-bold text-white bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full text-xs shrink-0 transition-colors"
-            >
-              Track Live <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+          ) : (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 text-center space-y-3">
+              <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                <Zap className="w-5 h-5 text-amber-500" />
+              </div>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                Want to earn? Switch to Runner Mode and start making money.
+              </p>
+              <button 
+                onClick={() => handleModeSwitch('runner')}
+                className="w-full py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                Switch Now
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </aside>
 
-      {/* ── MAIN CONSUMER APP VIEWPORT ── */}
-      <main className="flex-1 pb-24 md:pb-12 max-w-5xl mx-auto w-full px-4 sm:px-6">
-        {children}
-      </main>
+      {/* ── MAIN CONTENT WRAPPER ── */}
+      <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
+        
+        {/* ── TOP HEADER ── */}
+        {/* ── TOP HEADER (RESPONSIVE) ── */}
+        <header className="sticky top-0 z-40 bg-white/90 lg:bg-[#F4F7FE]/90 dark:bg-[#0B0F19]/90 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50">
+          
+          {/* MOBILE VIEW HEADER */}
+          <div className="lg:hidden px-4 h-14 flex items-center justify-between">
+            <button className="p-2 -ml-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+              <Menu className="w-6 h-6" />
+            </button>
+            
+            <Link href="/dashboard/user" className="flex items-center gap-1.5 absolute left-1/2 -translate-x-1/2">
+              <RunnerLogo className="w-6 h-6 text-blue-600 dark:text-blue-500" animate={false} />
+              <span className="font-black text-sm tracking-tight text-slate-900 dark:text-white">ERRANDRUN</span>
+            </Link>
 
-      {/* ── APP-LIKE BOTTOM NAVIGATION DOCK (Uber / Bolt Style) ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),8px)] pt-1 transition-colors">
-        <nav className="max-w-md mx-auto flex items-center justify-around px-2">
-          {currentNav.map((item) => {
+            <div className="flex items-center gap-1">
+              <button className="relative p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-[#0B0F19]"></span>
+              </button>
+              <Link href="/dashboard/profile" className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center text-[10px] shadow-sm overflow-hidden">
+                {user?.fullName?.charAt(0) || <User className="w-3.5 h-3.5" />}
+              </Link>
+            </div>
+          </div>
+
+          {/* DESKTOP VIEW HEADER */}
+          <div className="hidden lg:flex px-6 h-16 items-center justify-between gap-3 w-full">
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:bg-slate-50 transition-colors">
+              <MapPin className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-200">UniUyo Campus</span>
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center bg-slate-200/50 dark:bg-slate-800 p-1 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-700">
+                <button
+                  onClick={() => handleModeSwitch('request')}
+                  className={`px-4 py-1.5 rounded-full transition-all ${!isRunner ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}
+                >
+                  Request
+                </button>
+                <button
+                  onClick={() => handleModeSwitch('runner')}
+                  className={`px-4 py-1.5 rounded-full transition-all ${isRunner ? 'bg-[#00A859] text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}
+                >
+                  Runner
+                </button>
+              </div>
+
+              {isRunner ? (
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-4 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-[#00A859]"></span>
+                  <span className="text-xs font-bold text-[#00A859]">You are Offline</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm pl-1 pr-1 py-1">
+                  <Link href="/dashboard/wallet" className="flex items-center gap-2 px-2 hover:opacity-80 transition-opacity">
+                    <div className="bg-yellow-100 dark:bg-yellow-900/30 p-1.5 rounded-full">
+                      <Wallet className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-500" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      {hideBalance ? '****' : `₦${walletBalance !== null ? walletBalance.toLocaleString('en-NG') : '…'}`}
+                    </span>
+                  </Link>
+                  <button 
+                    onClick={() => setHideBalance(!hideBalance)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    {hideBalance ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              )}
+
+              <ThemeToggle variant="icon" />
+
+              <button className="relative p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#F4F7FE] dark:border-[#0B0F19]"></span>
+              </button>
+
+              <Link href="/dashboard/profile" className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center text-xs shadow-sm overflow-hidden">
+                 {user?.fullName?.charAt(0) || <User className="w-4 h-4" />}
+              </Link>
+              
+              {user?.role === 'admin' && (
+                <Link href="/dashboard/admin" className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-full">
+                  <ShieldCheck className="w-5 h-5" />
+                </Link>
+              )}
+              
+              <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-600 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* ── ACTIVE ERRAND TICKER ── */}
+        {activeErrand && (
+          <div className="bg-blue-600 text-white px-4 py-2.5 shadow-sm text-xs font-medium">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 truncate">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400"></span>
+                </span>
+                <span className="font-bold text-[10px] uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
+                  Active Ride
+                </span>
+                <span className="truncate font-semibold">{activeErrand.title}</span>
+              </div>
+              <Link
+                href={`/dashboard/user/errand/${activeErrand.id}`}
+                className="flex items-center gap-1 font-bold text-blue-600 bg-white hover:bg-slate-50 px-3 py-1 rounded-full text-xs shrink-0 transition-colors shadow-sm"
+              >
+                Track Live <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── MAIN CONTENT ── */}
+        <main className="flex-1 pb-24 lg:pb-8 w-full">
+          {children}
+        </main>
+      </div>
+
+      {/* ── MOBILE BOTTOM NAVIGATION ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 pb-[max(env(safe-area-inset-bottom),8px)] pt-1">
+        <nav className="flex items-center justify-around px-2">
+          {currentMobileNav.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
@@ -366,12 +477,7 @@ export default function DashboardLayout({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`p-3 rounded-2xl shadow-lg active:scale-95 transition-all -translate-y-3.5 border-2 border-white dark:border-slate-900 ${
-                    isRunner
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/30'
-                      : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/30'
-                  }`}
-                  title={item.label}
+                  className={`p-3 rounded-2xl shadow-lg active:scale-95 transition-all -translate-y-3.5 border-2 border-white dark:border-slate-900 ${isRunner ? "bg-[#00A859] hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"} text-white`}
                 >
                   <Icon className="w-5 h-5" />
                 </Link>
@@ -384,10 +490,8 @@ export default function DashboardLayout({
                 href={item.href}
                 className={`flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-[10px] font-bold transition-all ${
                   isActive
-                    ? isRunner
-                      ? 'text-emerald-600 dark:text-emerald-400'
-                      : 'text-blue-600 dark:text-blue-400'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 <Icon className="w-5 h-5" />

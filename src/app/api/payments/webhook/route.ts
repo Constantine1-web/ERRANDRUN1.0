@@ -7,7 +7,7 @@ const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || '';
 export async function POST(request: NextRequest) {
   try {
     if (!paystackSecretKey) {
-      console.error('PAYSTACK_SECRET_KEY is missing. Webhook rejected for security.');
+      console.warn('PAYSTACK_SECRET_KEY is missing. Webhook rejected for security.');
       return NextResponse.json({ error: 'Gateway configuration error' }, { status: 500 });
     }
 
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.error('Webhook processing exception:', error);
+    console.warn('Webhook processing exception:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -30,13 +30,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Admin errands fetch error:', error);
+      console.warn('Admin errands fetch error:', error);
       return NextResponse.json({ success: false, error: 'Failed to fetch errands' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Admin errands error:', error);
+    console.warn('Admin errands error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
   } catch (error: any) {
-    console.error('Admin errand update error:', error);
+    console.warn('Admin errand update error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

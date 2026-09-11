@@ -55,13 +55,13 @@ export async function POST(req: NextRequest) {
       .eq('status', 'pending');
 
     if (updateError) {
-      console.error('Failed to update payout transaction:', updateError);
+      console.warn('Failed to update payout transaction:', updateError);
       return NextResponse.json({ success: false, error: 'Failed to process payout transaction' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: 'Payout processed successfully' });
   } catch (error: any) {
-    console.error('Payout processing error:', error);
+    console.warn('Payout processing error:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

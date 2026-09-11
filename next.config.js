@@ -3,6 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+  transpilePackages: ['react-leaflet', 'leaflet'],
   experimental: {
     optimizePackageImports: ['@radix-ui/react-*', 'lucide-react'],
   },

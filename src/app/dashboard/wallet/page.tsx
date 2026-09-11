@@ -80,8 +80,8 @@ function WalletContent() {
 
       if (txError) throw txError;
       setTransactions(txData || []);
-    } catch (error) {
-      console.error('Failed to fetch wallet data:', error);
+    } catch (error: any) {
+      console.warn('Wallet fetch warning:', error?.message || JSON.stringify(error) || error);
     }
   }, [user]);
 
@@ -106,7 +106,7 @@ function WalletContent() {
           toast.error(result?.error || 'Payment verification was not successful.');
         }
       } catch (error) {
-        console.error('Deposit verification failed', error);
+        console.warn('Deposit verification failed', error);
         toast.error('Payment verification failed. Please contact support.');
       } finally {
         setVerifying(false);
@@ -143,7 +143,7 @@ function WalletContent() {
 
       window.location.href = result.data.authorization_url;
     } catch (error: any) {
-      console.error('Deposit error:', error);
+      console.warn('Deposit error:', error);
       toast.error(error.message || 'Unable to process deposit. Please try again.');
     } finally {
       setLoading(false);
@@ -199,7 +199,7 @@ function WalletContent() {
               onClick={() => setIsWithdrawOpen(true)}
               className="text-xs font-bold"
             >
-              <Building2 className="w-4 h-4 mr-1.5 text-emerald-600" />
+              <Building2 className="w-4 h-4 mr-1.5 text-runner-dark dark:text-runner-celadon" />
               Request Payout
             </Button>
           ) : null}
@@ -216,8 +216,8 @@ function WalletContent() {
       </div>
 
       {verifying && (
-        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-semibold flex items-center gap-2.5 animate-pulse">
-          <Clock className="w-4 h-4 text-blue-600 animate-spin" />
+        <div className="p-4 rounded-2xl bg-student-icy/20 border border-student-icy/40 text-student-charcoal dark:text-student-icy text-xs font-semibold flex items-center gap-2.5 animate-pulse">
+          <Clock className="w-4 h-4 text-student-charcoal dark:text-student-icy animate-spin" />
           <span>Verifying your Paystack transaction with campus treasury…</span>
         </div>
       )}
@@ -230,9 +230,9 @@ function WalletContent() {
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
               Available Balance
             </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span className="w-2 h-2 rounded-full bg-runner-celadon"></span>
           </div>
-          <p className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono tracking-tight">
+          <p className="text-3xl sm:text-4xl font-black text-runner-dark dark:text-runner-celadon font-mono tracking-tight">
             ₦{wallet?.balance?.toLocaleString('en-NG') || '0.00'}
           </p>
           <span className="text-[11px] text-slate-400 block pt-1">
@@ -248,7 +248,7 @@ function WalletContent() {
           <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
             ₦{wallet?.total_earned?.toLocaleString('en-NG') || '0'}
           </p>
-          <span className="text-[11px] text-emerald-600 font-semibold block pt-1">
+          <span className="text-[11px] text-runner-dark dark:text-runner-celadon font-semibold block pt-1">
             Earned from completed errands
           </span>
         </div>
@@ -296,7 +296,7 @@ function WalletContent() {
                     <div
                       className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
                         isCredit
-                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                          ? 'bg-runner-celadon/20 text-runner-dark dark:text-runner-celadon border border-emerald-200'
                           : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}
                     >
@@ -320,7 +320,7 @@ function WalletContent() {
                   <div className="text-left sm:text-right flex sm:flex-col items-center sm:items-end justify-between">
                     <span
                       className={`font-mono font-black text-base ${
-                        isCredit ? 'text-emerald-600' : 'text-slate-900'
+                        isCredit ? 'text-runner-dark dark:text-runner-celadon' : 'text-slate-900'
                       }`}
                     >
                       {isCredit ? '+' : '-'}₦{Math.abs(tx.amount).toLocaleString('en-NG')}
@@ -348,7 +348,7 @@ function WalletContent() {
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-scaleIn">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-blue-600" />
+                <CreditCard className="w-5 h-5 text-student-charcoal dark:text-student-icy" />
                 <h3 className="font-bold text-base text-slate-900">Fund Campus Wallet</h3>
               </div>
               <button onClick={() => setIsAddFundsOpen(false)} className="text-slate-400 font-bold">✕</button>
@@ -367,7 +367,7 @@ function WalletContent() {
                   onClick={() => setDepositAmount(amt)}
                   className={`py-2 rounded-xl text-xs font-mono font-bold border transition-all ${
                     depositAmount === amt
-                      ? 'bg-blue-600 text-white border-blue-600'
+                      ? 'bg-student-charcoal text-white border-student-charcoal'
                       : 'bg-slate-50 text-slate-700 border-slate-200'
                   }`}
                 >
@@ -413,7 +413,7 @@ function WalletContent() {
               <button onClick={() => setIsWithdrawOpen(false)} className="text-slate-400 font-bold">✕</button>
             </div>
             <p className="text-xs text-slate-500">
-              Available Balance: <strong className="text-emerald-600">₦{wallet?.balance?.toLocaleString() || 0}</strong>. Minimum payout is <strong>₦2,000</strong>.
+              Available Balance: <strong className="text-runner-dark dark:text-runner-celadon">₦{wallet?.balance?.toLocaleString() || 0}</strong>. Minimum payout is <strong>₦2,000</strong>.
             </p>
             <form onSubmit={handleWithdraw} className="space-y-4">
               <div className="space-y-1.5">
@@ -434,7 +434,7 @@ function WalletContent() {
                 variant="primary"
                 size="lg"
                 isLoading={withdrawing}
-                className="w-full font-bold bg-emerald-600 hover:bg-emerald-700"
+                className="w-full font-bold bg-runner-dark hover:bg-runner-dark/90"
               >
                 Confirm Bank Payout
               </Button>
