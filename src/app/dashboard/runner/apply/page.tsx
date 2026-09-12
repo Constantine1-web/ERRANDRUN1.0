@@ -54,57 +54,35 @@ export default function RunnerApplicationPage() {
   const handleSubmitApplication = async () => {
     setIsLoading(true);
     try {
-      setTimeout(() => {
-        toast.success('Runner application submitted for admin review!');
-        setStep(4);
-        setIsLoading(false);
-      }, 1500);
-    } catch {
-      toast.error('Failed to submit application');
-      setIsLoading(false);
-    }
-  };
-
-  const handleInstantUnlockRunner = async () => {
-    setIsLoading(true);
-    try {
       const { data: authData } = await supabase.auth.getUser();
       const currentUserId = authData?.user?.id || user?.id;
-      if (!currentUserId) return toast.error('Please sign in first');
-
-      const oneYearFromNow = new Date();
-      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
-      await supabase
-        .from('profiles')
-        .update({
-          role: 'runner',
-          verification_status: 'verified',
-          verification_expires_at: oneYearFromNow.toISOString(),
-          student_id: user?.studentId || '21/SC/CO/999',
-        })
-        .eq('id', currentUserId);
-
+      
+      if (currentUserId) {
+        await supabase
+          .from('profiles')
+          .update({
+            verification_status: 'pending',
+          })
+          .eq('id', currentUserId);
+      }
+      
       if (user) {
         setUser({
           ...user,
-          role: 'runner',
-          verificationStatus: 'verified',
-          verificationExpiresAt: oneYearFromNow.toISOString(),
-          studentId: user.studentId || '21/SC/CO/999',
+          verificationStatus: 'pending',
         });
       }
 
-      toast.success('⚡ Runner Privileges Unlocked! Opening Opportunity Radar…');
-      setTimeout(() => {
-        router.push('/dashboard/runner');
-      }, 600);
-    } catch (err: any) {
-      toast.error('Failed to unlock runner');
+      toast.success('Runner application submitted for admin review!');
+      setStep(4);
+    } catch {
+      toast.error('Failed to submit application');
     } finally {
       setIsLoading(false);
     }
   };
+
+  
 
   if (!user || user.verificationStatus !== 'verified') {
     return (
@@ -117,13 +95,7 @@ export default function RunnerApplicationPage() {
           Before applying to run errands on campus, you must complete your primary student profile verification.
         </p>
         <div className="flex flex-col gap-2 pt-2">
-          <Button
-            onClick={handleInstantUnlockRunner}
-            isLoading={isLoading}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs h-11 shadow-sm"
-          >
-            <Zap className="w-4 h-4 mr-1.5" /> Instant Test Pass: Unlock Runner Privileges
-          </Button>
+          
           <Button
             onClick={() => router.push('/dashboard/verify')}
             variant="outline"

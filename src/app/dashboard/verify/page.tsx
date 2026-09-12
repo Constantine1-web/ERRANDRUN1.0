@@ -118,58 +118,7 @@ export default function VerificationPage() {
     }
   };
 
-  // Instant Test Bypass (for testing on PC without webcam)
-  const handleInstantTestVerify = async () => {
-    setIsLoading(true);
-    try {
-      const { data: authData } = await supabase.auth.getUser();
-      const currentUserId = authData?.user?.id || user?.id;
-
-      if (!currentUserId) {
-        toast.error('Please sign in first');
-        return;
-      }
-
-      const oneYearFromNow = new Date();
-      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
-      // Persist directly to Supabase database
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          student_id: studentId || '21/SC/CO/999',
-          phone_number: phone || '08012345678',
-          verification_status: 'verified',
-          verification_expires_at: oneYearFromNow.toISOString(),
-          role: 'runner', // unlock runner features for testing
-        })
-        .eq('id', currentUserId);
-
-      if (error) {
-        console.warn('Bypass error:', error);
-      }
-
-      if (user) {
-        setUser({
-          ...user,
-          phoneNumber: phone || '08012345678',
-          studentId: studentId || '21/SC/CO/999',
-          verificationStatus: 'verified',
-          verificationExpiresAt: oneYearFromNow.toISOString(),
-          role: 'runner',
-        });
-      }
-
-      toast.success('⚡ Verification Activated! All requester & runner features unlocked.');
-      setTimeout(() => {
-        router.push('/dashboard/user');
-      }, 800);
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to activate test verification');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
 
   const handleCompleteVerification = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,18 +129,13 @@ export default function VerificationPage() {
       const { data: authData } = await supabase.auth.getUser();
       const currentUserId = authData?.user?.id || user?.id;
 
-      const oneYearFromNow = new Date();
-      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
-
       if (currentUserId) {
         await supabase
           .from('profiles')
           .update({
             student_id: studentId.trim().toUpperCase(),
             phone_number: phone,
-            verification_status: 'verified',
-            verification_expires_at: oneYearFromNow.toISOString(),
-            role: 'runner',
+            verification_status: 'pending',
           })
           .eq('id', currentUserId);
       }
@@ -201,18 +145,16 @@ export default function VerificationPage() {
           ...user,
           phoneNumber: phone,
           studentId: studentId.trim().toUpperCase(),
-          verificationStatus: 'verified',
-          verificationExpiresAt: oneYearFromNow.toISOString(),
-          role: 'runner',
+          verificationStatus: 'pending',
         });
       }
 
-      toast.success('Student Identity Verified Successfully!');
+      toast.success('Verification submitted! Pending admin approval.');
       setTimeout(() => {
         router.push('/dashboard/user');
-      }, 1000);
+      }, 1500);
     } catch {
-      toast.error('Failed to verify profile');
+      toast.error('Failed to submit verification');
     } finally {
       setIsLoading(false);
     }
@@ -254,27 +196,6 @@ export default function VerificationPage() {
         <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
           Verify your campus phone and university matric number to unlock all requester and runner features.
         </p>
-      </div>
-
-      {/* ── QUICK TEST VERIFY CARD (For Testing Without PC Webcam) ── */}
-      <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-800 dark:text-emerald-300">
-            <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Testing on PC without a Webcam?</span>
-          </div>
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 leading-snug">
-            Activate instant test verification with 1 click to test all runner, dispatch, and tracking features right now.
-          </p>
-        </div>
-        <Button
-          type="button"
-          onClick={handleInstantTestVerify}
-          isLoading={isLoading}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shrink-0 shadow-sm"
-        >
-          <Sparkles className="w-3.5 h-3.5 mr-1" /> Instant Test Pass
-        </Button>
       </div>
 
       {/* ── STEP TABS ── */}
