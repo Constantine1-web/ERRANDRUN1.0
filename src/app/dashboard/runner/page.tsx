@@ -397,8 +397,14 @@ export default function RunnerOpportunityRadar() {
           ) : (
             <div className="space-y-3">
               {historyErrands.length === 0 ? (
-                <div className="bg-white dark:bg-[#111827] rounded-2xl p-12 border border-slate-200 dark:border-slate-800 text-center text-sm text-slate-400 shadow-sm">
-                  No completed errands in your log yet.
+                <div className="bg-white dark:bg-[#111827] rounded-[2rem] p-12 border border-slate-200 dark:border-slate-800 border-dashed text-center space-y-3 shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-2">
+                    <Clock className="w-6 h-6 text-slate-400" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">No Missions Completed</p>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                    Switch to the "Nearby" tab to find and accept your first campus errand.
+                  </p>
                 </div>
               ) : (
                 historyErrands.map((h) => (

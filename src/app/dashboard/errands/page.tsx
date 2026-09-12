@@ -161,9 +161,17 @@ export default function ErrandsActivityPage() {
         <div className="bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 p-12 text-center space-y-3">
           <Package className="w-8 h-8 text-slate-400 mx-auto" />
           <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No errands found</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {searchQuery ? 'Try adjusting your search criteria.' : 'You have not dispatched any errands in this category yet.'}
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            {searchQuery ? 'Try adjusting your search criteria.' : 'You haven\\'t requested any campus runs yet. Need something done?'}
           </p>
+          {!searchQuery && (
+            <div className="pt-4">
+              <Button onClick={() => router.push('/dashboard/errands/new')} variant="primary" className="font-bold shadow-md">
+                <Plus className="w-4 h-4 mr-1.5" />
+                Dispatch a Runner
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -187,6 +195,16 @@ export default function ErrandsActivityPage() {
                     >
                       {errand.status.replace('_', ' ')}
                     </Badge>
+                    {errand.priority === 'urgent' && (
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                        Express
+                      </span>
+                    )}
+                    {(errand as any).is_bulky && (
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
+                        Heavy
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
