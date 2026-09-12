@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminSupabase, requireAdmin } from '@/lib/serverAuth';
-import { AdminUserUpdateSchema } from '@/lib/validations';
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function GET(request: NextRequest) {
@@ -14,6 +13,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
+    const verificationStatus = searchParams.get('verification_status');
+    const search = searchParams.get('search');
 
     let query = adminSupabase
       .from('profiles')
@@ -26,6 +27,15 @@ export async function GET(request: NextRequest) {
     if (role && role !== 'all') {
       query = query.eq('role', role);
     }
+    
+    if (verificationStatus && verificationStatus !== 'all') {
+      query = query.eq('verification_status', verificationStatus);
+    }
+    
+    if (search) {
+      // Basic search on name, student_id, or email
+      query = query.or(`full_name.ilike.%${search}%,student_id.ilike.%${search}%,email.ilike.%${search}%`);
+    }
 
     const { data, error } = await query;
 
@@ -37,41 +47,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.warn('Admin users error:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const authCheck = await requireAdmin(request);
-    if (authCheck.response) return authCheck.response;
-
-    const body = await request.json();
-    const parseResult = AdminUserUpdateSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid user update payload', details: parseResult.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const { userId, role, verificationStatus } = parseResult.data;
-
-    const updates: any = { updated_at: new Date().toISOString() };
-    if (role) updates.role = role;
-    if (verificationStatus) updates.verification_status = verificationStatus;
-
-    const { error } = await adminSupabase.from('profiles').update(updates).eq('id', userId);
-
-    if (error) {
-      console.warn('Admin user update error:', error);
-      return NextResponse.json({ success: false, error: 'Failed to update user profile' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, message: 'User profile updated successfully' });
-  } catch (error: any) {
-    console.warn('Admin user update exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

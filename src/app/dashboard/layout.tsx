@@ -82,6 +82,13 @@ export default function DashboardLayout({
           .single();
 
         if (!profileError && profile) {
+          if (profile.role === 'suspended') {
+            await supabase.auth.signOut();
+            logout();
+            toast.error('Your account has been suspended by administration.');
+            router.push('/');
+            return;
+          }
           const expiresAt = profile.verification_expires_at
             ? new Date(profile.verification_expires_at)
             : null;

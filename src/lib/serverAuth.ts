@@ -111,6 +111,15 @@ export async function requireAuth(
     .eq('id', user.id)
     .single();
 
+  if (profile?.role === 'suspended') {
+    return {
+      response: NextResponse.json(
+        { success: false, error: 'Forbidden: Account suspended by administrator' },
+        { status: 403 }
+      ),
+    };
+  }
+
   return {
     auth: {
       user,
