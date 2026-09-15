@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { NotificationBell } from '@/components/ui/NotificationBell';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAppStore } from '@/lib/store';
@@ -360,10 +361,7 @@ export default function DashboardLayout({
             </Link>
 
             <div className="flex items-center gap-1">
-              <button className="relative p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-[#0B0F19]"></span>
-              </button>
+              <NotificationBell userId={user?.id || ''} />
               <Link href="/dashboard/profile" className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center text-[10px] shadow-sm overflow-hidden">
                 {user?.fullName?.charAt(0) || <User className="w-3.5 h-3.5" />}
               </Link>
@@ -420,10 +418,7 @@ export default function DashboardLayout({
 
               <ThemeToggle variant="icon" />
 
-              <button className="relative p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#F4F7FE] dark:border-[#0B0F19]"></span>
-              </button>
+              <NotificationBell userId={user?.id || ''} />
 
               <Link href="/dashboard/profile" className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center text-xs shadow-sm overflow-hidden">
                  {user?.fullName?.charAt(0) || <User className="w-4 h-4" />}

@@ -26,11 +26,10 @@ export async function POST(request: NextRequest) {
       updates.verification_status = 'rejected';
       if (!reason) return NextResponse.json({ success: false, error: 'Rejection reason required' }, { status: 400 });
     } else if (action === 'suspend_user') {
-      updates.role = 'suspended'; // Or create a dedicated 'status' field, but changing role is safest to immediately break RLS/UI
+      updates.account_status = 'suspended';
       if (!reason) return NextResponse.json({ success: false, error: 'Suspension reason required' }, { status: 400 });
     } else if (action === 'reactivate_user') {
-      // Revert to 'student' (or 'runner' if they were a runner). We'll safely revert to 'student'.
-      updates.role = 'student'; 
+      updates.account_status = 'active'; 
     } else {
       return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
     }

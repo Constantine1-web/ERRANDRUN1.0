@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { adminSupabase, requireAuth } from '@/lib/serverAuth';
 import { WithdrawSchema } from '@/lib/validations';
@@ -26,54 +27,26 @@ export async function POST(req: NextRequest) {
     }
 
     const { amount } = parseResult.data;
+    const amountKobo = Math.round(amount * 100);
+    const idempotencyKey = crypto.randomUUID();
 
-    // 1. Fetch Verified Wallet Balance
-    const { data: wallet, error: walletError } = await adminSupabase
-      .from('wallets')
-      .select('id, balance')
-      .eq('user_id', userId)
-      .single();
+    // The atomic RPC handles checking the balance, creating the operation, 
+    // drafting the journal, moving funds to Withdrawal Clearing, and updating the projection.
+    const { data: rpcData, error: rpcError } = await adminSupabase.rpc('request_withdrawal', {
+      p_user_id: userId,
+      p_amount_kobo: amountKobo,
+      p_idempotency_key: idempotencyKey
+    });
 
-    if (walletError || !wallet || Number(wallet.balance) < amount) {
+    if (rpcError) {
+      console.warn('Withdrawal RPC failed:', rpcError);
       return NextResponse.json(
-        {
-          success: false,
-          error: `Insufficient funds. Your available balance is ₦${Number(wallet?.balance || 0).toLocaleString()}`,
-        },
+        { success: false, error: rpcError.message || 'Failed to process withdrawal' },
         { status: 400 }
       );
     }
 
-    // 2. Deduct Balance Atomically
-    const newBalance = Number(wallet.balance) - amount;
-    const { error: updateError } = await adminSupabase
-      .from('wallets')
-      .update({ balance: newBalance, last_updated: new Date().toISOString() })
-      .eq('user_id', userId);
-
-    if (updateError) {
-      console.warn('Failed to deduct withdrawal balance:', updateError);
-      return NextResponse.json({ success: false, error: 'Failed to process withdrawal' }, { status: 500 });
-    }
-
-    // 3. Record Withdrawal Transaction
-    const { error: txError } = await adminSupabase.from('transactions').insert({
-      user_id: userId,
-      amount: amount,
-      type: 'withdrawal',
-      status: 'pending',
-      description: 'Runner requested payout to bank account',
-      created_at: new Date().toISOString(),
-    });
-
-    if (txError) {
-      // Rollback balance deduction
-      await adminSupabase.from('wallets').update({ balance: wallet.balance }).eq('user_id', userId);
-      console.warn('Transaction insert failed, rolled back:', txError);
-      return NextResponse.json({ success: false, error: 'Transaction recording failed' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, balance: newBalance, amount });
+    return NextResponse.json({ success: true, operation_id: rpcData.operation_id, amount });
   } catch (error: any) {
     console.warn('Withdrawal exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });

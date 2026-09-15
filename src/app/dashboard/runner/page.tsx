@@ -287,23 +287,23 @@ export default function RunnerOpportunityRadar() {
         {/* ── 3-COLUMN EARNINGS STRIP (Mobile Scrollable / Grid) ── */}
         <section className="grid grid-cols-3 gap-2 sm:gap-6">
           {/* Available Balance */}
-          <div className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px]">
+          <Link href="/dashboard/wallet" className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px] hover:border-[#00A859] transition-colors cursor-pointer group">
             <div>
-              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Available Balance</p>
+              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-[#00A859] transition-colors">Available Balance</p>
               <h2 className="text-sm sm:text-3xl font-black text-[#00A859] font-mono mt-0.5">
                 {formatCurrency(walletBalance)}
               </h2>
               <p className="text-[8px] sm:text-[11px] text-slate-400 mt-1 truncate">Withdraw anytime</p>
             </div>
-            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-green-50 dark:bg-green-900/20 text-[#00A859] flex items-center justify-center">
+            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-green-50 dark:bg-green-900/20 text-[#00A859] flex items-center justify-center group-hover:bg-[#00A859] group-hover:text-white transition-colors">
               <Wallet className="w-3 h-3 sm:w-6 sm:h-6" />
             </div>
-          </div>
+          </Link>
 
           {/* Active Missions */}
-          <div className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px]">
+          <Link href="/dashboard/runner/tasks" className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px] hover:border-blue-500 transition-colors cursor-pointer group">
             <div>
-              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Active Missions</p>
+              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-blue-500 transition-colors">Active Missions</p>
               <h2 className="text-sm sm:text-3xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
                 {activeErrands.length}
               </h2>
@@ -311,24 +311,24 @@ export default function RunnerOpportunityRadar() {
                 {activeErrands.length > 0 ? 'In progress' : 'No active missions'}
               </p>
             </div>
-            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
+            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
               <Radio className="w-3 h-3 sm:w-6 sm:h-6" />
             </div>
-          </div>
+          </Link>
 
           {/* Driver Score */}
-          <div className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px]">
+          <Link href="/dashboard/runner/performance" className="bg-white dark:bg-[#111827] rounded-xl p-3 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[100px] hover:border-purple-500 transition-colors cursor-pointer group">
             <div>
-              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">Driver Score</p>
+              <p className="text-[9px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 group-hover:text-purple-500 transition-colors">Driver Score</p>
               <h2 className="text-sm sm:text-3xl font-black text-blue-600 font-mono mt-0.5">
                 ★ {user?.rating ? user.rating.toFixed(1) : '5.0'}
               </h2>
               <p className="text-[8px] sm:text-[11px] text-slate-400 mt-1 truncate">Excellent</p>
             </div>
-            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center">
+            <div className="self-end mt-2 w-6 h-6 sm:w-12 sm:h-12 rounded-md sm:rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
               <TrendingUp className="w-3 h-3 sm:w-6 sm:h-6" />
             </div>
-          </div>
+          </Link>
         </section>
 
         {/* ── AVAILABLE BOUNTIES FEED ── */}

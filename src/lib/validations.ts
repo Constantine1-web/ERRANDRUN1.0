@@ -17,6 +17,9 @@ export const CreateErrandSchema = z.object({
   has_queue: z.boolean().optional().default(false),
   is_bulky: z.boolean().optional().default(false),
   notes: z.string().trim().max(500).optional(),
+  guest_name: z.string().trim().max(100).optional(),
+  guest_email: z.string().trim().email().optional().or(z.literal('')),
+  guest_phone: z.string().trim().max(20).optional().or(z.literal('')),
 });
 
 export const WithdrawSchema = z.object({

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminSupabase, requireAuth } from '@/lib/serverAuth';
+import { adminSupabase, requireVerifiedStudent } from '@/lib/serverAuth';
 import { CancelErrandSchema } from '@/lib/validations';
 import { checkRateLimit, getClientIp, rateLimitExceededResponse } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = await requireAuth(request);
+    const authCheck = await requireVerifiedStudent(request);
     if (authCheck.response) return authCheck.response;
 
     const callerId = authCheck.auth.user.id;

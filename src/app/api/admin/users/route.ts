@@ -25,7 +25,11 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (role && role !== 'all') {
-      query = query.eq('role', role);
+      if (role === 'suspended') {
+        query = query.eq('account_status', 'suspended');
+      } else {
+        query = query.eq('role', role);
+      }
     }
     
     if (verificationStatus && verificationStatus !== 'all') {

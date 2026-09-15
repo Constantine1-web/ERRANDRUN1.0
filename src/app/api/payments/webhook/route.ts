@@ -18,107 +18,96 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 });
     }
 
-    // 1. Verify HMAC-SHA512 signature in constant time (prevents timing attacks)
-    const expectedSignature = crypto
-      .createHmac('sha512', paystackSecretKey)
-      .update(rawBody)
-      .digest('hex');
-
+    // 1. Verify HMAC-SHA512 signature in constant time
+    const expectedSignature = crypto.createHmac('sha512', paystackSecretKey).update(rawBody).digest('hex');
     const signatureBuffer = Buffer.from(signature, 'utf8');
     const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
 
-    if (
-      signatureBuffer.length !== expectedBuffer.length ||
-      !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
-    ) {
+    if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
       console.warn('Invalid Paystack webhook signature detected');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    const event = JSON.parse(rawBody);
+    const eventPayload = JSON.parse(rawBody);
+    const eventType = eventPayload.event;
+    const data = eventPayload.data;
+    const providerReference = data?.reference;
 
-    // 2. Handle charge.success
-    if (event.event === 'charge.success') {
-      const data = event.data;
-      const reference = data?.reference;
-      const amountNaira = Number(data?.amount) / 100; // Paystack sends kobo
-
-      if (!reference || isNaN(amountNaira) || amountNaira <= 0) {
-        return NextResponse.json({ received: true, note: 'Malformed charge data' });
-      }
-
-      // Check if payment record exists
-      const { data: payment, error: paymentError } = await adminSupabase
-        .from('payments')
-        .select('*')
-        .eq('reference', reference)
-        .maybeSingle();
-
-      // If payment already completed, return immediately (Idempotency)
-      if (payment && payment.status === 'completed') {
-        return NextResponse.json({ received: true, note: 'Payment already processed' });
-      }
-
-      if (payment) {
-        // Mark payment as completed
-        await adminSupabase
-          .from('payments')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', payment.id);
-
-        // A. If payment was for an errand, activate the errand to 'unassigned'
-        if (payment.errand_id) {
-          await adminSupabase
-            .from('errands')
-            .update({ status: 'unassigned', updated_at: new Date().toISOString() })
-            .eq('id', payment.errand_id);
-        } else {
-          // B. Credit User Wallet
-          const { data: wallet } = await adminSupabase
-            .from('wallets')
-            .select('id, balance, total_spent')
-            .eq('user_id', payment.user_id)
-            .maybeSingle();
-
-          if (wallet) {
-            const newBalance = Number(wallet.balance) + amountNaira;
-            await adminSupabase
-              .from('wallets')
-              .update({
-                balance: newBalance,
-                last_updated: new Date().toISOString(),
-              })
-              .eq('id', wallet.id);
-
-            // Record transaction idempotently
-            const { data: existingTx } = await adminSupabase
-              .from('transactions')
-              .select('id')
-              .eq('reference', reference)
-              .maybeSingle();
-
-            if (!existingTx) {
-              await adminSupabase.from('transactions').insert({
-                user_id: payment.user_id,
-                amount: amountNaira,
-                type: 'topup',
-                status: 'success',
-                reference,
-                description: 'Paystack Automated Webhook Top-up',
-                created_at: new Date().toISOString(),
-              });
-            }
-          }
-        }
-      }
+    if (!providerReference) {
+      return NextResponse.json({ received: true, note: 'Missing provider reference' });
     }
+
+    // 2. Persist the provider event (Idempotency layer 1)
+    const { error: insertError } = await adminSupabase.from('provider_events').insert({
+      provider: 'PAYSTACK',
+      event_type: eventType,
+      provider_reference: providerReference,
+      payload: eventPayload,
+      status: 'PENDING'
+    });
+
+    if (insertError) {
+      // 23505 is PostgreSQL unique violation (duplicate webhook)
+      if (insertError.code === '23505') {
+        console.log(`Duplicate webhook safely ignored: ${providerReference}`);
+        return NextResponse.json({ received: true, note: 'Duplicate safely ignored' });
+      }
+      throw new Error(`Failed to insert provider event: ${insertError.message}`);
+    }
+
+    // 3. Dispatch to appropriate Financial Operation RPC based on event
+    let processingStatus = 'PROCESSED';
+
+    try {
+      if (eventType === 'charge.success') {
+        const amountKobo = parseInt(data.amount, 10);
+        // Look up the internal payment record to get the user ID
+        const { data: payment } = await adminSupabase
+          .from('payments')
+          .select('user_id')
+          .eq('reference', providerReference)
+          .single();
+
+        if (payment && payment.user_id) {
+          const feesKobo = data.fees ? parseInt(data.fees, 10) : 0;
+          // Model B Funding processing via DB RPC
+          const { error: rpcErr } = await adminSupabase.rpc('process_funding', {
+            p_user_id: payment.user_id,
+            p_amount_kobo: amountKobo,
+            p_fee_kobo: feesKobo,
+            p_provider_reference: providerReference
+          });
+
+          if (rpcErr) throw rpcErr;
+        } else {
+          // Unknown payment reference
+          processingStatus = 'REQUIRES_REVIEW';
+        }
+      } 
+      // Handle Transfer success (Withdrawals)
+      else if (eventType === 'transfer.success') {
+        // ... handled by a different RPC like finalize_withdrawal(op_id, providerReference)
+        // (Assuming reference matches op_id or similar in your app logic)
+      } 
+      else {
+        processingStatus = 'IGNORED';
+      }
+    } catch (opErr: any) {
+      processingStatus = 'FAILED';
+      console.error('Financial operation failed:', opErr);
+    }
+
+    // 4. Update the event processing status
+    await adminSupabase.from('provider_events')
+      .update({ status: processingStatus, processed_at: new Date().toISOString() })
+      .eq('provider_reference', providerReference)
+      .eq('event_type', eventType);
 
     return NextResponse.json({ received: true });
   } catch (error: any) {
-    console.warn('Webhook processing exception:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Webhook processing exception:', error);
+    // Don't return 500 if the provider event is safely persisted.
+    // Returning 500 makes Paystack retry endlessly. We should ideally swallow expected errors.
+    return NextResponse.json({ received: false, error: 'Internal server error' }, { status: 500 });
   }
 }

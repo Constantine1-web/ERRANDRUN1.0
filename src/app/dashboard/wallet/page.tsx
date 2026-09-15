@@ -74,7 +74,7 @@ function WalletContent() {
       const { data: txData, error: txError } = await supabase
         .from('wallet_transactions')
         .select('*')
-        .eq('wallet_id', walletId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(25);
 
@@ -286,7 +286,7 @@ function WalletContent() {
         ) : (
           <div className="divide-y divide-slate-100">
             {transactions.map((tx) => {
-              const isCredit = tx.transaction_type === 'credit';
+              const isCredit = tx.operation_type === 'FUNDING' || tx.operation_type === 'SETTLEMENT';
               return (
                 <div
                   key={tx.id}
@@ -308,7 +308,7 @@ function WalletContent() {
                     </div>
                     <div>
                       <p className="font-bold text-slate-900 text-sm">
-                        {tx.description || (isCredit ? 'Wallet Top-Up' : 'Errand Payment')}
+                        {tx.operation_type || (isCredit ? 'Wallet Top-Up' : 'Errand Payment')}
                       </p>
                       <p className="text-[11px] text-slate-400 font-mono mt-0.5">
                         {new Date(tx.created_at).toLocaleDateString()} at{' '}
@@ -323,16 +323,16 @@ function WalletContent() {
                         isCredit ? 'text-runner-dark dark:text-runner-celadon' : 'text-slate-900'
                       }`}
                     >
-                      {isCredit ? '+' : '-'}₦{Math.abs(tx.amount).toLocaleString('en-NG')}
+                      {isCredit ? '+' : '-'}₦{Math.abs(tx.amount_kobo / 100).toLocaleString('en-NG')}
                     </span>
                     <Badge
                       variant={
-                        tx.status === 'completed' || tx.status === 'success' ? 'success' :
-                        tx.status === 'pending' ? 'warning' : 'danger'
+                        tx.status === 'COMPLETED' ? 'success' :
+                        tx.status === 'PROCESSING' ? 'warning' : 'danger'
                       }
                       className="text-[9px] uppercase font-bold"
                     >
-                      {tx.status || 'completed'}
+                      {tx.status || 'COMPLETED'}
                     </Badge>
                   </div>
                 </div>

@@ -42,6 +42,7 @@ interface RunnerApp {
     student_id: string;
     phone_number: string;
     role: string;
+  account_status: string;
     verification_status: string;
     avatar_url?: string;
   };
@@ -603,9 +604,9 @@ export default function AdminDashboard() {
                   <div key={u.id} className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Badge variant={u.role === 'suspended' ? 'danger' : u.role === 'runner' ? 'success' : 'info'} className="text-[10px] uppercase font-bold">
-                          {u.role}
-                        </Badge>
+                        <Badge variant={u.account_status === 'suspended' ? 'danger' : u.role === 'runner' ? 'success' : 'info'} className="text-[10px] uppercase font-bold">
+    {u.account_status === 'suspended' ? 'suspended' : u.role}
+  </Badge>
                         <Badge variant={u.verification_status === 'verified' ? 'success' : 'warning'} className="text-[10px] uppercase font-bold">
                           {u.verification_status}
                         </Badge>
@@ -624,7 +625,7 @@ export default function AdminDashboard() {
                         </div>
                       )}
                       
-                      {u.role !== 'suspended' && u.role !== 'admin' ? (
+                      {u.account_status !== 'suspended' && u.role !== 'admin' ? (
                         <div className="flex gap-2">
                           <input
                             type="text"
@@ -637,7 +638,7 @@ export default function AdminDashboard() {
                             Suspend
                           </Button>
                         </div>
-                      ) : u.role === 'suspended' ? (
+                      ) : u.account_status === 'suspended' ? (
                         <Button size="sm" variant="success" className="text-[10px] h-8" onClick={() => handleUserAction(u.id, 'reactivate_user')} isLoading={processingId === u.id}>
                           Reactivate
                         </Button>
