@@ -119,9 +119,12 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) { setAuthorized(false); return; }
-      // Temporarily bypassing RLS blocked profile fetch
-      // const { data } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
-      setAuthorized(true);
+      const { data } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single();
+      setAuthorized(data?.role === 'admin');
     });
   }, []);
 
