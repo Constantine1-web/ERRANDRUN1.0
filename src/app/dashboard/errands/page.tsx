@@ -162,7 +162,7 @@ export default function ErrandsActivityPage() {
           <Package className="w-8 h-8 text-slate-400 mx-auto" />
           <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No errands found</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            {searchQuery ? 'Try adjusting your search criteria.' : 'You haven\\'t requested any campus runs yet. Need something done?'}
+            {searchQuery ? 'Try adjusting your search criteria.' : "You haven't requested any campus runs yet. Need something done?"}
           </p>
           {!searchQuery && (
             <div className="pt-4">

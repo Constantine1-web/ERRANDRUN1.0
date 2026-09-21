@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({ success: true, message: \`User \${action.replace('_', ' ')} successfully\` });
+    return NextResponse.json({ success: true, message: `User ${action.replace('_', ' ')} successfully` });
   } catch (error: any) {
     console.warn('Admin user action exception:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });

@@ -72,7 +72,7 @@ function WalletContent() {
       }
 
       const { data: txData, error: txError } = await supabase
-        .from('wallet_transactions')
+        .from('financial_operations')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
