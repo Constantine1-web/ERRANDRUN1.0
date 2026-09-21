@@ -275,8 +275,6 @@ export default function DashboardLayout({
 
   const currentMobileNav = isRunner ? runnerMobileNav : mobileNav;
 
-  if (!isMounted) return <div className="min-h-screen flex antialiased bg-[#F4F7FE] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100" />;
-
   return (
     <div className="min-h-screen flex antialiased bg-[#F4F7FE] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100">
       {/* ── DESKTOP SIDEBAR ── */}
@@ -369,7 +367,7 @@ export default function DashboardLayout({
             <div className="flex items-center gap-1">
               <NotificationBell userId={user?.id || ''} />
               <Link href="/dashboard/profile" className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center text-[10px] shadow-sm overflow-hidden">
-                {user?.fullName?.charAt(0) || <User className="w-3.5 h-3.5" />}
+                {isMounted ? (user?.fullName?.charAt(0) || <User className="w-3.5 h-3.5" />) : <User className="w-3.5 h-3.5" />}
               </Link>
             </div>
           </div>
@@ -410,7 +408,7 @@ export default function DashboardLayout({
                       <Wallet className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-500" />
                     </div>
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                      {hideBalance ? '****' : `₦${walletBalance !== null ? walletBalance.toLocaleString('en-NG') : '…'}`}
+                      {isMounted ? (hideBalance ? '****' : `₦${walletBalance !== null ? walletBalance.toLocaleString('en-NG') : '…'}`) : '****'}
                     </span>
                   </Link>
                   <button 
@@ -427,10 +425,10 @@ export default function DashboardLayout({
               <NotificationBell userId={user?.id || ''} />
 
               <Link href="/dashboard/profile" className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center text-xs shadow-sm overflow-hidden">
-                 {user?.fullName?.charAt(0) || <User className="w-4 h-4" />}
+                 {isMounted ? (user?.fullName?.charAt(0) || <User className="w-4 h-4" />) : <User className="w-4 h-4" />}
               </Link>
               
-              {user?.role === 'admin' && (
+              {isMounted && user?.role === 'admin' && (
                 <Link href="/dashboard/admin" className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-full">
                   <ShieldCheck className="w-5 h-5" />
                 </Link>
