@@ -117,7 +117,8 @@ export default function UserDashboardContent() {
     reference: (new Date()).getTime().toString(),
     email: user?.email || 'user@example.com',
     amount: topUpAmount * 100,
-    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+    // Provide a fallback dummy key so react-paystack doesn't crash the entire dashboard on mount
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_dummy1234567890',
   };
 
   const initializePayment = usePaystackPayment(config);
