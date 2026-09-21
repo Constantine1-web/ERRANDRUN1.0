@@ -39,7 +39,8 @@ export default function LandingPage() {
   const [calcCategory, setCalcCategory] = useState<'academic' | 'food_delivery' | 'campus_errand' | 'other'>('food_delivery');
   const [calcDistance, setCalcDistance] = useState(1.0);
   const [calcQueue, setCalcQueue] = useState(false);
-  const dynamicDemoPrice = calculatePricing(calcCategory as any, 'normal', calcDistance, calcQueue, false);
+  // Fix hour to 12 (noon) to prevent SSR hydration mismatch from dynamic timezone differences
+  const dynamicDemoPrice = calculatePricing(calcCategory as any, 'normal', calcDistance, calcQueue, false, false, 12);
 
   // FAQ State
   const [openFaq, setOpenFaq] = useState<number | null>(0);

@@ -27,31 +27,23 @@ const PLATFORM_FEE_PERCENTAGE = 0.2;
  * Calculate pricing based on errand details
  */
 export function calculatePricing(
-  _category: ErrandCategory, // Still useful for metrics, but no longer dictates base fee
+  _category: ErrandCategory,
   priority: ErrandPriority = 'normal',
   distanceKm: number = 0,
   hasQueueComplexity: boolean = false,
   weatherSurgeApplied: boolean = false,
-  isBulkyItem: boolean = false
+  isBulkyItem: boolean = false,
+  hourOverride?: number // Added to prevent SSR hydration mismatches
 ): PricingBreakdown {
-  // Distance rate: strictly 800 Naira per 1 km.
-  // If errand is within campus (effective distance <= 1.0 km), standard fee is flat 800 Naira.
-  // Beyond 1.0 km, fee calculates dynamically at 800 Naira per km.
   const effectiveDistance = Math.max(1, distanceKm);
   const baseFee = Math.round(effectiveDistance * 800);
   const distanceSurcharge = 0;
 
-  // Queue complexity fee (flat 500 Naira if applicable)
   const queueComplexityFee = hasQueueComplexity ? QUEUE_COMPLEXITY_FEE : 0;
-  
-  // Bulky item surcharge
   const bulkyItemSurcharge = isBulkyItem ? BULKY_ITEM_SURCHARGE : 0;
-
-  // Weather surge (10% on top of base fee)
   const weatherSurge = weatherSurgeApplied ? Math.round(baseFee * (WEATHER_SURGE - 1)) : 0;
 
-  // Check for Rush Hour (8am-10am and 4pm-6pm)
-  const hour = new Date().getHours();
+  const hour = hourOverride !== undefined ? hourOverride : new Date().getHours();
   const isRushHour = (hour >= 8 && hour < 10) || (hour >= 16 && hour < 18);
   const rushHourSurge = isRushHour ? Math.round(baseFee * (RUSH_HOUR_SURGE - 1)) : 0;
 
@@ -108,12 +100,13 @@ export function calculateDistance(
  * Format currency (Nigerian Naira)
  */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
+  // Use en-US for reliable comma placement across all browsers/servers, and hardcode the Naira symbol
+  // This prevents fatal text hydration mismatches on Vercel
+  const numberPart = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount);
+  return `₦${numberPart}`;
 }
 
 /**
