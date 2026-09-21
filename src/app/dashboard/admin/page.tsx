@@ -520,7 +520,7 @@ export default function AdminDashboard() {
                         <span className="text-xs text-slate-500">{u.phone_number}</span>
                       </div>
                       <h3 className="text-lg font-black text-slate-900">{u.full_name}</h3>
-                      <p className="text-[10px] text-slate-400">Joined: {new Date(u.created_at).toLocaleDateString()}</p>
+                      <p suppressHydrationWarning className="text-[10px] text-slate-400">Joined: {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</p>
                     </div>
                     
                     <div className="flex flex-col gap-2 min-w-[200px]">
@@ -710,8 +710,8 @@ export default function AdminDashboard() {
                       <h3 className="text-base font-bold text-slate-900">
                         {app.profiles?.full_name || 'Applicant'}
                       </h3>
-                      <p className="text-xs text-slate-500">
-                        📞 Phone: {app.profiles?.phone_number || 'N/A'} • Submitted {new Date(app.created_at).toLocaleDateString()}
+                      <p suppressHydrationWarning className="text-xs text-slate-500">
+                        Phone: {app.profiles?.phone_number || 'N/A'} • Submitted {app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A'}
                       </p>
 
                       {app.document_proof_url && (
