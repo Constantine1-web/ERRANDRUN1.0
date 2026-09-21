@@ -45,6 +45,10 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, setUser, logout, hideBalance, setHideBalance } = useAppStore();
+
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => setIsMounted(true), []);
+
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [activeErrand, setActiveErrand] = useState<{ id: string; title: string; status: string } | null>(null);
 
@@ -270,6 +274,8 @@ export default function DashboardLayout({
   ];
 
   const currentMobileNav = isRunner ? runnerMobileNav : mobileNav;
+
+  if (!isMounted) return <div className="min-h-screen flex antialiased bg-[#F4F7FE] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100" />;
 
   return (
     <div className="min-h-screen flex antialiased bg-[#F4F7FE] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100">
