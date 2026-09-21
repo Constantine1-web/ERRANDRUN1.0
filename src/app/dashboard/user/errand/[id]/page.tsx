@@ -5,6 +5,8 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { authFetch } from '@/lib/apiClient';
 import { useErrandTracking } from '@/hooks/useRealtimeErrands';
+import { useErrandRadar } from '@/hooks/useLiveTracking';
+import { LiveErrandRadar } from '@/components/maps/LiveErrandRadar';
 import type { Errand } from '@/types';
 import { formatCurrency } from '@/utils/pricing';
 import toast from 'react-hot-toast';
@@ -32,6 +34,7 @@ export default function ErrandDetailPage() {
   const router = useRouter();
   const id = params?.id as string | undefined;
   const { tracking, loading: trackingLoading } = useErrandTracking(id);
+  const { runnerPosition, isLive } = useErrandRadar(id as string);
   const [errand, setErrand] = useState<Errand | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -297,10 +300,21 @@ export default function ErrandDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
         {/* ── LEFT COLUMN: TRACKING & DETAILS ── */}
         <div className="lg:col-span-7 space-y-6">
+
+          {/* Live Errand Radar Map */}
+          {errand.pickup_coordinates && errand.delivery_coordinates && (
+            <div className="h-[400px] rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm relative mb-6">
+              <LiveErrandRadar 
+                pickup={errand.pickup_coordinates} 
+                dropoff={errand.delivery_coordinates} 
+                runnerPosition={runnerPosition || undefined}
+              />
+            </div>
+          )}
 
           {/* Progress Tracker Widget */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">

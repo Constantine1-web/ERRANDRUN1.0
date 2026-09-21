@@ -1,6 +1,7 @@
 import { adminSupabase } from '@/lib/serverAuth';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { GuestMapClient } from './GuestMapClient';
 import { createHash } from 'crypto';
 import { MapPin, Clock, User, Package } from 'lucide-react';
 
@@ -27,6 +28,8 @@ export default async function GuestTrackingPage({ params }: { params: { token: s
         title,
         pickup_location,
         delivery_location,
+        pickup_coordinates,
+        delivery_coordinates,
         created_at,
         runner_id
       )
@@ -100,6 +103,14 @@ export default async function GuestTrackingPage({ params }: { params: { token: s
               </div>
             </div>
           </div>
+          
+          {errand.pickup_coordinates && errand.delivery_coordinates && (
+            <GuestMapClient 
+              errandId={errand.id} 
+              pickup={errand.pickup_coordinates} 
+              dropoff={errand.delivery_coordinates} 
+            />
+          )}
           
           <div className="pt-4 border-t border-white/5 text-center text-xs text-gray-500">
             Powered by ERRANDRUN Campus Deliveries

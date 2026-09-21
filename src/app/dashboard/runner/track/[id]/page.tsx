@@ -1,195 +1,122 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { MapContainer, Marker, TileLayer, Popup, Polyline, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { supabase } from '@/lib/supabaseClient';
 import { authFetch } from '@/lib/apiClient';
 import toast from 'react-hot-toast';
 import { useErrandTracking } from '@/hooks/useRealtimeErrands';
+import { useRunnerGPSBroadcaster } from '@/hooks/useLiveTracking';
+import { LiveErrandRadar } from '@/components/maps/LiveErrandRadar';
 import {
-  Radio,
-  MapPin,
   Send,
   CheckCircle2,
   AlertTriangle,
   ChevronLeft,
   KeyRound,
-  Compass,
-  Clock
+  Compass
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import type { Errand } from '@/types';
 
-const defaultIcon = L.Icon.Default;
-defaultIcon.mergeOptions({
-  iconRetinaUrl: markerIcon2x.src || markerIcon2x,
-  iconUrl: markerIcon.src || markerIcon,
-  shadowUrl: markerShadow.src || markerShadow,
-});
-
-function RecenterMap({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!center) return;
-    map.setView(center, map.getZoom());
-  }, [center, map]);
-  return null;
-}
-
-export default function RunnerTrackDynamicPage() {
+export default function RunnerTelemetryPage() {
   const params = useParams();
   const router = useRouter();
-  const errandId = params?.id as string | undefined;
-  const [statusUpdate, setStatusUpdate] = useState('Runner en route to pickup');
+  const id = params?.id as string | undefined;
+
+  const { tracking, loading: trackingLoading, errand } = useErrandTracking(id);
+  const { currentPosition, error: gpsError } = useRunnerGPSBroadcaster(id as string, true);
+
+  const [statusUpdate, setStatusUpdate] = useState('En route to pickup location');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { tracking, loading: trackingLoading } = useErrandTracking(errandId);
 
-  const latestTracking = tracking[0] || null;
-  const pathPositions = useMemo(
-    () =>
-      tracking
-        .filter((item) => item.current_location)
-        .map((item) => [item.current_location.lat, item.current_location.lng] as [number, number])
-        .reverse(),
-    [tracking]
-  );
-
-  const mapCenter = useMemo(() => {
-    if (latestTracking?.current_location) {
-      return [latestTracking.current_location.lat, latestTracking.current_location.lng] as [number, number];
+  // Auto-sync form coordinates with live GPS if available
+  useEffect(() => {
+    if (currentPosition) {
+      setLat(currentPosition.lat.toString());
+      setLng(currentPosition.lng.toString());
     }
-    if (lat && lng) {
-      const parsedLat = Number(lat);
-      const parsedLng = Number(lng);
-      if (!Number.isNaN(parsedLat) && !Number.isNaN(parsedLng)) {
-        return [parsedLat, parsedLng] as [number, number];
-      }
-    }
-    return [5.0377, 7.9128] as [number, number];
-  }, [latestTracking, lat, lng]);
+  }, [currentPosition]);
 
-  const submitTracking = async (message: string) => {
-    if (!errandId) {
-      toast.error('Invalid errand ID');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !lat || !lng) {
+      toast.error('Missing coordinates. Please auto-detect GPS.');
       return;
     }
-
     setSubmitting(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const runnerId = userData?.user?.id;
-      if (!runnerId) {
-        toast.error('Please sign in first');
-        return;
-      }
-
-      const response = await authFetch('/api/tracking', {
+      const res = await authFetch('/api/tracking', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          errandId,
-          statusUpdate: message,
-          currentLocation: lat && lng ? { lat: Number(lat), lng: Number(lng) } : null,
-          runnerNotes: notes,
-        }),
+          errand_id: id,
+          status_update: statusUpdate,
+          current_location: { lat: parseFloat(lat), lng: parseFloat(lng) },
+          runner_notes: notes
+        })
       });
-
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        toast.error(result.error || 'Failed to send tracking broadcast');
-      } else {
-        toast.success('Location update broadcasted to customer!');
-      }
-    } catch (error) {
-      console.warn(error);
-      toast.error('Unable to send tracking update');
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      
+      toast.success('Status broadcasted successfully');
+      setNotes('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update status');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    await submitTracking(statusUpdate);
-  };
-
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLat(pos.coords.latitude.toFixed(6));
-        setLng(pos.coords.longitude.toFixed(6));
-        toast.success('Live GPS coordinates locked!');
-      },
-      () => toast.error('Unable to retrieve GPS coordinates')
+  const handleComplete = () => {
+    const pin = prompt('Enter the 4-digit PIN provided by the customer to securely unlock escrow:');
+    if (!pin) return;
+    
+    toast.promise(
+      authFetch('/api/errands/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ errand_id: id, completion_pin: pin })
+      }).then(async (res) => {
+        const d = await res.json();
+        if (!d.success) throw new Error(d.error);
+        router.push('/dashboard/runner');
+      }),
+      {
+        loading: 'Verifying PIN & Unlocking Escrow...',
+        success: 'Errand Completed! Escrow unlocked.',
+        error: (e) => e.message || 'Failed to complete errand'
+      }
     );
   };
 
-  const handleComplete = async () => {
-    const pin = window.prompt('Enter the 4-digit Delivery PIN provided by the customer:');
-    if (!pin || pin.trim().length !== 4) {
-      toast.error('Valid 4-digit PIN required to complete delivery');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const response = await authFetch('/api/tracking/complete', {
-        method: 'POST',
-        body: JSON.stringify({ errandId, pin }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
-
-      await submitTracking('Runner has verified PIN and completed delivery');
-      toast.success('PIN verified. Errand completed successfully!');
-      router.push('/dashboard/runner');
-    } catch (e: any) {
-      toast.error(e.message || 'Failed to verify PIN');
-      setSubmitting(false);
-    }
-  };
-
-  const handleDispute = async () => {
-    const reason = window.prompt('Customer refused PIN? Enter dispute reason (Requires GPS lock):');
+  const handleDispute = () => {
+    const reason = prompt('Please explain why you are initiating a GPS Lock dispute:');
     if (!reason) return;
-    if (!lat || !lng) {
-      toast.error('Please detect GPS before initiating a dispute to prove your physical location.');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const res = await authFetch('/api/tracking/dispute', {
+    
+    toast.promise(
+      authFetch('/api/tracking/dispute', {
         method: 'POST',
-        body: JSON.stringify({
-          errandId,
-          reason,
-          lat: Number(lat),
-          lng: Number(lng),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      toast.success('Dispute ticket raised. GPS lock logged.');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to raise dispute');
-    } finally {
-      setSubmitting(false);
-    }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ errand_id: id, reason })
+      }).then(async (res) => {
+        const d = await res.json();
+        if (!d.success) throw new Error(d.error);
+        router.push('/dashboard/runner');
+      }),
+      {
+        loading: 'Initiating dispute...',
+        success: 'Dispute filed successfully.',
+        error: (e) => e.message || 'Failed to file dispute'
+      }
+    );
   };
+
+  if (!id) return <div>Invalid tracking ID</div>;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6 animate-fadeIn">
@@ -214,10 +141,17 @@ export default function RunnerTrackDynamicPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Badge variant="info" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
-            Transmitter Active
-          </Badge>
+          {gpsError ? (
+            <Badge variant="danger" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              GPS Error
+            </Badge>
+          ) : (
+            <Badge variant="info" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
+              Transmitter Active
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -247,37 +181,30 @@ export default function RunnerTrackDynamicPage() {
                 </select>
               </div>
 
-              {/* GPS Coordinates & Auto-Detect */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Location Coordinates
+              {/* GPS Coordinates (Read-only as they are auto-detected) */}
+              <div className="space-y-1.5 opacity-80">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>Location Coordinates</span>
+                  <span className="text-[9px] text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Auto-Syncing
+                  </span>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
                     value={lat}
-                    onChange={(e) => setLat(e.target.value)}
-                    placeholder="Lat (e.g. 5.0377)"
-                    className="h-10 px-3 rounded-xl border border-slate-300 font-mono text-xs"
+                    readOnly
+                    placeholder="Lat..."
+                    className="h-10 px-3 rounded-xl border border-slate-300 bg-slate-50 font-mono text-xs"
                   />
                   <input
                     type="text"
                     value={lng}
-                    onChange={(e) => setLng(e.target.value)}
-                    placeholder="Lng (e.g. 7.9128)"
-                    className="h-10 px-3 rounded-xl border border-slate-300 font-mono text-xs"
+                    readOnly
+                    placeholder="Lng..."
+                    className="h-10 px-3 rounded-xl border border-slate-300 bg-slate-50 font-mono text-xs"
                   />
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDetectLocation}
-                  className="w-full text-xs font-bold gap-1.5 mt-1"
-                >
-                  <Compass className="w-3.5 h-3.5 text-blue-600" />
-                  Auto-Detect GPS
-                </Button>
               </div>
 
               {/* Notes */}
@@ -302,7 +229,7 @@ export default function RunnerTrackDynamicPage() {
                 className="w-full font-bold text-xs shadow-md"
               >
                 <Send className="w-3.5 h-3.5 mr-1.5" />
-                Send Status Broadcast
+                Log Official Checkpoint
               </Button>
             </form>
           </div>
@@ -331,39 +258,35 @@ export default function RunnerTrackDynamicPage() {
 
         {/* RIGHT COLUMN: Interactive Leaflet Map & Broadcast History */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden h-[360px] shadow-sm relative">
-            <MapContainer center={mapCenter} zoom={14} scrollWheelZoom={false} className="h-full w-full z-0">
-              <RecenterMap center={mapCenter} />
-              <TileLayer
-                attribution='&copy; OpenStreetMap contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {pathPositions.length > 1 && (
-                <Polyline positions={pathPositions} pathOptions={{ color: '#2563EB', weight: 4 }} />
-              )}
-              {latestTracking?.current_location && (
-                <Marker position={[latestTracking.current_location.lat, latestTracking.current_location.lng]}>
-                  <Popup>Current Broadcast Point</Popup>
-                </Marker>
-              )}
-            </MapContainer>
+          <div className="bg-slate-900 rounded-3xl border border-slate-800 overflow-hidden h-[360px] shadow-sm relative">
+             {errand?.pickup_coordinates && errand?.delivery_coordinates ? (
+               <LiveErrandRadar 
+                 pickup={errand.pickup_coordinates}
+                 dropoff={errand.delivery_coordinates}
+                 runnerPosition={currentPosition}
+               />
+             ) : (
+               <div className="flex items-center justify-center h-full text-xs text-slate-400">
+                 Loading mission coordinates...
+               </div>
+             )}
           </div>
 
           {/* Broadcast Logs */}
           <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Broadcast Log History
+              Checkpoint Log History
             </h3>
             <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto text-xs">
               {trackingLoading ? (
-                <p className="text-slate-400 py-2">Loading broadcast logs…</p>
+                <p className="text-slate-400 py-2">Loading logs…</p>
               ) : tracking.length === 0 ? (
-                <p className="text-slate-400 py-2">No broadcasts sent yet. Use the transmitter on the left.</p>
+                <p className="text-slate-400 py-2">No checkpoints sent yet. Use the transmitter on the left.</p>
               ) : (
                 tracking.map((t: any) => (
                   <div key={t.id} className="py-2.5 flex items-center justify-between">
                     <span className="font-medium text-slate-800">{t.status_update}</span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span suppressHydrationWarning className="text-[10px] text-slate-400 font-mono">
                       {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
